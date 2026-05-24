@@ -1,0 +1,64 @@
+:root {
+    --neon-green: #a8e063;
+    --dark-bg: #0d0d0d;
+}
+
+body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; }
+
+.login-container {
+    display: flex;
+    height: 100vh;
+}
+
+/* Lado izquierdo */
+.login-visual {
+    flex: 1;
+    background: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+.logo-hero { width: 300px; margin-bottom: 20px; }
+
+/* Lado derecho */
+.login-form {
+    flex: 1;
+    background: var(--dark-bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 80px;
+}
+
+input, select {
+    width: 100%;
+    padding: 15px;
+    margin: 10px 0;
+    background: #222;
+    border: 1px solid #444;
+    color: white;
+    border-radius: 5px;
+}
+
+.login-button {
+    width: 100%;
+    padding: 15px;
+    background: transparent;
+    border: 2px solid var(--neon-green);
+    color: var(--neon-green);
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.4s;
+    margin-top: 20px;
+}
+
+.login-button:hover {
+    background: var(--neon-green);
+    color: black;
+    box-shadow: 0 0 20px var(--neon-green);
+}
+
+h2 { color: white; margin-bottom: 30px; }
