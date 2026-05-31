@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/logo.jpeg" type="image/jpeg">
+    <link rel="stylesheet" href="../src/styles/login.css">
+    <title>Login | Zemyna</title>
+</head>
+<body>
+    <div class="login-container">
+        <!-- Lado izquierdo: Visual -->
+        <div class="login-visual">
+            <img src="assets/logo_sin_fondo.jpeg" alt="Logo Zemyna" class="logo-hero">
+            <h1>Gestión Municipal Inteligente</h1>
+            <p>Montevideo en tiempo real.</p>
+        </div>
+
+        <!-- Lado derecho: Formulario -->
+        <div class="login-form">
+            <h2>Iniciar Sesión</h2>
+            <form action="/login" method="POST">
+                <input type="text" name="cedula" placeholder="Cédula de Identidad (ej: 1234567-8)" required>
+                <input type="password" name="password" placeholder="Contraseña" required>
+                
+                <select name="role" required>
+                    <option value="" disabled selected>Seleccione su rol</option>
+                    <option value="ciudadano">Ciudadano</option>
+                    <option value="recolector">Recolector</option>
+                    <option value="admin">Administrador</option>
+                </select>
+
+                <button type="submit" class="login-button">ENTRAR</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
