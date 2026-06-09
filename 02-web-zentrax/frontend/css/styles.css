@@ -1,0 +1,274 @@
+/* Reset básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Tipografía y colores */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #0f0f1a;
+  color: #f0f0f0;
+  line-height: 1.6;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: #1a1a2e;
+}
+
+.logo {
+  height: 50px;
+}
+
+.nav ul {
+  list-style: none;
+  display: flex;
+  gap: 20px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.social-icons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.social-icons a {
+  color: #f0f0f0;
+  display: inline-flex;
+  transition: color 0.25s;
+}
+
+.social-icons a:hover {
+  color: #a64afc;
+}
+
+.social-icon {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+.nav a {
+  text-decoration: none;
+  color: #f0f0f0;
+  transition: color 0.3s;
+}
+
+.nav a:hover {
+  color: #a64afc; /* tono violeta moderno */
+}
+
+/* Hero */
+.hero {
+  text-align: center;
+  padding: 100px 20px;
+  background: linear-gradient(135deg, #1a1a2e, #3a0ca3);
+}
+
+.hero h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+.hero p {
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+}
+
+.btn {
+  background: #a64afc;
+  color: #fff;
+  padding: 12px 25px;
+  border-radius: 5px;
+  text-decoration: none;
+  transition: background 0.3s;
+}
+
+.btn:hover {
+  background: #6a00f4;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 20px;
+  background: #1a1a2e;
+  font-size: 0.9rem;
+}
+
+/* Contact section */
+.contact {
+  max-width: 600px;
+  margin: 80px auto;
+  padding: 20px;
+  text-align: center;
+}
+
+.contact h1 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  color: #a64afc;
+}
+
+.contact p {
+  margin-bottom: 30px;
+  color: #ccc;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.contact-form label {
+  text-align: left;
+  font-weight: bold;
+  color: #f0f0f0;
+}
+
+.contact-form input,
+.contact-form textarea {
+  padding: 12px;
+  border: none;
+  border-radius: 5px;
+  background: #1a1a2e;
+  color: #fff;
+}
+
+.contact-form input::placeholder,
+.contact-form textarea::placeholder {
+  color: #888;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  outline: 2px solid #a64afc;
+}
+
+.contact-form .btn {
+  background: #a64afc;
+  color: #fff;
+  padding: 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.contact-form .btn:hover {
+  background: #6a00f4;
+}
+
+
+/* Services section */
+.services {
+  max-width: 1000px;
+  margin: 80px auto;
+  padding: 20px;
+  text-align: center;
+}
+
+.services h1 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  color: #a64afc;
+}
+
+.services p {
+  margin-bottom: 40px;
+  color: #ccc;
+}
+
+.service-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.card {
+  background: #1a1a2e;
+  border-radius: 10px;
+  padding: 25px;
+  flex: 1 1 280px;
+  max-width: 300px;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card h2 {
+  color: #a64afc;
+  margin-bottom: 15px;
+}
+
+.card p {
+  color: #f0f0f0;
+  font-size: 0.95rem;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(166, 74, 252, 0.3);
+}
+
+/* About section */
+.about {
+  max-width: 900px;
+  margin: 80px auto;
+  padding: 20px;
+  text-align: center;
+}
+
+.about h1 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  color: #a64afc;
+}
+
+.about p {
+  margin-bottom: 40px;
+  color: #ccc;
+}
+
+.team {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.member {
+  background: #1a1a2e;
+  border-radius: 10px;
+  padding: 20px;
+  flex: 1 1 200px;
+  max-width: 250px;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.member h2 {
+  color: #a64afc;
+  margin-bottom: 10px;
+}
+
+.member p {
+  color: #f0f0f0;
+  font-size: 0.9rem;
+}
+
+.member:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(166, 74, 252, 0.3);
+}

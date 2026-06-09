@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contacto - Zantrax</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <img src="img/logo.png" alt="Logo Zantrax" class="logo">
+    <nav class="nav">
+      <ul>
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="quienes.html">Quiénes somos</a></li>
+        <li><a href="servicios.html">Servicios</a></li>
+        <li><a href="contacto.html" class="active">Contacto</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Contact Form -->
+  <section class="contact">
+    <h1>Contáctanos</h1>
+    <p>Completa el formulario y nos pondremos en contacto contigo.</p>
+    
+    <form id="contact-form" class="contact-form" action="https://formspree.io/f/mykakzzl" method="post">
+      <label for="nombre">Nombre completo</label>
+      <input type="text" id="nombre" name="nombre" placeholder="Tu nombre" required>
+
+      <label for="email">Correo electrónico</label>
+      <input type="email" id="email" name="email" placeholder="tuemail@ejemplo.com" required>
+
+      <label for="empresa">Empresa (opcional)</label>
+      <input type="text" id="empresa" name="empresa" placeholder="Nombre de tu empresa">
+
+      <label for="mensaje">Mensaje</label>
+      <textarea id="mensaje" name="mensaje" rows="5" placeholder="Escribe tu mensaje aquí..." required></textarea>
+
+      <button type="submit" class="btn">Enviar mensaje</button>
+      <div id="form-result" class="form-result" aria-live="polite"></div>
+    </form>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>&copy; 2026 Zantrax - Todos los derechos reservados</p>
+  </footer>
+  <script src="js/script.js"></script>
+</body>
+</html>
