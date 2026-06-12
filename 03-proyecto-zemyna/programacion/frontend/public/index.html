@@ -2,27 +2,63 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Zemyna - Municipio CH</title>
+    <link rel="icon" href="assets/logo.jpeg" type="image/jpeg">
+    <title>Zemyna | Inicio</title>
+    <link rel="stylesheet" href="/03-proyecto-zemyna/programacion/frontend/src/styles/landing.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        /* El contenedor del mapa DEBE tener una altura definida para mostrarse */
-        #mapa-vedette {
-            height: 500px;
-            width: 100%;
-            border: 2px solid #333;
-            margin-bottom: 20px;
-        }
-    </style>
+    
 </head>
 <body>
 
-    <h1>Bienvenido a Zemyna (by Zentrax)</h1>
-    <p>Visualización operativa del Municipio CH</p>
+    <header class="navbar">
+        <div class="brand">
+            <h1>Zemyna</h1>
+            <span>BY ZENTRAX</span>
+        </div>
+        <a href="login.html" class="btn-login">PORTAL OPERATIVO</a>
+    </header>
 
-    <div id="mapa-vedette"></div>
+    <section class="hero">
+        <h2>Reporte Ciudadano - Municipio CH</h2>
+        <p>Hacé clic en un contenedor en el mapa o escaneá su código QR para reportar una incidencia en tiempo real.</p>
+    </section>
+
+    <main class="main-container">
+        
+        <div class="map-wrapper">
+            <div id="mapa-vedette"></div>
+        </div>
+
+        <div class="form-wrapper" id="panel-formulario">
+            <h3>Nueva Incidencia</h3>
+            
+            <div id="form-msg-vacio" class="form-placeholder">
+                <p>Seleccioná un contenedor del mapa para habilitar el formulario de reportes.</p>
+            </div>
+
+            <form id="form-reporte" class="form-active" action="/incidencias" method="POST">
+                <label>ID Contenedor:</label>
+                <input type="text" id="form-id-contenedor" name="id_contenedor" readonly>
+
+                <label>Ubicación / Esquina:</label>
+                <input type="text" id="form-direccion" name="direccion" readonly>
+
+                <label>¿Cuál es el problema?</label>
+                <select name="tipo_incidencia" required>
+                    <option value="" disabled selected>Seleccione una opción</option>
+                    <option value="desborde">Contenedor Desbordado</option>
+                    <option value="roto">Contenedor Roto / Dañado</option>
+                    <option value="obstruido">Obstruido por Vehículo</option>
+                    <option value="fuego">Incendio / Vandalismo</option>
+                </select>
+
+                <button type="submit" class="submit-button">ENVIAR REPORTE</button>
+            </form>
+        </div>
+
+    </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script src="mapa.js"></script>
 </body>
 </html>

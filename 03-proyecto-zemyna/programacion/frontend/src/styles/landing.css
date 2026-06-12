@@ -1,0 +1,186 @@
+        :root {
+            --neon-green: #a8e063;
+            --dark-bg: #0d0d0d;
+            --panel-bg: #1a1a1a;
+            --input-bg: #222;
+            --border-color: #444;
+        }
+
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: var(--dark-bg);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        /* BARRA DE NAVEGACIÓN */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--panel-bg);
+            padding: 10px 40px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .brand {
+            display: flex;
+            flex-direction: column;
+        }
+        .brand h1 { margin: 0; font-size: 24px; color: white; letter-spacing: 1px; }
+        .brand span { font-size: 11px; color: var(--neon-green); font-weight: bold; }
+        
+        .btn-login {
+            padding: 10px 20px;
+            background: transparent;
+            border: 2px solid var(--neon-green);
+            color: var(--neon-green);
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 5px;
+            transition: 0.4s;
+        }
+        .btn-login:hover {
+            background: var(--neon-green);
+            color: black;
+            box-shadow: 0 0 15px var(--neon-green);
+        }
+
+        /* SECCIÓN HERO (TEXTO DE INVITACIÓN) */
+        .hero {
+            padding: 40px;
+            text-align: center;
+        }
+        .hero h2 { margin: 0 0 10px 0; font-size: 32px; }
+        .hero p { margin: 0; color: #aaa; font-size: 16px; }
+
+        /* CONTENEDOR PRINCIPAL - DOS COLUMNAS */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 200px); /* Resta el espacio del header y el hero */
+            padding: 0 40px 40px 40px;
+            gap: 30px;
+        }
+
+        /* COLUMNA IZQUIERDA: EL MAPA */
+        .map-wrapper {
+            flex: 2; /* Ocupa el 65% aprox */
+            background: var(--panel-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            position: relative;
+        }
+        #mapa-vedette {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* COLUMNA DERECHA: EL FORMULARIO */
+        .form-wrapper {
+            flex: 1; /* Ocupa el 35% aprox */
+            background: var(--panel-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .form-wrapper h3 { margin-top: 0; color: white; border-bottom: 2px solid var(--neon-green); padding-bottom: 10px; }
+        
+        /* Estado bloqueado / informativo del formulario */
+        .form-placeholder {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #777;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .form-active {
+            display: none; /* Se activa mediante JS cuando hacen clic en un contenedor */
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: white;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        input[readonly] {
+            background: #111;
+            color: #888;
+            border-color: #333;
+            cursor: not-allowed;
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 12px;
+            background: var(--neon-green);
+            border: none;
+            color: black;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: 0.3s;
+        }
+        .submit-button:hover {
+            box-shadow: 0 0 15px var(--neon-green);
+            transform: translateY(-2px);
+        }
+    
+/* --- ADAPTACIÓN PARA CELULARES --- */
+/* --- OPTIMIZACIÓN TOTAL PARA CELULARES --- */
+@media (max-width: 768px) {
+    /* Forzamos a que los elementos se apilen uno abajo del otro */
+    .main-container {
+        flex-direction: column !important; 
+        height: auto !important;          /* El contenedor crece según el contenido */
+        padding: 10px 15px 30px 15px;
+        gap: 20px;
+    }
+
+    /* El mapa toma el 100% del ancho disponible y una altura cómoda para el dedo */
+    .map-wrapper {
+        width: 100%;
+        height: 350px; 
+        flex: none !important;
+    }
+
+    /* El formulario pasa abajo del mapa ocupando todo el ancho */
+    .form-wrapper {
+        width: 100%;
+        flex: none !important;
+        padding: 20px;
+        box-sizing: border-box; /* Evita que se desborde de la pantalla */
+    }
+
+    /* Achicamos espacios del encabezado para ganar pantalla */
+    .navbar {
+        padding: 10px 20px;
+    }
+    
+    .hero {
+        padding: 20px 15px;
+    }
+
+    .hero h2 {
+        font-size: 22px;
+    }
+    
+    .hero p {
+        font-size: 13px;
+    }
+}

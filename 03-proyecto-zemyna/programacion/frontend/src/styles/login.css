@@ -62,3 +62,56 @@ input, select {
 }
 
 h2 { color: white; margin-bottom: 30px; }
+
+/* --- ADAPTACIÓN DEL LOGIN PARA CELULARES --- */
+/* --- ADAPTACIÓN HORIZONTAL DEL LOGIN PARA MÓVILES --- */
+@media (max-width: 768px) {
+    /* Cambiamos la división de vertical (row) a horizontal (column) */
+    .login-container {
+        flex-direction: column;
+        height: 100vh;
+    }
+
+    /* El lado visual ahora queda arriba, más compacto */
+    .login-visual {
+        flex: none;
+        height: 30%; /* Ocupa el 30% superior de la pantalla */
+        padding: 20px 0;
+    }
+
+    /* Achicamos el logo gigante de PC para que entre cómodo arriba */
+    .logo-hero {
+        width: 140px; 
+        margin-bottom: 5px;
+    }
+
+    .login-visual h1 {
+        font-size: 18px;
+        margin: 5px 0;
+    }
+
+    .login-visual p {
+        font-size: 12px;
+        margin: 0;
+    }
+
+    /* El formulario toma el 70% restante abajo */
+    .login-form {
+        flex: none;
+        height: 70%;
+        padding: 30px 40px;
+        box-sizing: border-box;
+        justify-content: flex-start; /* Alinea los campos hacia arriba para que no los tape el teclado */
+    }
+
+    h2 {
+        font-size: 22px;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+
+    input, select, .login-button {
+        padding: 12px; /* Inputs ligeramente más cómodos para interfaces táctiles */
+        margin: 6px 0;
+    }
+}

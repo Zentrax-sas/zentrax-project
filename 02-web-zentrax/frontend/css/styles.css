@@ -272,3 +272,30 @@ body {
   transform: translateY(-5px);
   box-shadow: 0 5px 15px rgba(166, 74, 252, 0.3);
 }
+.footer {
+  background: #0f0f1a;
+  padding: 20px;
+  text-align: center;
+  color: #ccc;
+}
+
+.footer p {
+  margin-bottom: 10px;
+}
+
+.social-links {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.social-links a {
+  color: #a64afc;
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.3s;
+}
+
+.social-links a:hover {
+  color: #fff;
+}

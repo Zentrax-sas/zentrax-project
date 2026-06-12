@@ -1,8 +1,9 @@
 <?php
 class Usuario {
 
-public function __construct( protected int $id,protected string $nombre,protected String $apellido,protected String $password){
+public function __construct( protected int $id,protected string $rol,protected string $nombre,protected String $apellido,protected String $password){
     $this->id=$id;
+    $this->rol=$rol;
     $this->nombre=$nombre;
     $this->apellido=$apellido;
     $this->password=$password;
