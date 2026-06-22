@@ -1,12 +1,12 @@
 <?php
-require_once require_once 'models/Usuarios.php';
+require_once 'models/Usuarios.php';
 
 class Vecino extends Usuario {
     protected string $direccion;
     protected string $telefono;
 
-    public function __construct(int $id, string $nombre, string $apellido, string $password, string $direccion, string $telefono) {
-        parent::__construct($id, $nombre, $apellido, $password);
+    public function __construct(int $id, string $nombre, string $apellido, string $email, string $password, string $direccion, string $telefono) {
+        parent::__construct($id, $nombre, $apellido, $email, $password);
         $this->direccion = $direccion;
         $this->telefono = $telefono;
     }
