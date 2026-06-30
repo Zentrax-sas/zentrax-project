@@ -1,29 +1,33 @@
 <?php
-require_once __DIR__ . '/Usuarios.php';
+require_once __DIR__ . '/Usuario.php';
 
 class Operario extends Usuario {
-    protected string $sector;
+   
+    protected string $cuadrilla;
     protected string $turno;
 
-    public function __construct(int $id, string $nombre, string $apellido, string $password, string $sector, string $turno) {
-        parent::__construct($id, $nombre, $apellido, $password);
-        $this->sector = $sector;
+    public function __construct(int $id, string $nombre, string $apellido, string $email, string $password, string $cuadrilla, string $turno) {
+        // Al padre le pasamos ESTRICTAMENTE lo que el padre pide
+        parent::__construct($id, $nombre, $apellido, $email, $password);
+        
+       
+        $this->cuadrilla = $cuadrilla;
         $this->turno = $turno;
     }
 
-    public function getSector() {
-        return $this->sector;
+    public function getCuadrilla(){
+        return $this->cuadrilla;
     }
 
-    public function setSector(string $sector) {
-        $this->sector = $sector;
+    public function setCuadrilla(string $cuadrilla){
+        $this->cuadrilla = $cuadrilla;
     }
 
-    public function getTurno() {
+    public function getTurno(){
         return $this->turno;
     }
 
-    public function setTurno(string $turno) {
+    public function setTurno(string $turno){
         $this->turno = $turno;
     }
 }
