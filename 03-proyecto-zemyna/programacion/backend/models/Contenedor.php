@@ -21,10 +21,6 @@ class Contenedor {
         $this->qr = $qr;
     }
 
-    // ==========================================
-    //                  GETTERS
-    // ==========================================
-
     public function getIdContenedor(): int {
         return $this->id_contenedor;
     }
