@@ -1,186 +1,206 @@
-        :root {
-            --neon-green: #a8e063;
-            --dark-bg: #0d0d0d;
-            --panel-bg: #1a1a1a;
-            --input-bg: #222;
-            --border-color: #444;
-        }
+/* VARIABLES DE DISEÑO (Verde y Negro) */
+:root {
+    --bg-main: #0d0e12;
+    --bg-panels: #14161d;
+    --border-color: #21252e;
+    --green-primary: #00FF66;
+    --green-dark: #00cc52;
+    --text-white: #ffffff;
+    --text-gray: #9ca3af;
+}
 
-        body, html { 
-            margin: 0; 
-            padding: 0; 
-            height: 100%; 
-            font-family: 'Segoe UI', sans-serif; 
-            background-color: var(--dark-bg);
-            color: white;
-            overflow-x: hidden;
-        }
+body {
+    background-color: var(--bg-main);
+    color: var(--text-white);
+    font-family: 'Inter', sans-serif;
+}
 
-        /* BARRA DE NAVEGACIÓN */
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: var(--panel-bg);
-            padding: 10px 40px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .brand {
-            display: flex;
-            flex-direction: column;
-        }
-        .brand h1 { margin: 0; font-size: 24px; color: white; letter-spacing: 1px; }
-        .brand span { font-size: 11px; color: var(--neon-green); font-weight: bold; }
-        
-        .btn-login {
-            padding: 10px 20px;
-            background: transparent;
-            border: 2px solid var(--neon-green);
-            color: var(--neon-green);
-            text-decoration: none;
-            font-weight: bold;
-            border-radius: 5px;
-            transition: 0.4s;
-        }
-        .btn-login:hover {
-            background: var(--neon-green);
-            color: black;
-            box-shadow: 0 0 15px var(--neon-green);
-        }
+/* NAVBAR CUSTOM */
+.bg-black-custom {
+    background-color: #050608 !important;
+}
 
-        /* SECCIÓN HERO (TEXTO DE INVITACIÓN) */
-        .hero {
-            padding: 40px;
-            text-align: center;
-        }
-        .hero h2 { margin: 0 0 10px 0; font-size: 32px; }
-        .hero p { margin: 0; color: #aaa; font-size: 16px; }
+.border-secondary-custom {
+    border-color: var(--border-color) !important;
+}
 
-        /* CONTENEDOR PRINCIPAL - DOS COLUMNAS */
-        .main-container {
-            display: flex;
-            height: calc(100vh - 200px); /* Resta el espacio del header y el hero */
-            padding: 0 40px 40px 40px;
-            gap: 30px;
-        }
+.brand-zemyna {
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: var(--text-white) !important;
+}
 
-        /* COLUMNA IZQUIERDA: EL MAPA */
-        .map-wrapper {
-            flex: 2; /* Ocupa el 65% aprox */
-            background: var(--panel-bg);
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            overflow: hidden;
-            position: relative;
-        }
-        #mapa-vedette {
-            width: 100%;
-            height: 100%;
-        }
+.brand-zemyna span {
+    color: var(--green-primary);
+}
 
-        /* COLUMNA DERECHA: EL FORMULARIO */
-        .form-wrapper {
-            flex: 1; /* Ocupa el 35% aprox */
-            background: var(--panel-bg);
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-        .form-wrapper h3 { margin-top: 0; color: white; border-bottom: 2px solid var(--neon-green); padding-bottom: 10px; }
-        
-        /* Estado bloqueado / informativo del formulario */
-        .form-placeholder {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            color: #777;
-            text-align: center;
-            font-style: italic;
-        }
+.btn-outline-light-custom {
+    border-color: var(--border-color);
+    color: var(--text-white);
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
 
-        .form-active {
-            display: none; /* Se activa mediante JS cuando hacen clic en un contenedor */
-        }
+.btn-outline-light-custom:hover {
+    background-color: var(--text-white);
+    color: #000;
+}
 
-        input, select {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            background: var(--input-bg);
-            border: 1px solid var(--border-color);
-            color: white;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-        input[readonly] {
-            background: #111;
-            color: #888;
-            border-color: #333;
-            cursor: not-allowed;
-        }
+/* HERO SECTION */
+.hero-section {
+    min-height: 75vh;
+    background: radial-gradient(circle at 80% 20%, rgba(0, 255, 102, 0.05) 0%, rgba(0, 0, 0, 0) 50%);
+    border-bottom: 1px solid var(--border-color);
+}
 
-        .submit-button {
-            width: 100%;
-            padding: 12px;
-            background: var(--neon-green);
-            border: none;
-            color: black;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 15px;
-            transition: 0.3s;
-        }
-        .submit-button:hover {
-            box-shadow: 0 0 15px var(--neon-green);
-            transform: translateY(-2px);
-        }
-    
-/* --- ADAPTACIÓN PARA CELULARES --- */
-/* --- OPTIMIZACIÓN TOTAL PARA CELULARES --- */
-@media (max-width: 768px) {
-    /* Forzamos a que los elementos se apilen uno abajo del otro */
-    .main-container {
-        flex-direction: column !important; 
-        height: auto !important;          /* El contenedor crece según el contenido */
-        padding: 10px 15px 30px 15px;
-        gap: 20px;
-    }
+.badge-green {
+    background-color: rgba(0, 255, 102, 0.1);
+    color: var(--green-primary);
+    border: 1px solid rgba(0, 255, 102, 0.2);
+    padding: 8px 16px;
+    font-weight: 600;
+    border-radius: 50px;
+}
 
-    /* El mapa toma el 100% del ancho disponible y una altura cómoda para el dedo */
-    .map-wrapper {
-        width: 100%;
-        height: 350px; 
-        flex: none !important;
-    }
+.hero-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -1.5px;
+}
 
-    /* El formulario pasa abajo del mapa ocupando todo el ancho */
-    .form-wrapper {
-        width: 100%;
-        flex: none !important;
-        padding: 20px;
-        box-sizing: border-box; /* Evita que se desborde de la pantalla */
-    }
+.hero-subtitle {
+    color: var(--text-gray);
+    font-size: 1.2rem;
+    max-width: 600px;
+    line-height: 1.6;
+}
 
-    /* Achicamos espacios del encabezado para ganar pantalla */
-    .navbar {
-        padding: 10px 20px;
-    }
-    
-    .hero {
-        padding: 20px 15px;
-    }
+/* BOTONES PRINCIPALES */
+.btn-green-primary {
+    background-color: var(--green-primary);
+    color: #000;
+    font-weight: 600;
+    border: none;
+    transition: transform 0.2s, background-color 0.2s;
+}
 
-    .hero h2 {
-        font-size: 22px;
-    }
-    
-    .hero p {
-        font-size: 13px;
-    }
+.btn-green-primary:hover {
+    background-color: var(--green-dark);
+    color: #000;
+    transform: translateY(-2px);
+}
+
+.btn-outline-secondary-custom {
+    border: 1px solid var(--border-color);
+    color: var(--text-gray);
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-outline-secondary-custom:hover {
+    background-color: var(--bg-panels);
+    color: var(--text-white);
+}
+
+/* CARDS DE NOTICIAS */
+.card-custom {
+    background-color: var(--bg-panels);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.card-custom:hover {
+    transform: translateY(-4px);
+    border-color: rgba(0, 255, 102, 0.3);
+}
+
+.card-tag {
+    color: var(--green-primary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.card-title-custom {
+    color: var(--text-white);
+    font-weight: 600;
+    font-size: 1.25rem;
+    line-height: 1.4;
+}
+
+.card-text-custom {
+    color: var(--text-gray);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.card-date {
+    color: var(--text-gray);
+    font-size: 0.8rem;
+}
+
+/* COMPONENTES DE ESTADO DE RED */
+.text-green-accent {
+    color: var(--green-primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.dot-blink {
+    height: 10px;
+    width: 10px;
+    background-color: var(--green-primary);
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 8px var(--green-primary);
+}
+/* Color de fondo del Navbar (Negro puro para que se integre con la página) */
+.bg-black-custom {
+    background-color: #050608 !important; /* O el color exacto de tu fondo */
+}
+
+/* Borde sutil inferior para separar el menú de forma elegante */
+.border-secondary-custom {
+    border-bottom: 1px solid #1f222a !important; 
+}
+
+/* El logo "Mi Portal" pasarlo a "ZEMYNA" con el toque verde */
+.brand-zemyna {
+    font-weight: 800 !important;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 1.5px;
+    color: #ffffff !important;
+    text-transform: uppercase;
+    text-decoration: none;
+}
+
+.brand-zemyna span {
+    color: #00FF66 !important; /* Tu verde característico */
+}
+
+/* Estilo para el texto "Elegir Municipio:" */
+.municipio-label {
+    color: #9ca3af !important; /* Gris claro */
+    font-weight: 500;
+    margin-right: 10px;
+}
+
+/* Estilo para el selector de municipios */
+.select-municipio-custom {
+    background-color: #14161d !important; /* Fondo del dropdown gris oscuro */
+    color: #ffffff !important;
+    border: 1px solid #21252e !important;
+    border-radius: 8px !important;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+}
+
+.select-municipio-custom:focus {
+    border-color: #00FF66 !important; /* Se ilumina en verde al hacer foco */
+    outline: none;
+    box-shadow: 0 0 0 0.25rem rgba(0, 255, 102, 0.25) !important;
 }
