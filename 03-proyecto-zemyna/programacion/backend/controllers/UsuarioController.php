@@ -43,6 +43,21 @@ class UsuarioController {
         }
     }
 
+    // Actualizar un empleado
+    public function update($data) {
+        $this->usuario->id_usuario = $data['id_usuario'] ?? null;
+        $this->usuario->nombre = $data['nombre'] ?? null;
+        $this->usuario->email = $data['email'] ?? null;
+        $this->usuario->password = isset($data['password']) ? password_hash($data['password'], PASSWORD_BCRYPT) : null;
+        $this->usuario->id_rol = $data['id_rol'] ?? null;
+
+        if($this->usuario->update()) {
+            echo json_encode(["success" => true, "message" => "Usuario actualizado correctamente."]);
+        } else {
+            echo json_encode(["success" => false, "message" => "Error al actualizar el usuario."]);
+        }
+    }
+
     // Eliminar un empleado
     public function delete($id) {
         $this->usuario->id_usuario = $id;
