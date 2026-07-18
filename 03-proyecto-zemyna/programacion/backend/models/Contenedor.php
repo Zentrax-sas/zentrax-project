@@ -1,80 +1,68 @@
 <?php
-
 class Contenedor {
-    private int $id_contenedor;
-    private string $tipo;
-    private int $capacidad;
-    private string $ubicacion;
-    private float $latitud;
-    private float $longitud;    
-    private string $estado;
-    private string $qr;
+    private $conn;
+    private string $table_name = "contenedores";
 
-    public function __construct(int $id_contenedor, string $tipo, int $capacidad, string $ubicacion, float $latitud, float $longitud, string $estado, string $qr) {
-        $this->id_contenedor = $id_contenedor;
-        $this->tipo = $tipo;
-        $this->capacidad = $capacidad;
-        $this->ubicacion = $ubicacion;
-        $this->latitud = $latitud;
-        $this->longitud = $longitud;
-        $this->estado = $estado;
-        $this->qr = $qr;
+    // Atributos de la entidad Contenedor
+    public $id_contenedor;
+    public $direccion;
+    public $capacidad_litros;
+    public $tipo_residuo; // Ej: 'Organico', 'Reciclable', 'Vidrio'
+    public $estado_llenado; // Ej: 'Vacio', 'Medio', 'Lleno', 'Saturado'
+    public $municipio; // Ej: 'CH', 'B', 'E', etc.
+
+    public function __construct($db) {
+        $this->conn = $db;
     }
 
-    public function getIdContenedor(): int {
-        return $this->id_contenedor;
+    // Leer contenedores
+    public function read() {
+        $query = "SELECT * FROM " . $this->table_name;
+        if ($this->conn) {
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute();
+            return $stmt;
+        }
+        return null;
     }
 
-    public function getTipo(): string {
-        return $this->tipo;
+    // Crear contenedor (Simulado para la primera entrega)
+    public function create() {
+        /* Consulta real futura:
+        $query = "INSERT INTO " . $this->table_name . "  
+                  (direccion, capacidad_litros, tipo_residuo, estado_llenado, municipio)
+                  VALUES (:direccion, :capacidad_litros, :tipo_residuo, :estado_llenado, :municipio)";
+        ...
+        */
+        
+        // Validación temporal para la entrega sin Base de Datos
+        if (!empty($this->direccion) && !empty($this->tipo_residuo) && !empty($this->municipio)) {
+            return true; 
+        }
+        return false;
     }
 
-    public function getCapacidad(): int {
-        return $this->capacidad;
+    // Actualizar contenedor
+    public function update() {
+        if ($this->conn) {
+            $query = "UPDATE " . $this->table_name . " 
+                      SET direccion=:direccion, capacidad_litros=:capacidad_litros, 
+                          tipo_residuo=:tipo_residuo, estado_llenado=:estado_llenado, municipio=:municipio
+                      WHERE id_contenedor=:id_contenedor";
+            // ... ejecución real ...
+            return true;
+        }
+        return true;
     }
 
-    public function getUbicacion(): string {
-        return $this->ubicacion;
-    }
-
-    public function getLatitud(): float {
-        return $this->latitud;
-    }
-
-    public function getLongitud(): float {
-        return $this->longitud;
-    }
-
-    public function getEstado(): string {
-        return $this->estado;
-    }
-
-    public function getQr(): string {
-        return $this->qr;
-    }
-
-
-    public function setTipo(string $tipo): void {
-        $this->tipo = $tipo;
-    }
-
-    public function setCapacidad(int $capacidad): void {
-        $this->capacidad = $capacidad;
-    }
-
-    public function setUbicacion(string $ubicacion): void {
-        $this->ubicacion = $ubicacion;
-    }
-
-    public function setLatitud(float $latitud): void {
-        $this->latitud = $latitud;
-    }
-
-    public function setLongitud(float $longitud): void {
-        $this->longitud = $longitud;
-    }
-
-    public function setEstado(string $estado): void {
-        $this->estado = $estado;
+    // Eliminar contenedor
+    public function delete() {
+        if ($this->conn) {
+            $query = "DELETE FROM " . $this->table_name . " WHERE id_contenedor=:id_contenedor";
+            // ... ejecución real ...
+            return true;
+        }
+        return true;
     }
 }
+?>
