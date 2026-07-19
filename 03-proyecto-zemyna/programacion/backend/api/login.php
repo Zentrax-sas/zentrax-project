@@ -67,7 +67,8 @@ if ($usuario) {
         'message' => 'Inicio de sesión correcto.',
         'data' => [
             'nombre' => $usuario['nombre'],
-            'email' => $usuario['email']
+            'email' => $usuario['email'],
+            'rol' => $usuario['rol']
         ]
     ]);
     exit;

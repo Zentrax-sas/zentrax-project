@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin | Zemyna</title>
+    <link rel="stylesheet" href="../src/styles/index.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        html, body { height: 100%; margin: 0; }
+        #map-admin { height: 100%; width: 100%; }
+        main { padding: 2rem; }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="brand">
+            <h1>Zemyna - Admin</h1>
+            <span>Panel de Administración</span>
+        </div>
+    </header>
+
+    <main>
+        <h2>Bienvenido, Facundo</h2>
+        <p>Esta es una página provisional para el administrador. Desde aquí podrás ver estadísticas y acciones rápidas.</p>
+
+        <section style="margin-top:1.5rem;">
+            <h3>Acciones</h3>
+            <ul>
+                <li><a href="index.html">Ir al Mapa público</a></li>
+                <li><a href="#" id="btn-cargar">Refrescar contenedores (demo)</a></li>
+            </ul>
+        </section>
+
+        <section id="admin-map" style="margin-top:1.5rem; height:400px;">
+            <!-- Mapa provisional -->
+            <div id="map-admin" style="height:100%;"></div>
+        </section>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+    document.getElementById('btn-cargar').addEventListener('click', async function(e){
+        e.preventDefault();
+        alert('Simulando recarga de contenedores (demo)');
+    });
+
+    // Inicializar mapa sencillo
+    const map = L.map('map-admin').setView([-34.9150, -56.1540], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Forzar recalculo de tamaño (evita que el mapa quede cortado)
+    setTimeout(() => map.invalidateSize(), 200);
+    window.addEventListener('resize', () => map.invalidateSize());
+    </script>
+</body>
+</html>

@@ -10,7 +10,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
 
 async function cargarContenedoresMapa() {
     try {
-        const response = await fetch('/api/contenedores.php');
+        const response = await fetch('../../backend/api/contenedores.php');
         const json = await response.json();
 
         if (!response.ok || !json.success) {
