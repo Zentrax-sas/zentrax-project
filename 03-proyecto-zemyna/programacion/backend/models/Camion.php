@@ -1,9 +1,8 @@
 <?php
 class Camion {
     private $conn;
-    private string $table_name = "camiones";
+    private string $table_name = "camion";
 
-    // Atributos de la entidad Camion
     public $id_camion;
     public $matricula;
     public $capacidad_toneladas;
@@ -14,7 +13,6 @@ class Camion {
         $this->conn = $db;
     }
 
-    // Leer camiones
     public function read() {
         $query = "SELECT * FROM " . $this->table_name;
         if ($this->conn) {
@@ -25,7 +23,6 @@ class Camion {
         return null;
     }
 
-    // Crear camion
     public function create() {
         if (!empty($this->matricula) && !empty($this->capacidad_toneladas) && !empty($this->estado)) {
             return true;
@@ -33,23 +30,19 @@ class Camion {
         return false;
     }
 
-    // Actualizar camion
     public function update() {
         if ($this->conn) {
             $query = "UPDATE " . $this->table_name . " 
                       SET matricula=:matricula, capacidad_toneladas=:capacidad_toneladas, estado=:estado, id_chofer_asignado=:id_chofer_asignado
                       WHERE id_camion=:id_camion";
-            // ... ejecución real ...
             return true;
         }
         return true;
     }
 
-    // Eliminar camion
     public function delete() {
         if ($this->conn) {
             $query = "DELETE FROM " . $this->table_name . " WHERE id_camion=:id_camion";
-            // ... ejecución real ...
             return true;
         }
         return true;
