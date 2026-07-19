@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="assets/logo.jpeg" type="image/jpeg">
     <link rel="stylesheet" href="../src/styles/login.css">
     <title>Login | Zemyna</title>
@@ -15,14 +16,44 @@
         </div>
         <div class="login-form">
             <h2>Iniciar Sesión</h2>
-            <form action="index.html" method="GET">
-                <label for="cedula">Cédula</label>
-                <input type="text" id="cedula" name="cedula" placeholder="Cédula de Identidad (ej: 1234567-8)" required>
+            <form id="login-form">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="usuario@zemyna.com" required>
                 <label for="password">Contraseña</label>
                 <input type="password" id="password" name="password" placeholder="Contraseña" required>
                 <button type="submit" class="login-button">ENTRAR</button>
+                <p id="login-message" role="status"></p>
             </form>
         </div>
     </div>
+
+    <script>
+    document.getElementById('login-form').addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const message = document.getElementById('login-message');
+        message.textContent = 'Iniciando sesión...';
+
+        try {
+            const response = await fetch('/03-proyecto-zemyna/programacion/backend/api/login.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                })
+            });
+
+            const json = await response.json();
+            if (!response.ok || !json.success) {
+                throw new Error(json.message || 'Error al iniciar sesión');
+            }
+
+            message.textContent = 'Sesión iniciada correctamente.';
+            window.location.href = 'index.html';
+        } catch (error) {
+            message.textContent = error.message;
+        }
+    });
+    </script>
 </body>
 </html>

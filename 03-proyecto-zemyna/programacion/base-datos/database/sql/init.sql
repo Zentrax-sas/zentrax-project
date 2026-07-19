@@ -3,12 +3,13 @@
 
 INSERT INTO rol (nombre) VALUES
 ('superadmin'),
-('dispatcher'),
+('admin'),
 ('chofer');
 
 INSERT INTO usuario (nombre, email, password, id_rol, id_centro) VALUES
 ('Facundo', 'facu@zemyna.com', '$2y$10$demo.hash.aqui', 1, NULL),
-('Diego', 'diego@zemyna.com', '$2y$10$demo.hash.aqui', 3, NULL);
+('Diego', 'diego@zemyna.com', '$2y$10$demo.hash.aqui', 3, NULL),
+('Andrea', 'andrea@zemyna.com', '$2y$10$demo.hash.aqui', 3, NULL);
 
 INSERT INTO contenedor (codigo, direccion, capacidad_litros, tipo_residuo, estado_llenado, municipio, latitud, longitud, estado) VALUES
 ('CH-101', 'Av. Brasil y Lázaro Gadea', 3200, 'Reciclable', 'Medio', 'CH', -34.9142, -56.1495, 'verde'),
