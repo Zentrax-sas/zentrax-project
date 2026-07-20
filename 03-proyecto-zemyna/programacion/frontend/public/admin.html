@@ -1,59 +1,522 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin | Zemyna</title>
-    <link rel="stylesheet" href="../src/styles/index.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        html, body { height: 100%; margin: 0; }
-        #map-admin { height: 100%; width: 100%; }
-        main { padding: 2rem; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Panel operativo interno de Zemyna - Sistema de Gestión de Residuos Urbanos">
+  <title>Resumen operativo | Zemyna</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --bg: #08070d;
+      --sidebar: #0d0b14;
+      --surface: rgba(20, 17, 31, .92);
+      --surface-2: #171321;
+      --surface-3: #211a30;
+      --violet: #9d4edd;
+      --violet-light: #c77dff;
+      --violet-dark: #5a189a;
+      --green: #8fe388;
+      --green-strong: #66e06f;
+      --amber: #ffc857;
+      --red: #ff6584;
+      --text: #f5f1fb;
+      --muted: #9b94aa;
+      --line: rgba(199, 125, 255, .16);
+      --shadow: 0 20px 60px rgba(0, 0, 0, .34);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { color-scheme: dark; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 84% 8%, rgba(157, 78, 221, .15), transparent 25rem),
+        radial-gradient(circle at 30% 105%, rgba(102, 224, 111, .07), transparent 26rem),
+        var(--bg);
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 252px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 28px 18px 22px;
+      background: linear-gradient(180deg, rgba(18, 14, 27, .98), rgba(10, 8, 15, .98));
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 10px 28px;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(143, 227, 136, .42);
+      border-radius: 13px;
+      background: linear-gradient(145deg, rgba(143, 227, 136, .19), rgba(157, 78, 221, .16));
+      box-shadow: 0 0 24px rgba(143, 227, 136, .12);
+      color: var(--green);
+      font-size: 23px;
+      font-weight: 800;
+    }
+
+    .brand-name { font-size: 19px; font-weight: 800; letter-spacing: .02em; }
+    .brand-caption { margin-top: 3px; color: var(--green); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+
+    .menu-caption {
+      padding: 0 13px;
+      margin: 4px 0 9px;
+      color: #706a7d;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .nav { display: grid; gap: 5px; }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 13px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      color: #aaa3b6;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      transition: .2s ease;
+    }
+
+    .nav-link:hover { color: var(--text); background: rgba(157, 78, 221, .08); }
+    .nav-link.active {
+      color: #fff;
+      border-color: rgba(199, 125, 255, .2);
+      background: linear-gradient(90deg, rgba(157, 78, 221, .24), rgba(157, 78, 221, .08));
+      box-shadow: inset 3px 0 var(--violet-light);
+    }
+
+    .nav-icon { width: 22px; text-align: center; color: var(--violet-light); font-size: 16px; }
+    .nav-badge { margin-left: auto; min-width: 21px; padding: 3px 6px; border-radius: 20px; background: rgba(255,101,132,.16); color: #ff8ca3; font-size: 10px; text-align: center; }
+
+    .sidebar-bottom { margin-top: auto; }
+
+    .system-status {
+      margin: 18px 5px;
+      padding: 13px;
+      border: 1px solid rgba(143, 227, 136, .16);
+      border-radius: 13px;
+      background: rgba(143, 227, 136, .05);
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .status-line { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: var(--green); font-weight: 700; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green-strong); box-shadow: 0 0 10px var(--green); }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 8px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--violet-dark), var(--violet));
+      font-size: 12px;
+      font-weight: 800;
+      box-shadow: 0 0 18px rgba(157, 78, 221, .22);
+    }
+
+    .profile-name { font-size: 11px; font-weight: 700; }
+    .profile-role { margin-top: 3px; color: var(--muted); font-size: 9px; }
+
+    .main { min-width: 0; padding: 0 34px 38px; }
+
+    .topbar {
+      height: 82px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+
+    .mobile-menu { display: none; }
+    .eyebrow { color: var(--green); font-size: 10px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+    h1 { margin: 5px 0 0; font-size: clamp(22px, 3vw, 29px); line-height: 1.1; letter-spacing: -.035em; }
+
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .date-pill, .icon-button {
+      border: 1px solid var(--line);
+      background: rgba(21, 17, 31, .8);
+      border-radius: 11px;
+      color: var(--muted);
+    }
+
+    .date-pill { padding: 10px 13px; font-size: 11px; }
+    .icon-button { width: 39px; height: 39px; cursor: pointer; transition: .2s; }
+    .icon-button:hover { color: var(--violet-light); border-color: rgba(199,125,255,.4); box-shadow: 0 0 18px rgba(157,78,221,.12); }
+
+    .content { max-width: 1440px; margin: 0 auto; }
+
+    .welcome {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: end;
+      padding: 28px 0 20px;
+    }
+
+    .welcome h2 { margin: 0 0 7px; font-size: 18px; letter-spacing: -.02em; }
+    .welcome p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+    .primary-button {
+      padding: 11px 16px;
+      border: 1px solid rgba(143, 227, 136, .48);
+      border-radius: 11px;
+      background: linear-gradient(135deg, rgba(143, 227, 136, .2), rgba(102, 224, 111, .09));
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    .primary-button:hover { transform: translateY(-1px); box-shadow: 0 0 22px rgba(143, 227, 136, .15); }
+
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(25, 20, 36, .95), rgba(15, 12, 23, .96));
+      box-shadow: var(--shadow);
+    }
+
+    .stat-card { min-height: 132px; padding: 18px; }
+    .stat-card::after { content: ""; position: absolute; width: 90px; height: 90px; right: -34px; top: -39px; border-radius: 50%; background: var(--glow, rgba(157,78,221,.22)); filter: blur(8px); }
+    .stat-top { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 10px; font-weight: 600; }
+    .stat-icon { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 9px; background: rgba(157,78,221,.13); color: var(--violet-light); font-size: 15px; }
+    .stat-value { margin-top: 9px; font-size: 28px; font-weight: 800; letter-spacing: -.05em; }
+    .stat-footer { display: flex; align-items: center; gap: 6px; margin-top: 7px; color: var(--muted); font-size: 9px; }
+    .up { color: var(--green); }
+    .warning { color: var(--amber); }
+    .danger { color: var(--red); }
+
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(285px, .85fr); gap: 15px; margin-top: 15px; }
+    .panel { padding: 20px; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .panel-title { margin: 0; font-size: 13px; font-weight: 700; }
+    .panel-subtitle { margin-top: 4px; color: var(--muted); font-size: 9px; }
+    .link-button { border: 0; background: transparent; color: var(--violet-light); font-size: 10px; font-weight: 700; cursor: pointer; }
+
+    .route-list { display: grid; gap: 17px; }
+    .route-info { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; margin-bottom: 8px; }
+    .route-name { font-size: 11px; font-weight: 700; }
+    .route-meta { margin-top: 4px; color: var(--muted); font-size: 9px; }
+    .route-percent { color: var(--green); font-size: 11px; font-weight: 800; }
+    .progress { height: 6px; overflow: hidden; border-radius: 20px; background: #292234; }
+    .progress-fill { width: var(--value); height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--violet), var(--green)); box-shadow: 0 0 12px rgba(143,227,136,.25); transition: width .8s ease; }
+
+    .fleet { display: grid; gap: 9px; }
+    .fleet-item { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 11px; border: 1px solid rgba(255,255,255,.055); border-radius: 12px; background: rgba(255,255,255,.018); }
+    .truck-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: rgba(143,227,136,.09); color: var(--green); }
+    .fleet-name { font-size: 10px; font-weight: 700; }
+    .fleet-zone { margin-top: 4px; color: var(--muted); font-size: 8px; }
+    .state { padding: 4px 7px; border-radius: 12px; background: rgba(143,227,136,.09); color: var(--green); font-size: 8px; font-weight: 700; }
+    .state.pause { background: rgba(255,200,87,.09); color: var(--amber); }
+
+    .incidents { margin-top: 15px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 670px; }
+    th { padding: 0 11px 10px; color: #777083; font-size: 8px; font-weight: 700; letter-spacing: .08em; text-align: left; text-transform: uppercase; }
+    td { padding: 12px 11px; border-top: 1px solid rgba(255,255,255,.055); color: #c6c0ce; font-size: 9px; }
+    td strong { color: var(--text); font-size: 10px; }
+    .incident-type { display: flex; align-items: center; gap: 9px; }
+    .incident-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--amber); box-shadow: 0 0 9px rgba(255,200,87,.28); }
+    .incident-dot.red { background: var(--red); box-shadow: 0 0 9px rgba(255,101,132,.3); }
+    .incident-dot.green { background: var(--green); }
+    .priority { padding: 4px 8px; border-radius: 10px; font-size: 8px; font-weight: 700; }
+    .priority.high { background: rgba(255,101,132,.1); color: #ff8ca3; }
+    .priority.medium { background: rgba(255,200,87,.1); color: var(--amber); }
+    .priority.low { background: rgba(143,227,136,.09); color: var(--green); }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      max-width: 330px;
+      padding: 13px 16px;
+      border: 1px solid rgba(143,227,136,.28);
+      border-radius: 12px;
+      background: rgba(17, 14, 25, .96);
+      box-shadow: 0 15px 45px rgba(0,0,0,.45);
+      color: #d8d2df;
+      font-size: 10px;
+      opacity: 0;
+      transform: translateY(15px);
+      pointer-events: none;
+      transition: .25s ease;
+      z-index: 50;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast strong { color: var(--green); }
+
+    @media (max-width: 1100px) {
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      .app { display: block; }
+      .sidebar { position: fixed; left: 0; width: 252px; transform: translateX(-105%); transition: transform .25s ease; box-shadow: 25px 0 60px rgba(0,0,0,.5); }
+      .app.menu-open .sidebar { transform: translateX(0); }
+      .main { padding: 0 16px 28px; }
+      .topbar { height: 74px; }
+      .mobile-menu { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+      .title-block { flex: 1; }
+      .date-pill { display: none; }
+      .welcome { align-items: flex-start; padding-top: 22px; }
+      .welcome p { max-width: 34ch; }
+      .stats { grid-template-columns: 1fr; }
+      .stat-card { min-height: 116px; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 470px) {
+      .welcome { display: block; }
+      .primary-button { width: 100%; margin-top: 15px; }
+      .panel { padding: 16px; }
+    }
+  </style>
 </head>
 <body>
-    <header class="navbar">
-        <div class="brand">
-            <h1>Zemyna - Admin</h1>
-            <span>Panel de Administración</span>
+  <div class="app" id="app">
+    <aside class="sidebar" aria-label="Navegación principal">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">Z</div>
+        <div>
+          <div class="brand-name">Zemyna</div>
+          <div class="brand-caption">Gestión de residuos</div>
         </div>
-    </header>
+      </div>
 
-    <main>
-        <h2>Bienvenido, Facundo</h2>
-        <p>Esta es una página provisional para el administrador. Desde aquí podrás ver estadísticas y acciones rápidas.</p>
+      <div class="menu-caption">Operaciones</div>
+      <nav class="nav">
+        <a class="nav-link active" href="#resumen"><span class="nav-icon">⌂</span>Resumen operativo</a>
+        <a class="nav-link" href="#rutas"><span class="nav-icon">⌁</span>Rutas y recorridos</a>
+        <a class="nav-link" href="#flota"><span class="nav-icon">▱</span>Flota</a>
+        <a class="nav-link" href="#incidencias"><span class="nav-icon">!</span>Incidencias<span class="nav-badge">7</span></a>
+        <a class="nav-link" href="#contenedores"><span class="nav-icon">□</span>Contenedores</a>
+      </nav>
 
-        <section style="margin-top:1.5rem;">
-            <h3>Acciones</h3>
-            <ul>
-                <li><a href="index.html">Ir al Mapa público</a></li>
-                <li><a href="#" id="btn-cargar">Refrescar contenedores (demo)</a></li>
-            </ul>
+      <div class="menu-caption" style="margin-top:22px">Administración</div>
+      <nav class="nav">
+        <a class="nav-link" href="#reportes"><span class="nav-icon">⌗</span>Reportes</a>
+        <a class="nav-link" href="#usuarios"><span class="nav-icon">♙</span>Usuarios y roles</a>
+        <a class="nav-link" href="#configuracion"><span class="nav-icon">⚙️</span>Configuración</a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="system-status">
+          <div class="status-line"><span class="status-dot"></span>Sistema operativo</div>
+          Última sincronización: 19:42
+        </div>
+        <div class="profile">
+          <div class="avatar">FB</div>
+          <div>
+            <div class="profile-name">Facundo Bustamante</div>
+            <div class="profile-role">Coordinador · Programación</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main" id="resumen">
+      <header class="topbar">
+        <button class="mobile-menu" id="menuButton" aria-label="Abrir menú" aria-expanded="false">☰</button>
+        <div class="title-block">
+          <div class="eyebrow">Centro de control</div>
+          <h1>Resumen operativo</h1>
+        </div>
+        <div class="top-actions">
+          <div class="date-pill" id="currentDate">Lunes, 20 de julio de 2026</div>
+          <button class="icon-button" id="notificationButton" aria-label="Ver notificaciones">●</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="welcome">
+          <div>
+            <h2>Buenas tardes, Facundo</h2>
+            <p>Visualizá el estado general de la operación y las incidencias que requieren atención.</p>
+          </div>
+          <button class="primary-button" id="refreshButton">↻ Actualizar información</button>
         </section>
 
-        <section id="admin-map" style="margin-top:1.5rem; height:400px;">
-            <!-- Mapa provisional -->
-            <div id="map-admin" style="height:100%;"></div>
+        <section class="stats" aria-label="Indicadores principales">
+          <article class="card stat-card" style="--glow:rgba(143,227,136,.22)">
+            <div class="stat-top"><span>Rutas activas</span><span class="stat-icon">⌁</span></div>
+            <div class="stat-value">12</div>
+            <div class="stat-footer"><span class="up">↑ 2</span><span>desde el último turno</span></div>
+          </article>
+          <article class="card stat-card">
+            <div class="stat-top"><span>Contenedores atendidos</span><span class="stat-icon">□</span></div>
+            <div class="stat-value">842</div>
+            <div class="stat-footer"><span class="up">68%</span><span>del objetivo diario</span></div>
+          </article>
+          <article class="card stat-card" style="--glow:rgba(255,200,87,.18)">
+            <div class="stat-top"><span>Incidencias abiertas</span><span class="stat-icon" style="color:var(--amber)">!</span></div>
+            <div class="stat-value">7</div>
+            <div class="stat-footer"><span class="warning">3 prioritarias</span><span>requieren asignación</span></div>
+          </article>
+          <article class="card stat-card" style="--glow:rgba(102,224,111,.18)">
+            <div class="stat-top"><span>Flota disponible</span><span class="stat-icon" style="color:var(--green)">▱</span></div>
+            <div class="stat-value">18<span style="font-size:13px;color:var(--muted);letter-spacing:0"> / 21</span></div>
+            <div class="stat-footer"><span class="up">86%</span><span>de disponibilidad</span></div>
+          </article>
         </section>
+
+        <section class="dashboard-grid">
+          <article class="card panel" id="rutas">
+            <div class="panel-head">
+              <div><h3 class="panel-title">Avance de rutas</h3><div class="panel-subtitle">Seguimiento del turno vespertino</div></div>
+              <button class="link-button">Ver todas →</button>
+            </div>
+            <div class="route-list">
+              <div>
+                <div class="route-info"><div><div class="route-name">Ruta CH-04 · Pocitos</div><div class="route-meta">Camión ZM-014 · 128 de 156 contenedores</div></div><div class="route-percent">82%</div></div>
+                <div class="progress"><div class="progress-fill" style="--value:82%"></div></div>
+              </div>
+              <div>
+                <div class="route-info"><div><div class="route-name">Ruta CH-07 · Punta Carretas</div><div class="route-meta">Camión ZM-008 · 91 de 142 contenedores</div></div><div class="route-percent">64%</div></div>
+                <div class="progress"><div class="progress-fill" style="--value:64%"></div></div>
+              </div>
+              <div>
+                <div class="route-info"><div><div class="route-name">Ruta CH-02 · Parque Batlle</div><div class="route-meta">Camión ZM-019 · 74 de 131 contenedores</div></div><div class="route-percent">56%</div></div>
+                <div class="progress"><div class="progress-fill" style="--value:56%"></div></div>
+              </div>
+              <div>
+                <div class="route-info"><div><div class="route-name">Ruta CH-09 · Buceo</div><div class="route-meta">Camión ZM-011 · 62 de 148 contenedores</div></div><div class="route-percent warning">42%</div></div>
+                <div class="progress"><div class="progress-fill" style="--value:42%;filter:saturate(.65)"></div></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card panel" id="flota">
+            <div class="panel-head">
+              <div><h3 class="panel-title">Estado de flota</h3><div class="panel-subtitle">Unidades destacadas</div></div>
+              <button class="link-button">Detalle →</button>
+            </div>
+            <div class="fleet">
+              <div class="fleet-item"><div class="truck-icon">▱</div><div><div class="fleet-name">ZM-014</div><div class="fleet-zone">Ruta CH-04 · En recorrido</div></div><span class="state">Activo</span></div>
+              <div class="fleet-item"><div class="truck-icon">▱</div><div><div class="fleet-name">ZM-008</div><div class="fleet-zone">Ruta CH-07 · En recorrido</div></div><span class="state">Activo</span></div>
+              <div class="fleet-item"><div class="truck-icon">▱</div><div><div class="fleet-name">ZM-021</div><div class="fleet-zone">Base operativa · Revisión</div></div><span class="state pause">Pausa</span></div>
+              <div class="fleet-item"><div class="truck-icon">▱</div><div><div class="fleet-name">ZM-019</div><div class="fleet-zone">Ruta CH-02 · En recorrido</div></div><span class="state">Activo</span></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="card panel incidents" id="incidencias">
+          <div class="panel-head">
+            <div><h3 class="panel-title">Incidencias recientes</h3><div class="panel-subtitle">Eventos informados por operarios y vecinos</div></div>
+            <button class="link-button">Gestionar incidencias →</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Incidencia</th><th>Ubicación</th><th>Origen</th><th>Hora</th><th>Prioridad</th><th>Estado</th></tr></thead>
+              <tbody>
+                <tr><td><div class="incident-type"><span class="incident-dot red"></span><strong>Contenedor incendiado</strong></div></td><td>Av. Rivera 2841</td><td>Operario</td><td>19:18</td><td><span class="priority high">Alta</span></td><td>Derivada</td></tr>
+                <tr><td><div class="incident-type"><span class="incident-dot"></span><strong>Acceso obstruido</strong></div></td><td>21 de Setiembre 2480</td><td>Operario</td><td>18:46</td><td><span class="priority medium">Media</span></td><td>Pendiente</td></tr>
+                <tr><td><div class="incident-type"><span class="incident-dot green"></span><strong>Residuos fuera del contenedor</strong></div></td><td>Pedro Bustamante 1222</td><td>Vecino</td><td>18:21</td><td><span class="priority low">Baja</span></td><td>Asignada</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     </main>
+  </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-    document.getElementById('btn-cargar').addEventListener('click', async function(e){
-        e.preventDefault();
-        alert('Simulando recarga de contenedores (demo)');
+  <div class="toast" id="toast" role="status" aria-live="polite"><strong>Información actualizada.</strong> Los indicadores corresponden al último registro operativo.</div>
+
+  <script>
+    const app = document.getElementById('app');
+    const menuButton = document.getElementById('menuButton');
+    const toast = document.getElementById('toast');
+
+    menuButton.addEventListener('click', () => {
+      const opened = app.classList.toggle('menu-open');
+      menuButton.setAttribute('aria-expanded', String(opened));
     });
 
-    // Inicializar mapa sencillo
-    const map = L.map('map-admin').setView([-34.9150, -56.1540], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', () => {
+        document.querySelectorAll('.nav-link').forEach(item => item.classList.remove('active'));
+        link.classList.add('active');
+        app.classList.remove('menu-open');
+        menuButton.setAttribute('aria-expanded', 'false');
+      });
+    });
 
-    // Forzar recalculo de tamaño (evita que el mapa quede cortado)
-    setTimeout(() => map.invalidateSize(), 200);
-    window.addEventListener('resize', () => map.invalidateSize());
-    </script>
+    function showToast(message) {
+      if (message) toast.innerHTML = message;
+      toast.classList.add('show');
+      window.clearTimeout(window.toastTimer);
+      window.toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    document.getElementById('refreshButton').addEventListener('click', event => {
+      const button = event.currentTarget;
+      button.textContent = '↻ Actualizando…';
+      button.disabled = true;
+      window.setTimeout(() => {
+        button.textContent = '✓ Información actualizada';
+        showToast('<strong>Información actualizada.</strong> Se sincronizaron rutas, flota e incidencias.');
+        window.setTimeout(() => {
+          button.textContent = '↻ Actualizar información';
+          button.disabled = false;
+        }, 1400);
+      }, 700);
+    });
+
+    document.getElementById('notificationButton').addEventListener('click', () => {
+      showToast('<strong>3 alertas operativas.</strong> Hay incidencias prioritarias pendientes de revisión.');
+    });
+  </script>
 </body>
 </html>
