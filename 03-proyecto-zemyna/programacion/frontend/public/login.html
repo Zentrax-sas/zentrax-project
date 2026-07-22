@@ -5,14 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="assets/logo.jpeg" type="image/jpeg">
     <link rel="stylesheet" href="../src/styles/login.css">
+    <style>
+        .captcha-row {
+            margin: 20px 0;
+        }
+        .captcha-row label {
+            display: block;
+            margin-bottom: 8px;
+            color: #eeeeee;
+            font-weight: 600;
+        }
+        .captcha-question {
+            color: #ffffff;
+            font-weight: 700;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .captcha-input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            background: #111111;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+        .captcha-refresh {
+            display: inline-block;
+            background: transparent;
+            border: 1px solid #22c55e;
+            color: #22c55e;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            margin-top: 6px;
+        }
+        .captcha-refresh:hover {
+            background: rgba(34, 197, 94, 0.12);
+        }
+    </style>
     <title>Login | Zemyna</title>
 </head>
 <body>
     <div class="login-container">
         <div class="login-visual">
             <img src="assets/logo_sin_fondo2.png" alt="Logo Zemyna" class="logo-hero">
-            <h1>Sistema de Gestión de Residuos Urbanos</h1>
-            <p>Montevideo en tiempo real.</p>
+            <h1 style="font-size: 24px; font-weight: 600; margin: 15px 0 10px; line-height: 1.4; max-width: 280px; color: #ffffff;">Sistema de Gestión de Residuos Urbanos</h1>
+            <p style="font-size: 13px; color: #888888; margin: 8px 0 0; font-weight: 400;">Montevideo en tiempo real.</p>
         </div>
         <div class="login-form">
             <h2>Iniciar Sesión</h2>
@@ -49,7 +89,6 @@
             }
 
             message.textContent = 'Sesión iniciada correctamente.';
-            // Redirigir según rol (1 = admin facu)
             const rol = json.data?.rol ?? null;
             if (rol === 1 || json.data?.email === 'facu@zemyna.com') {
                 window.location.href = 'admin.html';

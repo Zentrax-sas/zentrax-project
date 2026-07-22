@@ -19,9 +19,26 @@ body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-
     justify-content: center;
     align-items: center;
     color: white;
+    text-align: center;
 }
 
-.logo-hero { width: 300px; margin-bottom: 20px; }
+.logo-hero { width: 300px; margin-bottom: 30px; }
+
+.login-visual h1 {
+    font-size: 26px;
+    font-weight: 600;
+    margin: 10px 0;
+    line-height: 1.3;
+    color: #ffffff;
+}
+
+.login-visual p {
+    font-size: 14px;
+    color: #a8a8a8;
+    margin: 10px 0 0 0;
+    font-weight: 400;
+    line-height: 1.5;
+}
 
 /* Lado derecho */
 .login-form {
