@@ -261,6 +261,54 @@
     .state.pause { background: rgba(255,200,87,.09); color: var(--amber); }
 
     .incidents { margin-top: 15px; }
+    .view { display: none; animation: viewIn .24s ease; }
+    .view.active { display: block; }
+    @keyframes viewIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+
+    .view-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 18px;
+      padding: 28px 0 20px;
+    }
+    .view-heading h2 { margin: 0 0 7px; font-size: 20px; letter-spacing: -.03em; }
+    .view-heading p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .demo-label { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 9px; color: var(--amber); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .demo-label::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 8px rgba(255,200,87,.4); }
+
+    .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .search-box { position: relative; flex: 1; }
+    .search-box input, .filter-select {
+      width: 100%;
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: rgba(21,17,31,.82);
+      color: var(--text);
+      outline: none;
+      font-size: 10px;
+    }
+    .search-box input { padding: 0 13px 0 36px; }
+    .search-box::before { content: "⌕"; position: absolute; left: 13px; top: 8px; color: var(--violet-light); }
+    .search-box input:focus, .filter-select:focus { border-color: rgba(199,125,255,.45); box-shadow: 0 0 0 3px rgba(157,78,221,.08); }
+    .filter-select { width: 155px; padding: 0 10px; }
+    .result-count { margin: 0 0 10px; color: var(--muted); font-size: 9px; }
+
+    .data-panel { padding: 19px; }
+    .asset-cell { display: flex; align-items: center; gap: 10px; }
+    .asset-icon { width: 31px; height: 31px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 9px; background: rgba(157,78,221,.11); color: var(--violet-light); font-weight: 800; }
+    .asset-code { color: var(--text); font-size: 10px; font-weight: 700; }
+    .asset-detail { margin-top: 3px; color: var(--muted); font-size: 8px; }
+    .capacity { width: 80px; }
+    .capacity-label { display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--muted); font-size: 8px; }
+    .capacity-bar { height: 4px; border-radius: 8px; background: #2a2334; overflow: hidden; }
+    .capacity-bar span { display: block; height: 100%; width: var(--capacity); border-radius: inherit; background: var(--green); }
+    .capacity-bar span.medium { background: var(--amber); }
+    .capacity-bar span.high { background: var(--red); }
+    .table-action { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: rgba(157,78,221,.07); color: var(--violet-light); font-size: 8px; font-weight: 700; cursor: pointer; }
+    .table-action:hover { border-color: rgba(199,125,255,.4); }
+    .empty-state { display: none; padding: 35px; color: var(--muted); text-align: center; font-size: 11px; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; min-width: 670px; }
     th { padding: 0 11px 10px; color: #777083; font-size: 8px; font-weight: 700; letter-spacing: .08em; text-align: left; text-transform: uppercase; }
@@ -300,6 +348,10 @@
     @media (max-width: 1100px) {
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .dashboard-grid { grid-template-columns: 1fr; }
+      .view-heading { align-items: flex-start; }
+      .toolbar { flex-wrap: wrap; }
+      .search-box { flex-basis: 100%; }
+      .filter-select { flex: 1; }
     }
 
     @media (max-width: 760px) {
@@ -338,18 +390,18 @@
 
       <div class="menu-caption">Operaciones</div>
       <nav class="nav">
-        <a class="nav-link active" href="#resumen"><span class="nav-icon">⌂</span>Resumen operativo</a>
+        <a class="nav-link active" href="#resumen" data-view="resumen"><span class="nav-icon">⌂</span>Resumen operativo</a>
         <a class="nav-link" href="#rutas"><span class="nav-icon">⌁</span>Rutas y recorridos</a>
-        <a class="nav-link" href="#flota"><span class="nav-icon">▱</span>Flota</a>
+        <a class="nav-link" href="#camiones" data-view="camiones"><span class="nav-icon">▱</span>Camiones</a>
         <a class="nav-link" href="#incidencias"><span class="nav-icon">!</span>Incidencias<span class="nav-badge">7</span></a>
-        <a class="nav-link" href="#contenedores"><span class="nav-icon">□</span>Contenedores</a>
+        <a class="nav-link" href="#contenedores" data-view="contenedores"><span class="nav-icon">□</span>Contenedores</a>
       </nav>
 
       <div class="menu-caption" style="margin-top:22px">Administración</div>
       <nav class="nav">
         <a class="nav-link" href="#reportes"><span class="nav-icon">⌗</span>Reportes</a>
-        <a class="nav-link" href="#usuarios"><span class="nav-icon">♙</span>Usuarios y roles</a>
-        <a class="nav-link" href="#configuracion"><span class="nav-icon">⚙️</span>Configuración</a>
+        <a class="nav-link" href="#usuarios" data-view="usuarios"><span class="nav-icon">♙</span>Usuarios y roles</a>
+        <a class="nav-link" href="#configuracion"><span class="nav-icon">⚙</span>Configuración</a>
       </nav>
 
       <div class="sidebar-bottom">
@@ -381,6 +433,7 @@
       </header>
 
       <div class="content">
+        <section class="view active" id="view-resumen">
         <section class="welcome">
           <div>
             <h2>Buenas tardes, Facundo</h2>
@@ -468,6 +521,60 @@
             </table>
           </div>
         </section>
+        </section>
+
+        <section class="view" id="view-contenedores">
+          <div class="view-heading">
+            <div><div class="demo-label">Datos temporales de demostración</div><h2>Listado de contenedores</h2><p>Consulta operativa de ubicación, capacidad estimada y estado de cada unidad.</p></div>
+            <button class="primary-button demo-action">＋ Registrar contenedor</button>
+          </div>
+          <div class="toolbar">
+            <label class="search-box"><input type="search" id="containerSearch" placeholder="Buscar por código, ubicación o zona…" aria-label="Buscar contenedores"></label>
+            <select class="filter-select" id="containerFilter" aria-label="Filtrar contenedores por estado"><option value="todos">Todos los estados</option><option value="operativo">Operativo</option><option value="atencion">Requiere atención</option><option value="mantenimiento">Mantenimiento</option></select>
+          </div>
+          <p class="result-count" id="containerCount">6 contenedores mostrados</p>
+          <article class="card data-panel">
+            <div class="table-wrap"><table><thead><tr><th>Contenedor</th><th>Ubicación</th><th>Zona</th><th>Capacidad estimada</th><th>Última recolección</th><th>Estado</th><th></th></tr></thead>
+              <tbody id="containerRows">
+                <tr data-search="cnt-ch-001 avenida brasil pocitos" data-status="operativo"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-001</div><div class="asset-detail">Carga lateral</div></div></div></td><td>Av. Brasil 2231</td><td>CH · Pocitos</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>42%</span></div><div class="capacity-bar"><span style="--capacity:42%"></span></div></div></td><td>Hoy · 14:32</td><td><span class="state">Operativo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+                <tr data-search="cnt-ch-014 avenida rivera buceo" data-status="atencion"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-014</div><div class="asset-detail">Carga lateral</div></div></div></td><td>Av. Rivera 2841</td><td>CH · Buceo</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>91%</span></div><div class="capacity-bar"><span class="high" style="--capacity:91%"></span></div></div></td><td>Ayer · 21:10</td><td><span class="priority high">Requiere atención</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+                <tr data-search="cnt-ch-027 21 de setiembre punta carretas" data-status="operativo"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-027</div><div class="asset-detail">Carga trasera</div></div></div></td><td>21 de Setiembre 2480</td><td>CH · Punta Carretas</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>63%</span></div><div class="capacity-bar"><span class="medium" style="--capacity:63%"></span></div></div></td><td>Hoy · 09:44</td><td><span class="state">Operativo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+                <tr data-search="cnt-ch-039 avenida italia parque batlle" data-status="mantenimiento"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-039</div><div class="asset-detail">Carga lateral</div></div></div></td><td>Av. Italia 2700</td><td>CH · Parque Batlle</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>18%</span></div><div class="capacity-bar"><span style="--capacity:18%"></span></div></div></td><td>Hoy · 16:08</td><td><span class="state pause">Mantenimiento</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+                <tr data-search="cnt-ch-052 comercio buceo" data-status="operativo"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-052</div><div class="asset-detail">Carga trasera</div></div></div></td><td>Comercio 1942</td><td>CH · Buceo</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>55%</span></div><div class="capacity-bar"><span class="medium" style="--capacity:55%"></span></div></div></td><td>Hoy · 11:23</td><td><span class="state">Operativo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+                <tr data-search="cnt-ch-061 ellauri pocitos" data-status="atencion"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-061</div><div class="asset-detail">Carga lateral</div></div></div></td><td>José Ellauri 1067</td><td>CH · Pocitos</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>78%</span></div><div class="capacity-bar"><span class="high" style="--capacity:78%"></span></div></div></td><td>Ayer · 23:51</td><td><span class="priority medium">Requiere atención</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+              </tbody></table></div><div class="empty-state" id="containerEmpty">No se encontraron contenedores con esos criterios.</div>
+          </article>
+        </section>
+
+        <section class="view" id="view-camiones">
+          <div class="view-heading">
+            <div><div class="demo-label">Datos temporales de demostración</div><h2>Listado de camiones</h2><p>Consulta de unidades, tipo de carga, conductor asignado, ruta y disponibilidad.</p></div>
+            <button class="primary-button demo-action">＋ Registrar camión</button>
+          </div>
+          <div class="toolbar">
+            <label class="search-box"><input type="search" id="truckSearch" placeholder="Buscar por unidad, matrícula, conductor o zona…" aria-label="Buscar camiones"></label>
+            <select class="filter-select" id="truckFilter" aria-label="Filtrar camiones por estado"><option value="todos">Todos los estados</option><option value="activo">Activo</option><option value="disponible">Disponible</option><option value="mantenimiento">Mantenimiento</option></select>
+          </div>
+          <p class="result-count" id="truckCount">6 camiones mostrados</p>
+          <article class="card data-panel"><div class="table-wrap"><table><thead><tr><th>Unidad</th><th>Matrícula</th><th>Tipo</th><th>Conductor</th><th>Asignación</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="truckRows">
+              <tr data-search="zm-014 stb 2145 carga lateral martín silva pocitos ch-04" data-status="activo"><td><div class="asset-cell"><span class="asset-icon">▱</span><div><div class="asset-code">ZM-014</div><div class="asset-detail">Mercedes-Benz</div></div></div></td><td>STB 2145</td><td>Carga lateral</td><td>Martín Silva</td><td>CH-04 · Pocitos</td><td><span class="state">Activo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+              <tr data-search="zm-008 scf 9082 carga trasera lucía pereira punta carretas ch-07" data-status="activo"><td><div class="asset-cell"><span class="asset-icon">▱</span><div><div class="asset-code">ZM-008</div><div class="asset-detail">Volkswagen</div></div></div></td><td>SCF 9082</td><td>Carga trasera</td><td>Lucía Pereira</td><td>CH-07 · Punta Carretas</td><td><span class="state">Activo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+              <tr data-search="zm-019 sbt 6631 carga lateral diego suárez parque batlle ch-02" data-status="activo"><td><div class="asset-cell"><span class="asset-icon">▱</span><div><div class="asset-code">ZM-019</div><div class="asset-detail">Iveco</div></div></div></td><td>SBT 6631</td><td>Carga lateral</td><td>Diego Suárez</td><td>CH-02 · Parque Batlle</td><td><span class="state">Activo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+              <tr data-search="zm-021 sda 4418 compactador base operativa" data-status="mantenimiento"><td><div class="asset-cell"><span class="asset-icon">▱</span><div><div class="asset-code">ZM-021</div><div class="asset-detail">Scania</div></div></div></td><td>SDA 4418</td><td>Compactador</td><td>Sin asignar</td><td>Base operativa</td><td><span class="state pause">Mantenimiento</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+              <tr data-search="zm-011 sbv 1074 carga lateral carlos méndez buceo ch-09" data-status="activo"><td><div class="asset-cell"><span class="asset-icon">▱</span><div><div class="asset-code">ZM-011</div><div class="asset-detail">Mercedes-Benz</div></div></div></td><td>SBV 1074</td><td>Carga lateral</td><td>Carlos Méndez</td><td>CH-09 · Buceo</td><td><span class="state">Activo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+              <tr data-search="zm-024 sca 7329 aspiradora base operativa" data-status="disponible"><td><div class="asset-cell"><span class="asset-icon">▱</span><div><div class="asset-code">ZM-024</div><div class="asset-detail">Volvo</div></div></div></td><td>SCA 7329</td><td>Aspiradora</td><td>Sin asignar</td><td>Base operativa</td><td><span class="state">Disponible</span></td><td><button class="table-action">Ver detalle</button></td></tr>
+            </tbody></table></div><div class="empty-state" id="truckEmpty">No se encontraron camiones con esos criterios.</div></article>
+        </section>
+
+        <section class="view" id="view-usuarios">
+          <div class="view-heading"><div><div class="demo-label">Datos temporales de demostración</div><h2>Usuarios y roles</h2><p>Vista administrativa de cuentas internas y permisos asignados.</p></div><button class="primary-button demo-action">＋ Registrar usuario</button></div>
+          <article class="card data-panel"><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Correo</th><th>Rol</th><th>Sector</th><th>Último acceso</th><th>Estado</th><th></th></tr></thead><tbody>
+            <tr><td><div class="asset-cell"><span class="avatar">FB</span><strong>Facundo Bustamante</strong></div></td><td>facundo@zentrax.uy</td><td>Coordinador</td><td>Programación</td><td>Hoy · 19:34</td><td><span class="state">Activo</span></td><td><button class="table-action">Ver perfil</button></td></tr>
+            <tr><td><div class="asset-cell"><span class="avatar">AR</span><strong>Andrea Romero</strong></div></td><td>andrea@zentrax.uy</td><td>Subcoordinadora</td><td>Análisis y arquitectura</td><td>Hoy · 18:52</td><td><span class="state">Activo</span></td><td><button class="table-action">Ver perfil</button></td></tr>
+            <tr><td><div class="asset-cell"><span class="avatar">D</span><strong>Diego</strong></div></td><td>diego@zentrax.uy</td><td>Administrador</td><td>Datos y seguridad</td><td>Hoy · 17:40</td><td><span class="state">Activo</span></td><td><button class="table-action">Ver perfil</button></td></tr>
+          </tbody></table></div></article>
+        </section>
       </div>
     </main>
   </div>
@@ -484,13 +591,57 @@
       menuButton.setAttribute('aria-expanded', String(opened));
     });
 
+    const titles = { resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', usuarios: 'Usuarios y roles' };
+    function openView(viewName) {
+      if (!titles[viewName]) return;
+      document.querySelectorAll('.nav-link').forEach(item => item.classList.toggle('active', item.dataset.view === viewName));
+      document.querySelectorAll('.view').forEach(view => view.classList.toggle('active', view.id === `view-${viewName}`));
+      document.querySelector('.title-block h1').textContent = titles[viewName];
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     document.querySelectorAll('.nav-link').forEach(link => {
-      link.addEventListener('click', () => {
-        document.querySelectorAll('.nav-link').forEach(item => item.classList.remove('active'));
-        link.classList.add('active');
+      link.addEventListener('click', event => {
+        const viewName = link.dataset.view;
+        if (viewName) {
+          event.preventDefault();
+          openView(viewName);
+          history.replaceState(null, '', `#${viewName}`);
+        }
         app.classList.remove('menu-open');
         menuButton.setAttribute('aria-expanded', 'false');
       });
+    });
+
+    const initialView = location.hash.replace('#', '');
+    if (titles[initialView]) openView(initialView);
+
+    function enableTableFilter(searchId, filterId, rowsId, countId, emptyId, itemName) {
+      const search = document.getElementById(searchId);
+      const filter = document.getElementById(filterId);
+      const rows = [...document.querySelectorAll(`#${rowsId} tr`)];
+      const update = () => {
+        const query = search.value.trim().toLocaleLowerCase('es');
+        const status = filter.value;
+        let visible = 0;
+        rows.forEach(row => {
+          const matchesText = row.dataset.search.includes(query);
+          const matchesStatus = status === 'todos' || row.dataset.status === status;
+          row.hidden = !(matchesText && matchesStatus);
+          if (!row.hidden) visible += 1;
+        });
+        document.getElementById(countId).textContent = `${visible} ${itemName} ${visible === 1 ? 'mostrado' : 'mostrados'}`;
+        document.getElementById(emptyId).style.display = visible ? 'none' : 'block';
+      };
+      search.addEventListener('input', update);
+      filter.addEventListener('change', update);
+    }
+
+    enableTableFilter('containerSearch', 'containerFilter', 'containerRows', 'containerCount', 'containerEmpty', 'contenedor');
+    enableTableFilter('truckSearch', 'truckFilter', 'truckRows', 'truckCount', 'truckEmpty', 'camión');
+
+    document.querySelectorAll('.table-action, .demo-action').forEach(button => {
+      button.addEventListener('click', () => showToast('<strong>Función demostrativa.</strong> Se conectará al módulo correspondiente cuando las API estén habilitadas.'));
     });
 
     function showToast(message) {

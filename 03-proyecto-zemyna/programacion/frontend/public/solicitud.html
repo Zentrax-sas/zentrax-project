@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud de Retiro Especial - Zemyna</title>
+    <link rel="icon" href="assets/logo.jpeg" type="image/jpeg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../src/styles/landing.css">
+    <style>
+        .form-container {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border: 1px solid #3a3a3a;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .form-label {
+            color: #e0e0e0;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .form-control, .form-select {
+            background-color: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            color: #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #333333;
+            border-color: #22c55e;
+            box-shadow: 0 0 0 0.2rem rgba(34, 197, 94, 0.25);
+            color: #e0e0e0;
+        }
+        .form-control::placeholder {
+            color: #888888;
+        }
+        .btn-submit {
+            background-color: #22c55e;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 32px;
+            font-weight: 600;
+            color: #000;
+            transition: all 0.3s ease;
+        }
+        .btn-submit:hover {
+            background-color: #16a34a;
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+        }
+        .btn-submit:disabled {
+            background-color: #888888;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-back {
+            color: #22c55e;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-back:hover {
+            color: #16a34a;
+            gap: 12px;
+        }
+        .alert-message {
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            display: none;
+        }
+        .alert-success {
+            background-color: rgba(34, 197, 94, 0.1);
+            border: 1px solid #22c55e;
+            color: #86efac;
+        }
+        .alert-error {
+            background-color: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+        }
+        .alert-info {
+            background-color: rgba(59, 130, 246, 0.1);
+            border: 1px solid #3b82f6;
+            color: #93c5fd;
+        }
+        .field-error {
+            color: #fca5a5;
+            font-size: 0.875rem;
+            margin-top: 4px;
+        }
+        .tracking-number {
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: #22c55e;
+        }
+        .hero-form {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            padding: 40px 20px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-black-custom py-3 border-bottom border-secondary-custom">
+    <div class="container">
+        <a class="navbar-brand" href="landing.html">
+            <img src="assets/logo_sin_fondo2.png" alt="Zemyna" class="logo-navbar">
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <div class="d-flex align-items-center ms-auto gap-3">
+                <a class="nav-link text-white me-2" href="landing.html">Inicio</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<section class="hero-form">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <a href="landing.html" class="btn-back mb-4">
+                    <i class="bi bi-chevron-left"></i>Volver al inicio
+                </a>
+
+                <div class="form-container">
+                    <div class="mb-4">
+                        <h2 class="mb-2" style="color: #e0e0e0; font-weight: 800;">Solicitud de Retiro Especial</h2>
+                        <p style="color: #888888;">Completá el formulario para solicitar un retiro especial de residuos.</p>
+                    </div>
+
+                    <form id="solicitudForm" onsubmit="handleSubmit(event)">
+                        <div class="mb-4">
+                            <label for="direccion" class="form-label">
+                                <i class="bi bi-geo-alt me-2"></i>Dirección
+                            </label>
+                            <input type="text" class="form-control" id="direccion" name="direccion" 
+                                   placeholder="Ej: Calle Principal 123, Apt 4B" required>
+                            <div class="field-error" id="error-direccion"></div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">
+                                    <i class="bi bi-envelope me-2"></i>Email
+                                </label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       placeholder="tu@email.com" required>
+                                <div class="field-error" id="error-email"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="telefono" class="form-label">
+                                    <i class="bi bi-telephone me-2"></i>Teléfono
+                                </label>
+                                <input type="tel" class="form-control" id="telefono" name="telefono" 
+                                       placeholder="+598 99 123 456" required>
+                                <div class="field-error" id="error-telefono"></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="tipo_solicitud" class="form-label">
+                                <i class="bi bi-list-check me-2"></i>Tipo de Solicitud
+                            </label>
+                            <select class="form-select" id="tipo_solicitud" name="tipo_solicitud" required>
+                                <option value="">Seleccionar tipo de solicitud...</option>
+                                <option value="Materiales Reciclables">Materiales Reciclables</option>
+                                <option value="Gran Volumen">Gran Volumen</option>
+                            </select>
+                            <div class="field-error" id="error-tipo_solicitud"></div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="descripcion" class="form-label">
+                                <i class="bi bi-pencil me-2"></i>Descripción/Detalle
+                            </label>
+                            <textarea class="form-control" id="descripcion" name="descripcion" 
+                                      rows="4" placeholder="Describe el tipo y cantidad de residuos..." required></textarea>
+                            <div class="field-error" id="error-descripcion"></div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-submit">
+                                <i class="bi bi-check-circle me-2"></i><span id="btnText">Enviar Solicitud</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <div id="alertMessage" class="alert-message"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    async function handleSubmit(event) {
+        event.preventDefault();
+
+        const form = document.getElementById('solicitudForm');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const btnText = document.getElementById('btnText');
+        const alertMessage = document.getElementById('alertMessage');
+
+        // Limpiar errores previos
+        document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+        alertMessage.style.display = 'none';
+
+        // Obtener datos del formulario
+        const formData = {
+            direccion: document.getElementById('direccion').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            telefono: document.getElementById('telefono').value.trim(),
+            tipo_solicitud: document.getElementById('tipo_solicitud').value,
+            descripcion: document.getElementById('descripcion').value.trim()
+        };
+
+        // Deshabilitar botón y mostrar estado
+        submitBtn.disabled = true;
+        btnText.textContent = 'Enviando...';
+
+        try {
+            const response = await fetch('../api/solicitud.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Éxito
+                alertMessage.className = 'alert-message alert-success';
+                alertMessage.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="bi bi-check-circle" style="font-size: 1.5rem;"></i>
+                        <div>
+                            <strong>¡Solicitud enviada con éxito!</strong><br>
+                            Tu número de seguimiento es: <span class="tracking-number">${data.tracking_number}</span>
+                        </div>
+                    </div>
+                `;
+                alertMessage.style.display = 'block';
+                form.reset();
+                submitBtn.disabled = false;
+                btnText.textContent = 'Enviar Solicitud';
+            } else {
+                // Error de validación
+                alertMessage.className = 'alert-message alert-error';
+                alertMessage.innerHTML = `
+                    <div style="display: flex; gap: 12px;">
+                        <i class="bi bi-exclamation-circle" style="font-size: 1.5rem; flex-shrink: 0;"></i>
+                        <div>
+                            <strong>${data.message || 'Error al enviar la solicitud'}</strong>
+                        </div>
+                    </div>
+                `;
+                alertMessage.style.display = 'block';
+
+                // Mostrar errores por campo
+                if (data.errors && typeof data.errors === 'object') {
+                    Object.keys(data.errors).forEach(field => {
+                        const errorElement = document.getElementById(`error-${field}`);
+                        if (errorElement) {
+                            errorElement.textContent = data.errors[field];
+                        }
+                    });
+                }
+
+                submitBtn.disabled = false;
+                btnText.textContent = 'Enviar Solicitud';
+            }
+        } catch (error) {
+            // Error de red o parsing
+            alertMessage.className = 'alert-message alert-error';
+            alertMessage.innerHTML = `
+                <div style="display: flex; gap: 12px;">
+                    <i class="bi bi-exclamation-triangle" style="font-size: 1.5rem; flex-shrink: 0;"></i>
+                    <div>
+                        <strong>Error de conexión</strong><br>
+                        No se pudo conectar con el servidor. Intenta nuevamente.
+                    </div>
+                </div>
+            `;
+            alertMessage.style.display = 'block';
+            submitBtn.disabled = false;
+            btnText.textContent = 'Enviar Solicitud';
+        }
+    }
+</script>
+
+</body>
+</html>

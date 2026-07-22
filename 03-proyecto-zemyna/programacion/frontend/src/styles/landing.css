@@ -34,6 +34,13 @@ body {
     color: var(--green-primary);
 }
 
+.logo-navbar {
+    height: 50px;
+    width: auto;
+    max-width: 200px;
+    display: block;
+}
+
 .btn-outline-light-custom {
     border-color: var(--border-color);
     color: var(--text-white);
@@ -82,6 +89,13 @@ body {
     color: #000;
     font-weight: 600;
     border: none;
+    border-radius: 8px;
+    height: 48px;
+    padding: 12px 24px;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     transition: transform 0.2s, background-color 0.2s;
 }
 
@@ -91,16 +105,46 @@ body {
     transform: translateY(-2px);
 }
 
+.btn-outline-light-custom {
+    border: 1px solid var(--border-color);
+    color: var(--text-white);
+    font-weight: 600;
+    border-radius: 8px;
+    height: 48px;
+    padding: 12px 24px;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    transition: all 0.2s;
+}
+
+.btn-outline-light-custom:hover {
+    background-color: var(--text-white);
+    color: #000;
+    border-color: var(--text-white);
+}
+
 .btn-outline-secondary-custom {
     border: 1px solid var(--border-color);
     color: var(--text-gray);
     font-weight: 600;
+    border-radius: 8px;
+    height: 48px;
+    padding: 12px 24px;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
     transition: all 0.2s;
 }
 
 .btn-outline-secondary-custom:hover {
     background-color: var(--bg-panels);
     color: var(--text-white);
+    border-color: rgba(0, 255, 102, 0.3);
 }
 
 /* CARDS DE NOTICIAS */
