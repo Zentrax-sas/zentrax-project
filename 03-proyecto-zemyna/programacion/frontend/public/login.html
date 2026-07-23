@@ -68,13 +68,29 @@
     </div>
 
     <script>
+    const APP_BASE_URL = 'http://localhost/zentrax-project/03-proyecto-zemyna/programacion/frontend/public';
+
+    if (window.location.protocol === 'file:') {
+        window.location.replace(`${APP_BASE_URL}/login.html`);
+    }
+
+    function buildApiUrl(path) {
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        const separator = normalizedPath.includes('?') ? '&' : '?';
+        return `http://localhost/zentrax-project/03-proyecto-zemyna/programacion${normalizedPath}${separator}t=${Date.now()}`;
+    }
+
+    function buildFrontendUrl(page) {
+        return `${APP_BASE_URL}/${page}`;
+    }
+
     document.getElementById('login-form').addEventListener('submit', async function (event) {
         event.preventDefault();
         const message = document.getElementById('login-message');
         message.textContent = 'Iniciando sesión...';
 
         try {
-            const response = await fetch('../../backend/api/login.php', {
+            const response = await fetch(buildApiUrl('/backend/api/login.php'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -85,18 +101,25 @@
 
             const json = await response.json();
             if (!response.ok || !json.success) {
+                if (response.status === 401) {
+                    throw new Error('Credenciales inválidas. Prueba con facu@zemyna.com y contraseña 123456.');
+                }
                 throw new Error(json.message || 'Error al iniciar sesión');
             }
 
             message.textContent = 'Sesión iniciada correctamente.';
             const rol = json.data?.rol ?? null;
             if (rol === 1 || json.data?.email === 'facu@zemyna.com') {
-                window.location.href = 'admin.html';
+                window.location.href = buildFrontendUrl('admin.html');
             } else {
-                window.location.href = 'landing.html';
+                window.location.href = buildFrontendUrl('landing.html');
             }
         } catch (error) {
-            message.textContent = error.message;
+            if (error instanceof TypeError && error.message.toLowerCase().includes('fetch')) {
+                message.textContent = 'No se pudo conectar con el backend. Verifica Apache en XAMPP y abre la app con http://localhost, no con file://.';
+            } else {
+                message.textContent = error.message;
+            }
         }
     });
     </script>

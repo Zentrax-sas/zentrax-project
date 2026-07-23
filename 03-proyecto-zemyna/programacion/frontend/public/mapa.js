@@ -1,3 +1,9 @@
+const APP_BASE_URL = 'http://localhost/zentrax-project/03-proyecto-zemyna/programacion/frontend/public';
+
+if (window.location.protocol === 'file:') {
+    window.location.replace(`${APP_BASE_URL}/index.html`);
+}
+
 const map = L.map('mapa-vedette').setView([-34.9150, -56.1540], 14);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -9,10 +15,59 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
 }).addTo(map);
 
 const formReporte = document.getElementById('form-reporte');
+const submitReporteButton = document.getElementById('submit-reporte');
 const captchaWrapper = document.getElementById('captcha-wrapper');
 const captchaQuestion = document.getElementById('captcha-question');
 const captchaInput = document.getElementById('captcha_respuesta');
 const reporteMessage = document.getElementById('reporte-message');
+const estadoGlobalReporte = document.getElementById('estado-global-reporte');
+let toastTimerId = null;
+
+function actualizarEstadoGlobal(mensaje, tipo = 'exito') {
+    if (!estadoGlobalReporte) return;
+    estadoGlobalReporte.textContent = mensaje || '';
+    estadoGlobalReporte.classList.remove('exito', 'error');
+    estadoGlobalReporte.classList.add(tipo === 'error' ? 'error' : 'exito');
+}
+
+function getOrCreateToastElement() {
+    let toast = document.getElementById('toast-exito');
+    if (toast) return toast;
+
+    toast = document.createElement('div');
+    toast.id = 'toast-exito';
+    toast.className = 'toast-exito';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    document.body.appendChild(toast);
+    return toast;
+}
+
+function mostrarToast(texto, tipo = 'exito') {
+    const toastExito = getOrCreateToastElement();
+
+    if (toastTimerId) {
+        clearTimeout(toastTimerId);
+    }
+
+    toastExito.textContent = texto;
+    if (tipo === 'error') {
+        toastExito.classList.add('toast-error');
+    } else {
+        toastExito.classList.remove('toast-error');
+    }
+    toastExito.classList.add('show');
+
+    toastTimerId = setTimeout(() => {
+        toastExito.classList.remove('show');
+    }, 2600);
+}
+
+function buildApiUrl(path) {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const separator = normalizedPath.includes('?') ? '&' : '?';
+    return `http://localhost/zentrax-project/03-proyecto-zemyna/programacion${normalizedPath}${separator}t=${Date.now()}`;
+}
 
 async function cargarCaptchaReporte() {
     if (!captchaQuestion) return;
@@ -20,7 +75,9 @@ async function cargarCaptchaReporte() {
     captchaQuestion.textContent = 'Cargando pregunta...';
 
     try {
-        const response = await fetch('../../backend/api/captcha.php');
+        const response = await fetch(buildApiUrl('/backend/api/captcha.php'), {
+            credentials: 'same-origin'
+        });
         const json = await response.json();
 
         if (!response.ok || !json.success) {
@@ -40,19 +97,29 @@ function mostrarCaptchaReporte() {
         captchaWrapper.style.display = 'block';
     }
 
-    if (!captchaQuestion || captchaQuestion.textContent === 'Cargando pregunta...' || captchaQuestion.textContent === 'Error al cargar captcha.') {
-        cargarCaptchaReporte();
+    if (captchaInput) {
+        captchaInput.removeAttribute('disabled');
+        captchaInput.setAttribute('required', 'required');
     }
+
+    // Cada captcha se invalida al enviarse, por eso al mostrar el bloque pedimos uno nuevo siempre.
+    cargarCaptchaReporte();
 }
 
-if (formReporte) {
-    formReporte.addEventListener('submit', async function (event) {
-        event.preventDefault();
+if (submitReporteButton) {
+    submitReporteButton.addEventListener('click', async function () {
+        const tieneSeleccion = document.getElementById('form-id-contenedor').value.trim() !== '';
+        if (!tieneSeleccion) {
+            if (reporteMessage) {
+                reporteMessage.textContent = 'Seleccioná un contenedor del mapa antes de enviar.';
+            }
+            return;
+        }
 
         if (captchaWrapper && captchaWrapper.style.display === 'none') {
             mostrarCaptchaReporte();
             if (reporteMessage) {
-                reporteMessage.textContent = 'Completá el captcha para enviar la incidencia.';
+                reporteMessage.textContent = 'Ingresá la respuesta del captcha y volvé a presionar ENVIAR REPORTE.';
             }
             return;
         }
@@ -69,25 +136,44 @@ if (formReporte) {
         }
 
         try {
-            const response = await fetch('../../backend/api/solicitud.php', {
+            const response = await fetch(buildApiUrl('/backend/api/solicitud.php'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
                 body: JSON.stringify({
-                    id_contenedor: document.getElementById('form-id-contenedor').value,
-                    direccion: document.getElementById('form-direccion').value,
-                    tipo_incidencia: document.getElementById('tipo_incidencia').value,
+                    direccion: document.getElementById('form-direccion').value || document.getElementById('form-id-contenedor').value,
+                    email: 'demo@zemyna.com',
+                    telefono: '+598 99 000 000',
+                    tipo_solicitud: document.getElementById('tipo_incidencia').value || 'Incidencia',
+                    descripcion: `Incidencia en contenedor ${document.getElementById('form-id-contenedor').value} - ${document.getElementById('form-direccion').value}`,
                     captcha_respuesta: captchaInput.value
                 })
             });
 
             const json = await response.json();
             if (!response.ok || !json.success) {
-                throw new Error(json.message || 'Error al enviar el reporte.');
+                const detalleCaptcha = json?.errors?.captcha_respuesta;
+                throw new Error(detalleCaptcha || json.message || 'Error al enviar el reporte.');
             }
 
+            const tracking = json?.tracking_number || json?.data?.tracking_number || null;
             if (reporteMessage) {
-                reporteMessage.textContent = 'Incidencia enviada correctamente.';
+                reporteMessage.textContent = tracking
+                    ? `Incidencia enviada correctamente. Nro de seguimiento: ${tracking}`
+                    : 'Incidencia enviada correctamente.';
             }
+            actualizarEstadoGlobal(
+                tracking
+                    ? `Ultimo envio exitoso. Seguimiento: ${tracking}`
+                    : 'Ultimo envio exitoso.',
+                'exito'
+            );
+            mostrarToast(
+                tracking
+                    ? `Exito: reporte enviado. Seguimiento ${tracking}`
+                    : 'Exito: reporte enviado en modo simulacion.',
+                'exito'
+            );
 
             formReporte.reset();
             document.getElementById('form-msg-vacio').style.display = 'block';
@@ -95,10 +181,15 @@ if (formReporte) {
             if (captchaWrapper) {
                 captchaWrapper.style.display = 'none';
             }
+            if (captchaInput) {
+                captchaInput.setAttribute('disabled', 'disabled');
+            }
         } catch (error) {
             if (reporteMessage) {
                 reporteMessage.textContent = error.message;
             }
+            actualizarEstadoGlobal(error.message || 'No se pudo enviar el reporte.', 'error');
+            mostrarToast(error.message || 'No se pudo enviar el reporte.', 'error');
             if (captchaInput) {
                 captchaInput.value = '';
             }
@@ -131,35 +222,42 @@ function renderContenedores(contenedores) {
         const lng = parseFloat(contenedor.longitud ?? contenedor.lng ?? -56.1540);
         const idContenedor = contenedor.id_contenedor ?? contenedor.id ?? contenedor.codigo ?? 'Sin ID';
         const direccion = contenedor.direccion || (contenedor.calle && contenedor.esquina ? `${contenedor.calle} y ${contenedor.esquina}` : 'Sin dirección');
-        let colorNeon = '#555555';
+        const estado = String(contenedor.estado || 'verde').toLowerCase();
+        let colorNeon = '#22c55e';
 
-        if (contenedor.estado === 'verde') colorNeon = '#a8e063';
-        else if (contenedor.estado === 'amarillo') colorNeon = '#f1c40f';
-        else if (contenedor.estado === 'rojo') colorNeon = '#e74c3c';
+        if (estado === 'verde') colorNeon = '#22c55e';
+        else if (estado === 'amarillo') colorNeon = '#f59e0b';
+        else if (estado === 'rojo') colorNeon = '#ef4444';
+        else if (estado === 'gris' || estado === 'desconocido') colorNeon = '#6b7280';
 
         const marcador = L.circleMarker([lat, lng], {
-            radius: 8,
+            radius: 10,
             fillColor: colorNeon,
-            color: colorNeon,
+            color: '#ffffff',
             weight: 2,
             opacity: 1,
-            fillOpacity: 0.6
+            fillOpacity: 0.9
         }).addTo(map);
 
         marcador.bindPopup(`<b>Contenedor:</b> ${idContenedor}<br>Hacé clic para reportar.`);
 
         marcador.on('click', function() {
-            document.getElementById('form-msg-vacio').style.display = 'none';
-            document.getElementById('form-reporte').style.display = 'block';
+            const form = document.getElementById('form-reporte');
+            const placeholder = document.getElementById('form-msg-vacio');
+            if (placeholder) placeholder.style.display = 'none';
+            if (form) form.style.display = 'block';
             document.getElementById('form-id-contenedor').value = idContenedor;
             document.getElementById('form-direccion').value = direccion;
+            if (reporteMessage) reporteMessage.textContent = '';
+            if (captchaWrapper) captchaWrapper.style.display = 'none';
+            if (captchaInput) captchaInput.value = '';
         });
     });
 }
 
 async function cargarContenedoresMapa() {
     try {
-        const response = await fetch('../../backend/api/contenedores.php');
+        const response = await fetch(buildApiUrl('/backend/api/contenedores.php'));
         const json = await response.json();
 
         if (!response.ok || !json.success) {

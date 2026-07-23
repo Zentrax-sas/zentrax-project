@@ -10,6 +10,8 @@
 </head>
 <body>
 
+    <div id="toast-exito" class="toast-exito" role="status" aria-live="polite"></div>
+
     <header class="navbar">
         <div class="brand">
             <img src="assets/logo_sin_fondo2.png" alt="Zemyna" style="height: 50px; width: auto;">
@@ -29,11 +31,12 @@
 
         <div class="form-wrapper" id="panel-formulario">
             <h3>Nueva Incidencia</h3>
+            <p id="estado-global-reporte" class="estado-global" role="status" aria-live="polite"></p>
             <div id="form-msg-vacio" class="form-placeholder">
                 <p>Seleccioná un contenedor del mapa para habilitar el formulario de reportes.</p>
             </div>
 
-            <form id="form-reporte" class="form-active">
+            <form id="form-reporte" class="form-active" style="display: none;">
                 <label for="form-id-contenedor">ID Contenedor:</label>
                 <input type="text" id="form-id-contenedor" name="id_contenedor" readonly>
 
@@ -57,7 +60,7 @@
                 </div>
 
                 <p id="reporte-message" role="status" style="margin-top: 10px; color: #1f2937; font-size: 0.95rem;"></p>
-                <button type="submit" class="submit-button">ENVIAR REPORTE</button>
+                <button type="button" id="submit-reporte" class="submit-button">ENVIAR REPORTE</button>
             </form>
         </div>
     </main>
