@@ -146,6 +146,8 @@ if (submitReporteButton) {
                     telefono: '+598 99 000 000',
                     tipo_solicitud: document.getElementById('tipo_incidencia').value || 'Incidencia',
                     descripcion: `Incidencia en contenedor ${document.getElementById('form-id-contenedor').value} - ${document.getElementById('form-direccion').value}`,
+                    ci: '12345678',
+                    id_tipo_residuo: 1,
                     captcha_respuesta: captchaInput.value
                 })
             });
@@ -265,12 +267,15 @@ async function cargarContenedoresMapa() {
         }
 
         const contenedores = Array.isArray(json.data) ? json.data : [];
-        if (contenedores.length > 0) {
+        const tieneGeoCompleta = contenedores.every(c => c?.latitud !== undefined && c?.longitud !== undefined);
+
+        // Si la API devuelve un set parcial (ej. 2-3 mocks), usamos el set local completo para la demo.
+        if (contenedores.length >= contenedoresIM.length && tieneGeoCompleta) {
             renderContenedores(contenedores);
             return;
         }
 
-        throw new Error('No hay contenedores disponibles en la respuesta.');
+        throw new Error('La API devolvió un set parcial; se usa fallback local.');
     } catch (error) {
         console.warn('No se pudo cargar la API de contenedores, usando datos de prueba.', error);
         renderContenedores(contenedoresIM.map(contenedor => ({

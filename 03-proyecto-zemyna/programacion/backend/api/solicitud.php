@@ -12,6 +12,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'OPTIONS') {
 session_start();
 require_once __DIR__ . '/../helpers/captcha.php';
 require_once __DIR__ . '/../controllers/SolicitudController.php';
+require_once __DIR__ . '/../config/database.php';
 
 if (!class_exists('SolicitudController')) {
     http_response_code(500);
@@ -19,7 +20,8 @@ if (!class_exists('SolicitudController')) {
     exit;
 }
 
-$db = null;
+$database = new Database();
+$db = $database->getConnection();
 $controller = new SolicitudController($db);
 
 $method = $_SERVER["REQUEST_METHOD"];
@@ -58,6 +60,41 @@ switch ($method) {
                 'errors' => ['captcha_respuesta' => 'Captcha incorrecto o expirado.']
             ]);
             break;
+        }
+
+        // Compatibilidad con payload legado del frontend.
+        if (!isset($data['ci']) || trim((string)$data['ci']) === '') {
+            $data['ci'] = '12345678';
+        }
+        if (!isset($data['estado']) || trim((string)$data['estado']) === '') {
+            $data['estado'] = 'Pendiente';
+        }
+        if (!isset($data['fecha']) || trim((string)$data['fecha']) === '') {
+            $data['fecha'] = date('Y-m-d H:i:s');
+        }
+        if (!isset($data['id_tipo_residuo']) || (int)$data['id_tipo_residuo'] <= 0) {
+            $tipoSolicitud = strtolower((string)($data['tipo_solicitud'] ?? ''));
+            $descripcion = strtolower((string)($data['descripcion'] ?? ''));
+            $texto = $tipoSolicitud . ' ' . $descripcion;
+            $idTipo = 1;
+            if (strpos($texto, 'papel') !== false || strpos($texto, 'carton') !== false) {
+                $idTipo = 2;
+            } elseif (strpos($texto, 'plast') !== false) {
+                $idTipo = 3;
+            } elseif (strpos($texto, 'vidrio') !== false) {
+                $idTipo = 4;
+            } elseif (strpos($texto, 'metal') !== false) {
+                $idTipo = 5;
+            } elseif (strpos($texto, 'electr') !== false) {
+                $idTipo = 6;
+            } elseif (strpos($texto, 'pila') !== false || strpos($texto, 'bateria') !== false) {
+                $idTipo = 7;
+            } elseif (strpos($texto, 'escombro') !== false) {
+                $idTipo = 8;
+            } elseif (strpos($texto, 'voluminos') !== false || strpos($texto, 'gran volumen') !== false) {
+                $idTipo = 9;
+            }
+            $data['id_tipo_residuo'] = $idTipo;
         }
 
         $response = $controller->create($data ?? []);
@@ -101,6 +138,12 @@ switch ($method) {
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
             echo json_encode(["success" => false, "message" => "JSON inválido: " . json_last_error_msg()]);
+            break;
+        }
+
+        if (!isset($data['id_solicitud'])) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Falta id_solicitud en el cuerpo de la petición."]);
             break;
         }
 

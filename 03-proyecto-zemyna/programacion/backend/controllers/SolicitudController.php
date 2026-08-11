@@ -10,132 +10,105 @@ class SolicitudController {
 
     public function getAll() {
         $stmt = $this->solicitud->read();
-
         if ($stmt) {
-            $solicitudes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            return ["success" => true, "data" => $solicitudes, "message" => "Solicitudes cargadas correctamente."];
+            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Solicitudes cargadas correctamente."];
         }
-
-        $solicitudesMock = [
-            [
-                "id" => 1,
-                "direccion" => "Calle Principal 123",
-                "email" => "usuario1@example.com",
-                "telefono" => "+598 99 123 456",
-                "descripcion" => "Retiro de materiales reciclables",
-                "tipo_solicitud" => "Materiales Reciclables",
-                "tracking_number" => "REF-2026-ABC12"
+        return [
+            "success" => true,
+            "data" => [
+                ["id_solicitud" => 1, "fecha" => "2025-06-05 08:00:00", "descripcion" => "Retiro de electrodomestico viejo.", "direccion" => "Dr. Luis Bonavita 1294", "estado" => "Pendiente", "ci" => "11223344", "id_tipo_residuo" => 1, "email" => "martin@gmail.com", "telefono" => "092-333333", "tipo_solicitud" => "Retiro domiciliario", "tracking_number" => "REF-2025-AB123"],
+                ["id_solicitud" => 2, "fecha" => "2025-06-06 09:30:00", "descripcion" => "Gran cantidad de cartones para retirar.", "direccion" => "Paraguay 1450", "estado" => "Programada", "ci" => "12345678", "id_tipo_residuo" => 2, "email" => "carlos@gmail.com", "telefono" => "092-111111", "tipo_solicitud" => "Retiro domiciliario", "tracking_number" => "REF-2025-XY789"]
             ],
-            [
-                "id" => 2,
-                "direccion" => "Avenida Central 456",
-                "email" => "usuario2@example.com",
-                "telefono" => "+598 98 789 012",
-                "descripcion" => "Retiro de gran volumen de residuos",
-                "tipo_solicitud" => "Gran Volumen",
-                "tracking_number" => "REF-2026-XYZ78"
-            ]
+            "message" => "Solicitudes cargadas en modo demo."
         ];
-        return ["success" => true, "data" => $solicitudesMock, "message" => "Solicitudes cargadas correctamente."];
     }
 
     public function create($data) {
-        // Validar campos requeridos
+        $this->solicitud->fecha           = $data['fecha'] ?? date('Y-m-d H:i:s');
+        $this->solicitud->descripcion     = $data['descripcion'] ?? null;
+        $this->solicitud->direccion       = $data['direccion'] ?? null;
+        $this->solicitud->estado          = $data['estado'] ?? 'Pendiente';
+        $this->solicitud->ci              = $data['ci'] ?? '12345678';
+        $this->solicitud->id_tipo_residuo = $data['id_tipo_residuo'] ?? $this->inferTipoResiduoId($data['tipo_solicitud'] ?? null, $data['descripcion'] ?? null);
+        $this->solicitud->email           = $data['email'] ?? null;
+        $this->solicitud->telefono        = $data['telefono'] ?? null;
+        $this->solicitud->tipo_solicitud  = $data['tipo_solicitud'] ?? null;
+
+        $estados = ['Pendiente', 'Programada', 'Finalizada', 'Cancelada'];
         $errors = [];
+        if (empty($this->solicitud->descripcion)) $errors['descripcion'] = "La descripcion es obligatoria.";
+        if (empty($this->solicitud->direccion)) $errors['direccion'] = "La direccion es obligatoria.";
+        if (!in_array($this->solicitud->estado, $estados)) $errors['estado'] = "El estado debe ser Pendiente, Programada, Finalizada o Cancelada.";
+        if (empty($this->solicitud->ci)) $errors['ci'] = "La CI del vecino es obligatoria.";
+        if (empty($this->solicitud->id_tipo_residuo)) $errors['id_tipo_residuo'] = "El tipo de residuo es obligatorio.";
+        if (empty($this->solicitud->email)) $errors['email'] = "El email es obligatorio.";
+        elseif (!filter_var($this->solicitud->email, FILTER_VALIDATE_EMAIL)) $errors['email'] = "El email debe tener un formato valido.";
+        if (empty($this->solicitud->telefono)) $errors['telefono'] = "El telefono es obligatorio.";
+        if (empty($this->solicitud->tipo_solicitud)) $errors['tipo_solicitud'] = "El tipo de solicitud es obligatorio.";
 
-        $this->solicitud->direccion = $data['direccion'] ?? null;
-        $this->solicitud->email = $data['email'] ?? null;
-        $this->solicitud->telefono = $data['telefono'] ?? null;
-        $this->solicitud->tipo_solicitud = $data['tipo_solicitud'] ?? null;
-        $this->solicitud->descripcion = $data['descripcion'] ?? null;
-
-        // Validar cada campo
-        if (empty($this->solicitud->direccion)) {
-            $errors['direccion'] = "La dirección es obligatoria.";
+        if ($errors) {
+            return ["success" => false, "data" => null, "message" => "Datos incompletos o invalidos.", "errors" => $errors];
         }
 
-        if (empty($this->solicitud->email)) {
-            $errors['email'] = "El email es obligatorio.";
-        } elseif (!filter_var($this->solicitud->email, FILTER_VALIDATE_EMAIL)) {
-            $errors['email'] = "El email debe tener un formato válido.";
-        }
-
-        if (empty($this->solicitud->telefono)) {
-            $errors['telefono'] = "El teléfono es obligatorio.";
-        }
-
-        if (empty($this->solicitud->tipo_solicitud)) {
-            $errors['tipo_solicitud'] = "El tipo de solicitud es obligatorio.";
-        }
-
-        if (empty($this->solicitud->descripcion)) {
-            $errors['descripcion'] = "La descripción es obligatoria.";
-        }
-
-        // Si hay errores, devolver sin generar tracking_number
-        if (!empty($errors)) {
-            return [
-                "success" => false,
-                "data" => null,
-                "message" => "Datos incompletos o inválidos.",
-                "errors" => $errors
-            ];
-        }
-
-        // Validar con el modelo
-        if (!$this->solicitud->create()) {
-            return [
-                "success" => false,
-                "data" => null,
-                "message" => "Error en la validación de datos.",
-                "errors" => ["general" => "No se pudo validar la solicitud."]
-            ];
-        }
-
-        // Generar tracking_number único: REF-{año}-{5 caracteres alfanuméricos mayúsculas}
         $year = date('Y');
         $randomCode = strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
         $this->solicitud->tracking_number = "REF-{$year}-{$randomCode}";
 
-        // Preparar respuesta
-        $responseData = [
-            "id" => null,
-            "direccion" => $this->solicitud->direccion,
-            "email" => $this->solicitud->email,
-            "telefono" => $this->solicitud->telefono,
-            "tipo_solicitud" => $this->solicitud->tipo_solicitud,
-            "descripcion" => $this->solicitud->descripcion,
-            "tracking_number" => $this->solicitud->tracking_number
-        ];
+        if ($this->solicitud->create()) {
+            return [
+                "success" => true,
+                "data" => ["tracking_number" => $this->solicitud->tracking_number],
+                "message" => "Solicitud de retiro registrada con exito en Zemyna.",
+                "tracking_number" => $this->solicitud->tracking_number,
+                "errors" => []
+            ];
+        }
+        return ["success" => false, "data" => null, "message" => "Error al registrar la solicitud.", "errors" => []];
+    }
 
-        return [
-            "success" => true,
-            "data" => $responseData,
-            "message" => "Solicitud de retiro especial registrada correctamente.",
-            "tracking_number" => $this->solicitud->tracking_number
-        ];
+    private function inferTipoResiduoId($tipoSolicitud, $descripcion) {
+        $texto = strtolower(trim((string)($tipoSolicitud . ' ' . $descripcion)));
+        if ($texto === '') return null;
+
+        if (strpos($texto, 'papel') !== false || strpos($texto, 'carton') !== false) return 2;
+        if (strpos($texto, 'plast') !== false) return 3;
+        if (strpos($texto, 'vidrio') !== false) return 4;
+        if (strpos($texto, 'metal') !== false) return 5;
+        if (strpos($texto, 'electr') !== false) return 6;
+        if (strpos($texto, 'pila') !== false || strpos($texto, 'bateria') !== false) return 7;
+        if (strpos($texto, 'escombro') !== false) return 8;
+        if (strpos($texto, 'voluminos') !== false) return 9;
+
+        return 1;
     }
 
     public function update($data) {
-        $this->solicitud->id = $data['id'] ?? null;
-        $this->solicitud->direccion = $data['direccion'] ?? null;
-        $this->solicitud->email = $data['email'] ?? null;
-        $this->solicitud->telefono = $data['telefono'] ?? null;
-        $this->solicitud->tipo_solicitud = $data['tipo_solicitud'] ?? null;
-        $this->solicitud->descripcion = $data['descripcion'] ?? null;
+        $this->solicitud->id_solicitud    = $data['id_solicitud'] ?? null;
+        $this->solicitud->descripcion     = $data['descripcion'] ?? null;
+        $this->solicitud->direccion       = $data['direccion'] ?? null;
+        $this->solicitud->estado          = $data['estado'] ?? null;
+        $this->solicitud->ci              = $data['ci'] ?? null;
+        $this->solicitud->id_tipo_residuo = $data['id_tipo_residuo'] ?? null;
+        $this->solicitud->email           = $data['email'] ?? null;
+        $this->solicitud->telefono        = $data['telefono'] ?? null;
+        $this->solicitud->tipo_solicitud  = $data['tipo_solicitud'] ?? null;
+
+        if (empty($this->solicitud->id_solicitud)) {
+            return ["success" => false, "data" => null, "message" => "No se pudo actualizar la solicitud.", "errors" => ["El id_solicitud es obligatorio para actualizar."]];
+        }
 
         if ($this->solicitud->update()) {
-            return ["success" => true, "data" => null, "message" => "Solicitud actualizada correctamente."];
+            return ["success" => true, "data" => null, "message" => "Solicitud actualizada con exito.", "errors" => []];
         }
-        return ["success" => false, "data" => null, "message" => "Error al actualizar la solicitud.", "errors" => ["Datos incompletos"]];
+        return ["success" => false, "data" => null, "message" => "Error al actualizar la solicitud.", "errors" => []];
     }
 
     public function delete($data) {
-        $this->solicitud->id = $data['id'] ?? null;
-
+        $id = is_array($data) ? ($data['id_solicitud'] ?? null) : $data;
+        $this->solicitud->id_solicitud = $id;
         if ($this->solicitud->delete()) {
-            return ["success" => true, "data" => null, "message" => "Solicitud eliminada correctamente."];
+            return ["success" => true, "data" => null, "message" => "Solicitud eliminada correctamente.", "errors" => []];
         }
-        return ["success" => false, "data" => null, "message" => "Error al eliminar la solicitud."];
+        return ["success" => false, "data" => null, "message" => "Error al eliminar la solicitud.", "errors" => []];
     }
 }

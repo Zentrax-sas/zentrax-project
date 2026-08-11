@@ -4,16 +4,12 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE");
 header("Access-Control-Allow-Headers: Content-Type");
 
-require_once __DIR__ . '/../controllers/CamionController.php';
+require_once __DIR__ . '/../controllers/VehiculoController.php';
+require_once __DIR__ . '/../config/database.php';
 
-if (!class_exists('CamionController')) {
-    http_response_code(500);
-    echo json_encode(["success" => false, "message" => "No se pudo cargar el controlador de camiones."]);
-    exit;
-}
-
-$db = null;
-$controller = new CamionController($db);
+$database   = new Database();
+$db         = $database->getConnection();
+$controller = new VehiculoController($db);
 
 $method = $_SERVER["REQUEST_METHOD"];
 
@@ -50,12 +46,12 @@ switch ($method) {
 
     case "DELETE":
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
-        if (!isset($data['id_camion'])) {
+        if (!isset($data['id_vehiculo'])) {
             http_response_code(400);
-            echo json_encode(["success" => false, "message" => "Falta id_camion en el cuerpo de la petición."]);
+            echo json_encode(["success" => false, "message" => "Falta id_vehiculo en el cuerpo de la petición."]);
             break;
         }
-        $response = $controller->delete($data['id_camion']);
+        $response = $controller->delete($data['id_vehiculo']);
         http_response_code($response['success'] ? 200 : 400);
         echo json_encode($response);
         break;

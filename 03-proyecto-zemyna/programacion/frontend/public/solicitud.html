@@ -271,12 +271,20 @@
         alertMessage.style.display = 'none';
 
         // Obtener datos del formulario
+        const selectedTipo = document.getElementById('tipo_solicitud').value;
+        const tipoResiduoMap = {
+            'Materiales Reciclables': 2,
+            'Gran Volumen': 9
+        };
+
         const formData = {
             direccion: document.getElementById('direccion').value.trim(),
             email: document.getElementById('email').value.trim(),
             telefono: document.getElementById('telefono').value.trim(),
-            tipo_solicitud: document.getElementById('tipo_solicitud').value,
+            tipo_solicitud: selectedTipo,
             descripcion: document.getElementById('descripcion').value.trim(),
+            ci: '12345678',
+            id_tipo_residuo: tipoResiduoMap[selectedTipo] || 1,
             captcha_respuesta: document.getElementById('captcha_respuesta').value
         };
 
@@ -329,12 +337,23 @@
 
                 // Mostrar errores por campo
                 if (data.errors && typeof data.errors === 'object') {
+                    const extraErrors = [];
                     Object.keys(data.errors).forEach(field => {
                         const errorElement = document.getElementById(`error-${field}`);
                         if (errorElement) {
                             errorElement.textContent = data.errors[field];
+                        } else {
+                            extraErrors.push(`${field}: ${data.errors[field]}`);
                         }
                     });
+
+                    if (extraErrors.length > 0) {
+                        alertMessage.innerHTML += `
+                            <div style="margin-top: 10px; font-size: 0.95rem;">
+                                ${extraErrors.join('<br>')}
+                            </div>
+                        `;
+                    }
                 }
 
                 submitBtn.disabled = false;
