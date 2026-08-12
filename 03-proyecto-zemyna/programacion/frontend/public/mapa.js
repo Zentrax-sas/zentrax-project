@@ -1,5 +1,3 @@
-const APP_BASE_URL = 'http://localhost/zentrax-project/03-proyecto-zemyna/programacion/frontend/public';
-
 if (window.location.protocol === 'file:') {
     window.location.replace(`${APP_BASE_URL}/index.html`);
 }
@@ -61,12 +59,6 @@ function mostrarToast(texto, tipo = 'exito') {
     toastTimerId = setTimeout(() => {
         toastExito.classList.remove('show');
     }, 2600);
-}
-
-function buildApiUrl(path) {
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    const separator = normalizedPath.includes('?') ? '&' : '?';
-    return `http://localhost/zentrax-project/03-proyecto-zemyna/programacion${normalizedPath}${separator}t=${Date.now()}`;
 }
 
 async function cargarCaptchaReporte() {

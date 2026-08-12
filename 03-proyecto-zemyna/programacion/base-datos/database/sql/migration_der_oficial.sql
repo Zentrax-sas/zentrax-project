@@ -1,3 +1,6 @@
+-- migration_der_oficial.sql = histórico, solo para entornos con datos del schema viejo, no ejecutar en instalación nueva
+-- Este script existe como registro histórico de migración desde el esquema anterior.
+
 -- Migracion desde schema legado (rol/usuario/contenedor/camion/incidencia)
 -- hacia DER oficial Zemyna v0.9
 -- Ejecutar en entorno de desarrollo con backup previo.
@@ -78,10 +81,14 @@ CREATE TABLE usuario (
     fecha_registro DATE                             NOT NULL,
     rol            ENUM('Administrador','Operario') NOT NULL,
     id_centro      INT                              NOT NULL,
+    activo         TINYINT(1)                       NOT NULL DEFAULT 1,
     PRIMARY KEY (id_usuario),
     UNIQUE KEY uk_usuario_email (email),
     CONSTRAINT fk_usuario_centro FOREIGN KEY (id_centro) REFERENCES centro (id_centro)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE usuario
+  ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1 AFTER id_centro;
 
 CREATE TABLE contenedor (
     id_contenedor   INT                                                     NOT NULL AUTO_INCREMENT,

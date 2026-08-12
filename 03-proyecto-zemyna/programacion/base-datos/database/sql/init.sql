@@ -1,3 +1,6 @@
+-- init.sql = datos demo, ejecutar después de schema.sql
+-- Este archivo solo agrega registros iniciales para entorno de desarrollo o demo.
+
 -- Datos de ejemplo para Zemyna — DER oficial v0.9
 -- Respetar orden de inserción por FK
 
@@ -32,10 +35,10 @@ INSERT INTO vecino (ci, nombre, apellido, telefono) VALUES
 ('11223344', 'Martín',  'López',     '092-333333');
 
 -- Usuarios (Administradores y Operarios — RNE-03/04)
-INSERT INTO usuario (nombre, apellido, email, contraseña, telefono, fecha_registro, rol, id_centro) VALUES
-('Facundo', 'Pérez',    'facu@zemyna.com',   '$2y$10$demo.hash.admin',   '091-001001', '2025-01-10', 'Administrador', 1),
-('Diego',   'Suárez',   'diego@zemyna.com',  '$2y$10$demo.hash.oper1',   '091-002002', '2025-02-15', 'Operario',      1),
-('Andrea',  'Méndez',   'andrea@zemyna.com', '$2y$10$demo.hash.oper2',   '091-003003', '2025-03-20', 'Operario',      2);
+INSERT INTO usuario (nombre, apellido, email, contraseña, telefono, fecha_registro, rol, id_centro, activo) VALUES
+('Facundo', 'Pérez',    'facu@zemyna.com',   '$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe', '091-001001', '2025-01-10', 'Administrador', 1, 1),
+('Diego',   'Suárez',   'diego@zemyna.com',  '$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe', '091-002002', '2025-02-15', 'Operario',      1, 1),
+('Andrea',  'Méndez',   'andrea@zemyna.com', '$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe', '091-003003', '2025-03-20', 'Operario',      2, 1);
 
 -- Contenedores
 INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES

@@ -17,9 +17,23 @@ class Contenedor {
         $this->conn = $db;
     }
 
-    public function read() {
+    public function read($id = null, $page = 1, $limit = 20) {
         if (!$this->conn) return null;
-        $stmt = $this->conn->prepare("SELECT * FROM " . $this->table_name);
+
+        $where = '';
+        if ($id !== null && $id !== '') {
+            $where = ' WHERE id_contenedor = :id_contenedor';
+        }
+
+        $offset = ($page - 1) * $limit;
+        $query = 'SELECT * FROM ' . $this->table_name . $where . ' ORDER BY id_contenedor ASC LIMIT :limit OFFSET :offset';
+        $stmt = $this->conn->prepare($query);
+
+        if ($id !== null && $id !== '') {
+            $stmt->bindValue(':id_contenedor', (int) $id, PDO::PARAM_INT);
+        }
+        $stmt->bindValue(':limit', (int) $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int) $offset, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt;
     }

@@ -45,7 +45,7 @@ async function cargarContenedores() {
 }
 
 async function cargarCamiones() {
-    return cargarListado('/api/camiones.php', 'lista-camiones');
+    return cargarListado('/api/vehiculos.php', 'lista-camiones');
 }
 
 window.ZemynaApp = {

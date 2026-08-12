@@ -1,14 +1,6 @@
 <?php
-session_start();
-header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+require_once __DIR__ . '/../config/bootstrap.php';
+require_once __DIR__ . '/../models/Usuario.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -26,49 +18,38 @@ if (json_last_error() !== JSON_ERROR_NONE) {
 $email = trim($body['email'] ?? '');
 $password = trim($body['password'] ?? '');
 
-$usuariosDemo = [
-    [
-        'email' => 'facu@zemyna.com',
-        'password' => '123456',
-        'nombre' => 'Facundo',
-        'rol' => 1
-    ],
-    [
-        'email' => 'diego@zemyna.com',
-        'password' => '123456',
-        'nombre' => 'Diego',
-        'rol' => 3
-    ],
-      [
-        'email' => 'andrea@zemyna.com',
-        'password' => '123456',
-        'nombre' => 'Andrea',
-        'rol' => 2
-    ]
-];
+$database = new Database();
+$db = $database->getConnection();
 
-$usuario = null;
-foreach ($usuariosDemo as $item) {
-    if ($item['email'] === $email && $item['password'] === $password) {
-        $usuario = $item;
-        break;
-    }
+if (!$db) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'No se pudo conectar a la base de datos.', 'errors' => ['Database unavailable']]);
+    exit;
 }
 
-if ($usuario) {
+$usuarioModel = new Usuario($db);
+$usuario = $usuarioModel->findByEmail($email);
+
+if ($usuario && password_verify($password, $usuario['contraseña'])) {
     $_SESSION['usuario'] = [
-        'email' => $usuario['email'],
+        'id_usuario' => (int) $usuario['id_usuario'],
         'nombre' => $usuario['nombre'],
-        'rol' => $usuario['rol']
+        'apellido' => $usuario['apellido'],
+        'email' => $usuario['email'],
+        'rol' => $usuario['rol'],
+        'id_centro' => (int) $usuario['id_centro']
     ];
 
     echo json_encode([
         'success' => true,
         'message' => 'Inicio de sesión correcto.',
         'data' => [
+            'id_usuario' => (int) $usuario['id_usuario'],
             'nombre' => $usuario['nombre'],
+            'apellido' => $usuario['apellido'],
             'email' => $usuario['email'],
-            'rol' => $usuario['rol']
+            'rol' => $usuario['rol'],
+            'id_centro' => (int) $usuario['id_centro']
         ]
     ]);
     exit;

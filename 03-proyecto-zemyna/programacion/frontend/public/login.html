@@ -67,21 +67,10 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
     <script>
-    const APP_BASE_URL = 'http://localhost/zentrax-project/03-proyecto-zemyna/programacion/frontend/public';
-
     if (window.location.protocol === 'file:') {
         window.location.replace(`${APP_BASE_URL}/login.html`);
-    }
-
-    function buildApiUrl(path) {
-        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-        const separator = normalizedPath.includes('?') ? '&' : '?';
-        return `http://localhost/zentrax-project/03-proyecto-zemyna/programacion${normalizedPath}${separator}t=${Date.now()}`;
-    }
-
-    function buildFrontendUrl(page) {
-        return `${APP_BASE_URL}/${page}`;
     }
 
     document.getElementById('login-form').addEventListener('submit', async function (event) {

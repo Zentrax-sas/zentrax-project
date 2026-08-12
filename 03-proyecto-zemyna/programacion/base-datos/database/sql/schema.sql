@@ -1,3 +1,7 @@
+-- schema.sql = ejecutar para instalación limpia
+-- Fuente de verdad del DER oficial Zemyna — MySQL 8 compatible.
+-- Este archivo debe usarse como base para una instalación nueva.
+
 -- Schema oficial Zemyna — DER v0.9 (ZTX-DOC-ISW-001 / ZTX-DOC-ISW-003)
 -- MySQL 8 compatible — 17 tablas
 -- RNE-21: todo CENTRO debe ser Acopio O Vertedero (herencia total y exclusiva).
@@ -78,6 +82,7 @@ CREATE TABLE usuario (
     fecha_registro DATE                             NOT NULL,
     rol            ENUM('Administrador','Operario') NOT NULL,
     id_centro      INT                              NOT NULL,
+    activo         TINYINT(1)                       NOT NULL DEFAULT 1,
     PRIMARY KEY (id_usuario),
     UNIQUE KEY uk_usuario_email (email),
     CONSTRAINT fk_usuario_centro FOREIGN KEY (id_centro) REFERENCES centro (id_centro)

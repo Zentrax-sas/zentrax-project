@@ -1,16 +1,7 @@
 <?php
-session_start();
-header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+require_once __DIR__ . '/../config/bootstrap.php';
 
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-
-if ($requestMethod === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
 
 if ($requestMethod !== 'GET') {
     http_response_code(405);

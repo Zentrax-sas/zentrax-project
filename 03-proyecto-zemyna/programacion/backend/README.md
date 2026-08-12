@@ -40,7 +40,6 @@
 | Vehículos | POST | /api/vehiculos.php | Crea un vehículo |
 | Vehículos | PUT | /api/vehiculos.php | Actualiza un vehículo |
 | Vehículos | DELETE | /api/vehiculos.php | Elimina un vehículo |
-| Vehículos (compat) | GET | /api/camiones.php | Alias legacy de vehículos |
 | Cuadrillas | GET | /api/cuadrillas.php | Lista cuadrillas |
 | Cuadrillas | POST | /api/cuadrillas.php | Crea una cuadrilla |
 | Cuadrillas | PUT | /api/cuadrillas.php | Actualiza una cuadrilla |
@@ -72,7 +71,21 @@
 | Recorre (N:M) | POST | /api/recorre.php | Crea asociación vehículo-ruta |
 | Recorre (N:M) | DELETE | /api/recorre.php | Elimina asociación vehículo-ruta |
 
-## Credenciales demo
+## Configuración de entorno
 
-- Usuario demo: facu@zemyna.com
-- Contraseña demo: 123456
+Este backend no usa credenciales hardcodeadas ni contraseñas en el repositorio. Copiá el archivo de ejemplo:
+
+```bash
+cp .env.example .env
+```
+
+Luego completá los valores reales de conexión en `.env`:
+
+```env
+DB_HOST=localhost
+DB_NAME=zemyna
+DB_USER=root
+DB_PASS=
+```
+
+Las credenciales de usuarios demo se cargan desde `base-datos/database/sql/init.sql` con contraseñas hasheadas, y no deben exponerse en texto plano en este README.

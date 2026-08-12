@@ -1,0 +1,10 @@
+.env
+.env.*
+!03-proyecto-zemyna/programacion/.env.example
+
+/03-proyecto-zemyna/programacion/.venv/
+/vendor/
+/node_modules/
+
+.DS_Store
+Thumbs.db

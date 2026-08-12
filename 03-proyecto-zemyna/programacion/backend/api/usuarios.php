@@ -1,11 +1,5 @@
 <?php
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE");
-header("Access-Control-Allow-Headers: Content-Type");
-
-require_once __DIR__ . '/../controllers/UsuarioController.php';
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/bootstrap.php';
 
 $database   = new Database();
 $db         = $database->getConnection();
@@ -15,12 +9,19 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        $response = $controller->getAll();
-        http_response_code(200);
+        requireAuth();
+        $filters = [
+            'id' => isset($_GET['id']) ? $_GET['id'] : null,
+            'page' => isset($_GET['page']) ? $_GET['page'] : 1,
+            'limit' => isset($_GET['limit']) ? $_GET['limit'] : 20,
+        ];
+        $response = $controller->getAll($filters);
+        http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));
         echo json_encode($response);
         break;
 
     case "POST":
+        requireRole(['Administrador']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -28,11 +29,12 @@ switch ($method) {
             break;
         }
         $response = $controller->create($data ?? []);
-        http_response_code($response['success'] ? 201 : 400);
+        http_response_code($response['statusCode'] ?? ($response['success'] ? 201 : 400));
         echo json_encode($response);
         break;
 
     case "PUT":
+        requireRole(['Administrador']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -40,11 +42,12 @@ switch ($method) {
             break;
         }
         $response = $controller->update($data ?? []);
-        http_response_code($response['success'] ? 200 : 400);
+        http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));
         echo json_encode($response);
         break;
 
     case "DELETE":
+        requireRole(['Administrador']);
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
         if (!isset($data['id_usuario'])) {
             http_response_code(400);
@@ -52,7 +55,7 @@ switch ($method) {
             break;
         }
         $response = $controller->delete($data['id_usuario']);
-        http_response_code($response['success'] ? 200 : 400);
+        http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));
         echo json_encode($response);
         break;
 
