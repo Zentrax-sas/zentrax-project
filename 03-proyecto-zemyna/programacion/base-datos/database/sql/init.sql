@@ -4,7 +4,6 @@
 -- Datos de ejemplo para Zemyna — DER oficial v0.9
 -- Respetar orden de inserción por FK
 
--- Tipos de residuo (RNE-27)
 INSERT INTO tipo_residuo (nombre, descripcion) VALUES
 ('Orgánico',            'Residuos de origen biológico: restos de comida, hojas, etc.'),
 ('Papel y cartón',      'Papeles, diarios, cartones limpios y secos.'),
@@ -15,7 +14,7 @@ INSERT INTO ruta (nombre, zona) VALUES
 ('Ruta Norte',  'Zona norte de la ciudad'),
 ('Ruta Centro', 'Zona céntrica y microcentro');
 
--- Centros (RNE-21: cada centro debe ser Acopio o Vertedero)
+-- Centros 
 INSERT INTO centro (nombre, direccion, telefono) VALUES
 ('Centro de Acopio Norte',     'Av. Gral. Rivera 1500',  '099-100100'),
 ('Vertedero Municipal Sur',    'Camino Maldonado km 12', '099-200200'),
@@ -34,11 +33,11 @@ INSERT INTO vecino (ci, nombre, apellido, telefono) VALUES
 ('87654321', 'Laura',   'Rodríguez', '092-222222'),
 ('11223344', 'Martín',  'López',     '092-333333');
 
--- Usuarios (Administradores y Operarios — RNE-03/04)
-INSERT INTO usuario (nombre, apellido, email, contraseña, telefono, fecha_registro, rol, id_centro, activo) VALUES
-('Facundo', 'Pérez',    'facu@zemyna.com',   '$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe', '091-001001', '2025-01-10', 'Administrador', 1, 1),
-('Diego',   'Suárez',   'diego@zemyna.com',  '$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe', '091-002002', '2025-02-15', 'Operario',      1, 1),
-('Andrea',  'Méndez',   'andrea@zemyna.com', '$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe', '091-003003', '2025-03-20', 'Operario',      2, 1);
+-- Usuarios (Administradores y Operarios)
+INSERT INTO usuario (nombre, apellido, email, contraseña, telefono, fecha_registro, id_centro, activo) VALUES
+('Facundo', 'Pérez',    'facu@zemyna.com',   '$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe', '091-001001', '2025-01-10', 1, 1),
+('Diego',   'Suárez',   'diego@zemyna.com',  '$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe', '091-002002', '2025-02-15', 1, 1),
+('Andrea',  'Méndez',   'andrea@zemyna.com', '$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe', '091-003003', '2025-03-20', 2, 1);
 
 -- Contenedores
 INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
