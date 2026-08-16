@@ -128,18 +128,14 @@ if (submitReporteButton) {
         }
 
         try {
-            const response = await fetch(buildApiUrl('/backend/api/solicitud.php'), {
+            const response = await fetch(buildApiUrl('/backend/api/incidencias.php'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({
-                    direccion: document.getElementById('form-direccion').value || document.getElementById('form-id-contenedor').value,
-                    email: 'demo@zemyna.com',
-                    telefono: '+598 99 000 000',
-                    tipo_solicitud: document.getElementById('tipo_incidencia').value || 'Incidencia',
-                    descripcion: `Incidencia en contenedor ${document.getElementById('form-id-contenedor').value} - ${document.getElementById('form-direccion').value}`,
-                    ci: '12345678',
-                    id_tipo_residuo: 1,
+                    id_contenedor: document.getElementById('form-id-contenedor').value,
+                    tipo_problema: document.getElementById('tipo_incidencia').value,
+                    direccion: document.getElementById('form-direccion').value,
                     captcha_respuesta: captchaInput.value
                 })
             });
@@ -150,24 +146,14 @@ if (submitReporteButton) {
                 throw new Error(detalleCaptcha || json.message || 'Error al enviar el reporte.');
             }
 
-            const tracking = json?.tracking_number || json?.data?.tracking_number || null;
             if (reporteMessage) {
-                reporteMessage.textContent = tracking
-                    ? `Incidencia enviada correctamente. Nro de seguimiento: ${tracking}`
-                    : 'Incidencia enviada correctamente.';
+                reporteMessage.textContent = 'Incidencia enviada correctamente.';
             }
             actualizarEstadoGlobal(
-                tracking
-                    ? `Ultimo envio exitoso. Seguimiento: ${tracking}`
-                    : 'Ultimo envio exitoso.',
+                'Ultimo envio exitoso.',
                 'exito'
             );
-            mostrarToast(
-                tracking
-                    ? `Exito: reporte enviado. Seguimiento ${tracking}`
-                    : 'Exito: reporte enviado en modo simulacion.',
-                'exito'
-            );
+            mostrarToast('Exito: reporte enviado.', 'exito');
 
             formReporte.reset();
             document.getElementById('form-msg-vacio').style.display = 'block';
@@ -197,6 +183,39 @@ if (refreshCaptchaButton) {
     refreshCaptchaButton.addEventListener('click', cargarCaptchaReporte);
 }
 
+const trackingForm = document.getElementById('tracking-form');
+const trackingMessage = document.getElementById('tracking-message');
+const trackingResult = document.getElementById('tracking-result');
+
+if (trackingForm) {
+    trackingForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const trackingNumber = document.getElementById('tracking-number').value.trim();
+        trackingMessage.textContent = 'Consultando...';
+        trackingMessage.classList.remove('error');
+        trackingResult.hidden = true;
+
+        try {
+            const response = await fetch(buildApiUrl(`/backend/api/incidencias.php?tracking_number=${encodeURIComponent(trackingNumber)}`));
+            const json = await response.json();
+            if (!response.ok || !json.success) {
+                throw new Error(json.message || 'No se encontró la incidencia.');
+            }
+
+            const incidencia = json.data;
+            trackingResult.innerHTML = `<strong>${incidencia.tracking_number}</strong><br>
+                Estado: ${incidencia.estado}<br>
+                Fecha: ${incidencia.fecha_reporte}<br>
+                Problema: ${incidencia.tipo_problema}`;
+            trackingResult.hidden = false;
+            trackingMessage.textContent = '';
+        } catch (error) {
+            trackingMessage.textContent = error.message;
+            trackingMessage.classList.add('error');
+        }
+    });
+}
+
 const contenedoresIM = [
     { id: 'CH_RM_CL_101', lat: -34.9011, lng: -56.1645, calle: 'Av. Brasil', esquina: 'Lázaro Gadea' },
     { id: 'CH_RS_CL_102', lat: -34.9034, lng: -56.1682, calle: 'Brito del Pino', esquina: 'Charrúa' },
@@ -214,7 +233,8 @@ function renderContenedores(contenedores) {
     contenedores.forEach(contenedor => {
         const lat = parseFloat(contenedor.latitud ?? contenedor.lat ?? -34.9150);
         const lng = parseFloat(contenedor.longitud ?? contenedor.lng ?? -56.1540);
-        const idContenedor = contenedor.id_contenedor ?? contenedor.id ?? contenedor.codigo ?? 'Sin ID';
+        const idContenedor = contenedor.id_contenedor ?? contenedor.id ?? 'Sin ID';
+        const codigoContenedor = contenedor.codigo ?? contenedor.id ?? idContenedor;
         const direccion = contenedor.direccion || (contenedor.calle && contenedor.esquina ? `${contenedor.calle} y ${contenedor.esquina}` : 'Sin dirección');
         const estado = String(contenedor.estado || 'verde').toLowerCase();
         let colorNeon = '#22c55e';
@@ -233,7 +253,7 @@ function renderContenedores(contenedores) {
             fillOpacity: 0.9
         }).addTo(map);
 
-        marcador.bindPopup(`<b>Contenedor:</b> ${idContenedor}<br>Hacé clic para reportar.`);
+        marcador.bindPopup(`<b>Contenedor:</b> ${codigoContenedor}<br>Hacé clic para reportar.`);
 
         marcador.on('click', function() {
             const form = document.getElementById('form-reporte');
@@ -270,8 +290,9 @@ async function cargarContenedoresMapa() {
         throw new Error('La API devolvió un set parcial; se usa fallback local.');
     } catch (error) {
         console.warn('No se pudo cargar la API de contenedores, usando datos de prueba.', error);
-        renderContenedores(contenedoresIM.map(contenedor => ({
-            id_contenedor: contenedor.id,
+        renderContenedores(contenedoresIM.map((contenedor, index) => ({
+            id_contenedor: (index % 3) + 1,
+            codigo: contenedor.id,
             latitud: contenedor.lat,
             longitud: contenedor.lng,
             direccion: `${contenedor.calle} y ${contenedor.esquina}`,

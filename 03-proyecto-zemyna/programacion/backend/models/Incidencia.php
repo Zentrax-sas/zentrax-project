@@ -4,6 +4,7 @@ class Incidencia {
     private string $table_name = "incidencia";
 
     public $id_incidencia;
+    public $tracking_number;
     public $descripcion;
     public $fecha_reporte;
     public $estado;
@@ -46,9 +47,10 @@ class Incidencia {
             return false;
         }
         $query = "INSERT INTO " . $this->table_name . "
-                  (descripcion, fecha_reporte, estado, prioridad, tipo_problema, id_contenedor, id_cuadrilla, id_usuario)
-                  VALUES (:descripcion, :fecha_reporte, :estado, :prioridad, :tipo_problema, :id_contenedor, :id_cuadrilla, :id_usuario)";
+                  (tracking_number, descripcion, fecha_reporte, estado, prioridad, tipo_problema, id_contenedor, id_cuadrilla, id_usuario)
+                  VALUES (:tracking_number, :descripcion, :fecha_reporte, :estado, :prioridad, :tipo_problema, :id_contenedor, :id_cuadrilla, :id_usuario)";
         $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":tracking_number", $this->tracking_number);
         $stmt->bindParam(":descripcion",   $this->descripcion);
         $stmt->bindParam(":fecha_reporte", $this->fecha_reporte);
         $stmt->bindParam(":estado",        $this->estado);
@@ -58,6 +60,15 @@ class Incidencia {
         $stmt->bindParam(":id_cuadrilla",  $this->id_cuadrilla);
         $stmt->bindParam(":id_usuario",    $this->id_usuario);
         return $stmt->execute();
+    }
+
+    public function findByTrackingNumber($trackingNumber) {
+        if (!$this->conn) return null;
+        $query = "SELECT * FROM " . $this->table_name . " WHERE tracking_number = :tracking_number LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':tracking_number', $trackingNumber);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function update() {

@@ -204,6 +204,7 @@ CREATE TABLE cuadrilla (
 
 CREATE TABLE incidencia (
     id_incidencia INT AUTO_INCREMENT PRIMARY KEY,
+    tracking_number VARCHAR(20) NOT NULL UNIQUE,
     descripcion TEXT NOT NULL,
     fecha_reporte DATETIME NOT NULL,
     estado ENUM('Pendiente','En Proceso','Resuelta') NOT NULL,

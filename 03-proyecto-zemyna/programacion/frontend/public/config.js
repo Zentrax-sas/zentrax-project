@@ -9,7 +9,7 @@ const BACKEND_BASE_URL = (() => {
 })();
 
 function buildApiUrl(path) {
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const normalizedPath = `/${String(path).replace(/^\/+/, '')}`.replace(/^\/(?:backend\/)+/, '/');
     const separator = normalizedPath.includes('?') ? '&' : '?';
     return `${BACKEND_BASE_URL}${normalizedPath}${separator}t=${Date.now()}`;
 }

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/bootstrap.php';
+require_once __DIR__ . '/../helpers/captcha.php';
 
 $database   = new Database();
 $db         = $database->getConnection();
@@ -9,6 +10,12 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
+        if (isset($_GET['tracking_number']) && $_GET['tracking_number'] !== '') {
+            $response = $controller->getByTrackingNumber($_GET['tracking_number']);
+            http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 404));
+            echo json_encode($response);
+            break;
+        }
         $filters = [
             'id' => isset($_GET['id']) ? $_GET['id'] : null,
             'page' => isset($_GET['page']) ? $_GET['page'] : 1,
@@ -24,6 +31,15 @@ switch ($method) {
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
             echo json_encode(["success" => false, "message" => "JSON inválido.", "errors" => [json_last_error_msg()]]);
+            break;
+        }
+        if (!validarCaptcha($data['captcha_respuesta'] ?? null)) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "Captcha incorrecto, intentá de nuevo.",
+                "errors" => ["captcha_respuesta" => "Captcha incorrecto o expirado."]
+            ]);
             break;
         }
         $response = $controller->create($data ?? []);

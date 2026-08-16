@@ -79,7 +79,10 @@ INSERT INTO usuario
 VALUES
 ('Facundo','Pérez','facu@zemyna.com','$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe','091-001001','2025-01-10',1),
 ('Diego','Suárez','diego@zemyna.com','$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe','091-002002','2025-02-15',1),
-('Andrea','Méndez','andrea@zemyna.com','$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe','091-003003','2025-03-20', 2);
+('Andrea','Méndez','andrea@zemyna.com','$2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe','091-003003','2025-03-20', 2),
+('Sistema','Zemyna','sistema@zemyna.local','$2y$10$92X2zQ5GQ0hV8v3K6XcQ6eGqzO3wQ8gP8wQ5H5v7J4c4S5x4m3Y2u','000000000','2025-01-01',1);
+
+-- IDs semilla usados por IncidenciaController: Usuario Sistema = 4.
 
 -- =====================================
 -- ASIGNACIÓN DE ROLES
@@ -90,7 +93,8 @@ INSERT INTO usuario_rol
 VALUES
 (1, 1, 'Administración', '2025-01-10', NULL),
 (2, 2, 'Recolección', '2025-02-15', NULL),
-(3, 2, 'Recolección', '2025-03-20', NULL);
+(3, 2, 'Recolección', '2025-03-20', NULL),
+(4, 1, 'Sistema', '2025-01-01', NULL);
 
 -- =====================================
 -- CONTENEDORES
@@ -111,7 +115,10 @@ INSERT INTO cuadrilla
 (nombre, turno, id_centro)
 VALUES
 ('Cuadrilla Alpha', 'Matutino', 1),
-('Cuadrilla Beta', 'Vespertino', 2);
+('Cuadrilla Beta', 'Vespertino', 2),
+('Sin Asignar', 'Matutino', 1);
+
+-- ID semilla usado por IncidenciaController: Cuadrilla Sin Asignar = 3.
 
 -- =====================================
 -- VEHÍCULOS
@@ -161,10 +168,10 @@ VALUES
 -- =====================================
 
 INSERT INTO incidencia
-(descripcion,fecha_reporte,estado,prioridad,tipo_problema,id_contenedor,id_cuadrilla,id_usuario)
+(tracking_number,descripcion,fecha_reporte,estado,prioridad,tipo_problema,id_contenedor,id_cuadrilla,id_usuario)
 VALUES
-('Contenedor dañado, tapa rota.','2025-06-01 09:00:00','Pendiente','Alta','Contenedor Roto/Dañado',1,1,2),
-('Contenedor desbordado, necesita vaciado.','2025-06-02 11:30:00','En Proceso','Media','Contenedor Desbordado',2,2,3);
+('INC-2025-A1B2C','Contenedor dañado, tapa rota.','2025-06-01 09:00:00','Pendiente','Alta','Contenedor Roto/Dañado',1,1,2),
+('INC-2025-D3E4F','Contenedor desbordado, necesita vaciado.','2025-06-02 11:30:00','En Proceso','Media','Contenedor Desbordado',2,2,3);
 
 -- =====================================
 -- RECLAMOS

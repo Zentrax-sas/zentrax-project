@@ -183,6 +183,30 @@
             box-shadow: 0 0 15px var(--neon-green);
             transform: translateY(-2px);
         }
+
+        .tracking-section {
+            padding: 0 40px 40px;
+        }
+
+        .tracking-card {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px 30px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .tracking-card h3 { margin: 0 0 8px; }
+        .tracking-card p { color: #aaa; }
+        .tracking-form label { display: block; font-weight: 600; }
+        .tracking-controls { display: flex; gap: 12px; align-items: center; }
+        .tracking-controls input { margin: 8px 0 0; }
+        .tracking-controls .submit-button { width: auto; min-width: 170px; margin-top: 8px; }
+        .tracking-message { min-height: 22px; margin: 14px 0 0; }
+        .tracking-message.error { color: #fca5a5; }
+        .tracking-result { margin-top: 14px; padding: 14px; border-left: 3px solid var(--neon-green); background: #111; }
+        .tracking-result strong { color: var(--neon-green); }
     
 /* --- ADAPTACIÓN PARA CELULARES --- */
 /* --- OPTIMIZACIÓN TOTAL PARA CELULARES --- */
@@ -232,4 +256,9 @@
         right: 15px;
         max-width: none;
     }
+
+    .tracking-section { padding: 0 15px 30px; }
+    .tracking-card { padding: 20px; }
+    .tracking-controls { flex-direction: column; align-items: stretch; gap: 0; }
+    .tracking-controls .submit-button { width: 100%; }
 }
