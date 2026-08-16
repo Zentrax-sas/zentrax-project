@@ -1,4 +1,6 @@
--- migration_der_oficial.sql = histórico, solo para entornos con datos del schema viejo, no ejecutar en instalación nueva
+-- OBSOLETA desde 2026-08-16: no contempla la normalización de roles ni la tabla mantenimiento.
+-- Reemplazada por migration_v2_roles_normalizados.sql.
+-- No ejecutar en una instalación nueva.
 -- Este script existe como registro histórico de migración desde el esquema anterior.
 
 -- Migracion desde schema legado (rol/usuario/contenedor/camion/incidencia)

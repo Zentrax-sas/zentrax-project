@@ -30,7 +30,7 @@ if (!$db) {
 $usuarioModel = new Usuario($db);
 $usuario = $usuarioModel->findByEmail($email);
 
-if ($usuario && password_verify($password, $usuario['contraseña'])) {
+if ($usuario && password_verify($password, $usuario['contrasena'])) {
     $_SESSION['usuario'] = [
         'id_usuario' => (int) $usuario['id_usuario'],
         'nombre' => $usuario['nombre'],

@@ -16,7 +16,7 @@ class UsuarioController {
     }
 
     private function getPasswordValue(array $data): ?string {
-        $value = $data['contrasena'] ?? $data['contraseña'] ?? null;
+        $value = $data['contrasena'] ?? null;
         if (is_string($value)) {
             return trim($value);
         }
@@ -42,7 +42,7 @@ class UsuarioController {
         elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'El email no tiene un formato válido.';
         elseif (mb_strlen($email) > 150) $errors[] = 'El email no puede superar los 150 caracteres.';
 
-        if (!$isUpdate || (isset($data['contrasena']) && $data['contrasena'] !== '') || (isset($data['contraseña']) && $data['contraseña'] !== '')) {
+        if (!$isUpdate || (isset($data['contrasena']) && $data['contrasena'] !== '')) {
             $rawPassword = $this->getPasswordValue($data);
             if ($rawPassword === null || $rawPassword === '') $errors[] = 'La contraseña es obligatoria.';
             elseif (!is_string($rawPassword) || mb_strlen($rawPassword) < 6 || mb_strlen($rawPassword) > 72) $errors[] = 'La contraseña debe tener entre 6 y 72 caracteres.';

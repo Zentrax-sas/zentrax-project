@@ -3,6 +3,7 @@
 !03-proyecto-zemyna/programacion/.env.example
 
 /03-proyecto-zemyna/programacion/.venv/
+.venv/
 /vendor/
 /node_modules/
 

@@ -89,3 +89,17 @@ DB_PASS=
 ```
 
 Las credenciales de usuarios demo se cargan desde `base-datos/database/sql/init.sql` con contraseñas hasheadas, y no deben exponerse en texto plano en este README.
+
+## Base de datos y migraciones
+
+Para una instalación nueva, ejecutar `base-datos/database/sql/schema.sql` y luego
+`base-datos/database/sql/init.sql` si se necesitan datos demo.
+
+La migración `base-datos/database/sql/migration_v2_roles_normalizados.sql` es solo
+para entornos de desarrollo que todavía usan el schema intermedio con `usuario.rol`.
+Normaliza los roles en `rol`/`usuario_rol` y crea `mantenimiento`; no debe ejecutarse
+en una instalación nueva.
+
+La migración anterior está archivada como
+`base-datos/database/sql/historico/migration_der_oficial_OBSOLETA.sql` y no debe
+ejecutarse.

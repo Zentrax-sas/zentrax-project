@@ -174,7 +174,7 @@ INSERT INTO reclamo
 (fecha, descripcion, estado, ci, id_incidencia)
 VALUES
 ('2025-06-01 10:00:00','El contenedor de mi cuadra está roto desde hace días.','Pendiente','12345678',1),
-('2025-06-02 12:00:00','Hay residuos en la vereda por desbordamiento.','Atendido','87654321',);
+('2025-06-02 12:00:00','Hay residuos en la vereda por desbordamiento.','Atendido','87654321',2);
 
 -- =====================================
 -- FOTOS
@@ -207,5 +207,5 @@ INSERT INTO mantenimiento
 (fecha_inicio,fecha_fin,estado,tipo,descripcion,id_vehiculo,id_contenedor,id_maquinaria)
 VALUES
 ('2025-06-10 08:00:00',NULL,'En Proceso','Preventivo','Revisión general del vehículo.',1,NULL,NULL),
-('2025-06-11 09:00:00',NULL,'Pendiente','Correctivo','Reparación de daños en el contenedor.',NULL,1,NUL),
+('2025-06-11 09:00:00',NULL,'Pendiente','Correctivo','Reparación de daños en el contenedor.',NULL,1,NULL),
 ('2025-06-12 10:00:00',NULL,'Pendiente','Preventivo','Mantenimiento general de la maquinaria.',NULL,NULL,1);
