@@ -1,46 +1,126 @@
-# ZEMYNA 🚛🌱
-### *by Zentrax*
+# Zemyna
 
-> **Plataforma Ciudadana y de Gestión para la Optimización de Residuos Urbanos**
-> Proyecto Académico de Ingeniería de Software - UTU (Uruguay).
+Zemyna es una plataforma desarrollada por **Zentrax SAS** para apoyar la gestión de residuos urbanos.
 
----
+La propuesta reúne en un mismo sistema herramientas para la ciudadanía y para el personal encargado de la gestión. Desde la parte pública se pueden registrar incidencias y solicitudes de retiro. Desde la aplicación interna se administran usuarios, contenedores, vehículos, rutas, cuadrillas y otros recursos relacionados con la recolección.
 
-## 📋 Descripción General
-**Zemyna** es una solución integral diseñada por **Zentrax** para optimizar la gestión de residuos urbanos y la interacción ciudadana. El ecosistema conecta en tiempo real el reporte interactivo de los vecinos con un panel de administración logística y de infraestructura de la ciudad.
+El proyecto se encuentra en desarrollo y las funciones se van incorporando y probando por etapas.
 
----
+## Funciones principales
 
-## 🛠️ Arquitectura Técnica y Escalabilidad
-Para garantizar que el sistema pueda crecer de forma sostenible y soportar múltiples módulos futuros, se definió una arquitectura modular basada en servicios independientes:
+- Registro de incidencias sobre contenedores y residuos.
+- Generación de un código para consultar el estado de una incidencia.
+- Solicitud de retiro de residuos reciclables o de gran volumen.
+- Consulta de contenedores y puntos en el mapa.
+- Inicio de sesión para usuarios internos.
+- Administración de usuarios, roles y permisos.
+- Gestión de contenedores, vehículos, rutas, cuadrillas y centros.
+- APIs que reciben y devuelven información en formato JSON.
 
-*   **Patrón de Diseño:** **MVC (Modelo-Vista-Controlador)** en **PHP 8** nativo, asegurando la separación limpia entre la base de datos (Modelos), la lógica operativa (Controladores) y la interfaz de usuario (Vistas).
-*   **Comunicación:** El sistema se comporta como una **API RESTful**, lo que significa que el backend expone "ventanillas de servicio" estandarizadas que intercambian datos exclusivamente en formato **JSON**. Esto permite que el día de mañana la misma lógica sirva tanto para la web como para aplicaciones móviles o sistemas externos.
-*   **Infraestructura de Grado Producción:** Pensando en los entornos reales de despliegue, el proyecto está estructurado para su contenedorización mediante **Docker** y su ejecución sobre entornos estables de arquitectura empresarial como **Rocky Linux**.
+## Tecnologías utilizadas
 
----
+- PHP 8
+- MySQL 8
+- HTML, CSS y JavaScript
+- PDO para la conexión con la base de datos
+- Leaflet para los mapas
+- Rocky Linux como sistema operativo del servidor
+- Docker para facilitar la instalación y el despliegue
 
-## 📂 Estructura General del Proyecto
-El núcleo del backend está organizado de forma que añadir una nueva funcionalidad sea tan simple como replicar la estructura base:
+## Organización del repositorio
 
-*   `/api/`: Endpoints públicos encargados de recibir las peticiones HTTP y controlar las cabeceras de red (`CORS`, métodos de acceso).
-*   `/controllers/`: Componentes encargados de validar datos, aplicar reglas de negocio y encriptar credenciales de seguridad (`password_hash`).
-*   `/models/`: Clases dedicadas a la estructura de las entidades y la ejecución de consultas seguras (PDO) contra la base de datos.
+El repositorio contiene la documentación de Zentrax y el desarrollo de Zemyna.
 
----
+```text
+01-emprendedurismo-zentrax/   Documentación de la empresa
+02-web-zentrax/               Sitio web corporativo de Zentrax
+03-proyecto-zemyna/           Desarrollo y documentación de Zemyna
+04-docs/                      Documentos generales de apoyo
+99-entregas-finales/          Material preparado para presentaciones y entregas
+```
 
-## 🚀 Despliegue Local Rápido
+El código principal de Zemyna se encuentra en:
 
-### Requisitos Mínimos:
-*   Servidor local con soporte para **PHP 8.0 o superior** (XAMPP, Laragon, etc.).
+```text
+03-proyecto-zemyna/programacion/
+├── backend/
+│   ├── api/                  Endpoints del sistema
+│   ├── config/               Conexión y configuración
+│   ├── controllers/          Validaciones y lógica de cada operación
+│   ├── helpers/              Funciones compartidas
+│   └── models/               Consultas y acceso a la base de datos
+├── base-datos/
+│   └── database/sql/         Esquema, datos iniciales y migraciones
+└── frontend/
+    ├── public/               Pantallas públicas y administrativas
+    └── src/                  JavaScript y estilos
+```
 
-### Pasos:
-1. Clonar este repositorio dentro del directorio raíz de tu servidor web local (`htdocs` o `www`).
-2. Iniciar el servicio Apache.
-3. Acceder al punto de entrada del frontend en el navegador: `http://localhost/tu-carpeta/frontend/public/landing.html`.
+## Instalación local
 
----
-## 👥 Sobre el Equipo de Desarrollo
-Este ecosistema de software es diseñado, mantenido y escalado de forma iterativa por **Zentrax**, combinando tecnología, diseño responsivo y conectividad moderna.
+### Requisitos
 
-*Zentrax - Montevideo, 2026.*
+- Apache o un servidor compatible con PHP 8.
+- MySQL 8.
+- Extensión PDO MySQL habilitada.
+- XAMPP, Laragon o un entorno equivalente.
+
+### Pasos básicos
+
+1. Clonar el repositorio dentro de `htdocs`, `www` o la carpeta pública del servidor.
+2. Crear la base ejecutando:
+
+   ```text
+   03-proyecto-zemyna/programacion/base-datos/database/sql/schema.sql
+   ```
+
+3. Para cargar información de prueba, ejecutar después:
+
+   ```text
+   03-proyecto-zemyna/programacion/base-datos/database/sql/init.sql
+   ```
+
+4. Copiar el archivo `.env.example` con el nombre `.env`.
+5. Completar en `.env` el nombre de la base, el usuario y la contraseña de MySQL.
+6. Abrir en el navegador:
+
+   ```text
+   03-proyecto-zemyna/programacion/frontend/public/landing.html
+   ```
+
+Las migraciones de la carpeta SQL se utilizan solamente para actualizar instalaciones anteriores. Para una instalación desde cero se debe comenzar con `schema.sql`.
+
+## APIs
+
+Las APIs están dentro de `backend/api/`. Entre los recursos disponibles se encuentran:
+
+- usuarios;
+- vecinos;
+- contenedores;
+- vehículos;
+- rutas;
+- cuadrillas;
+- centros de acopio y vertederos;
+- incidencias y reclamos;
+- solicitudes de retiro;
+- tipos de residuo.
+
+Las peticiones y respuestas utilizan JSON. La lista de endpoints y métodos admitidos se encuentra en el README de la carpeta `backend`.
+
+## Estado actual
+
+En esta etapa ya están integrados el login con la base de datos, la estructura MVC, los principales CRUD, la normalización inicial de roles y el seguimiento público de incidencias.
+
+Todavía estamos trabajando en ampliar los permisos por tipo de usuario, completar las pruebas, mejorar el seguimiento de solicitudes y terminar de integrar algunos flujos operativos.
+
+## Equipo
+
+- **Facundo Bustamante:** coordinación, programación, integración, instalación y despliegue.
+- **Andrea Romero:** análisis, subcoordinación, arquitectura, redes, experiencia e identidad visual.
+- **Diego Gómez:** datos, seguridad, soporte e integración.
+
+## Empresa desarrolladora
+
+**Zentrax SAS**  
+Montevideo, Uruguay — 2026
+
