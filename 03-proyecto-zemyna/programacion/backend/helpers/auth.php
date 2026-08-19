@@ -18,8 +18,15 @@ function requireAuth(): void {
 function requireRole(array $rolesPermitidos): void {
     requireAuth();
 
-    $rolActual = $_SESSION['usuario']['rol'] ?? null;
-    if ($rolActual === null || !in_array($rolActual, $rolesPermitidos, true)) {
+    $rolesUsuario = $_SESSION['usuario']['roles'] ?? [];
+
+    if (!is_array($rolesUsuario)) {
+        $rolesUsuario = [];
+    }
+
+    $tienePermiso = !empty(array_intersect($rolesUsuario, $rolesPermitidos));
+
+    if (!$tienePermiso) {
         http_response_code(403);
         echo json_encode([
             'success' => false,

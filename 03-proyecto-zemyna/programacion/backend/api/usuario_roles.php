@@ -1,9 +1,10 @@
 <?php
 require_once __DIR__ . '/../config/bootstrap.php';
+require_once __DIR__ . '/../controllers/UsuarioRolController.php';
 
 $database = new Database();
 $db = $database->getConnection();
-$controller = new UsuarioController($db);
+$controller = new UsuarioRolController($db);
 
 $method = $_SERVER["REQUEST_METHOD"];
 
@@ -12,13 +13,8 @@ switch ($method) {
     case "GET":
         requireRole(['Superusuario']);
 
-        $filters = [
-            'id' => isset($_GET['id']) ? $_GET['id'] : null,
-            'page' => isset($_GET['page']) ? $_GET['page'] : 1,
-            'limit' => isset($_GET['limit']) ? $_GET['limit'] : 20,
-        ];
-
-        $response = $controller->getAll($filters);
+        $idUsuario = $_GET['id_usuario'] ?? null;
+        $response = $controller->getByUsuario($idUsuario);
 
         http_response_code(
             $response['statusCode'] ?? ($response['success'] ? 200 : 400)
@@ -26,7 +22,6 @@ switch ($method) {
 
         echo json_encode($response);
         break;
-
 
     case "POST":
         requireRole(['Superusuario']);
@@ -52,7 +47,6 @@ switch ($method) {
         echo json_encode($response);
         break;
 
-
     case "PUT":
         requireRole(['Superusuario']);
 
@@ -68,7 +62,7 @@ switch ($method) {
             break;
         }
 
-        $response = $controller->update($data ?? []);
+        $response = $controller->finalizar($data ?? []);
 
         http_response_code(
             $response['statusCode'] ?? ($response['success'] ? 200 : 400)
@@ -76,63 +70,12 @@ switch ($method) {
 
         echo json_encode($response);
         break;
-
-
-    case "DELETE":
-        requireRole(['Superusuario']);
-
-        $data = json_decode(file_get_contents("php://input"), true) ?? [];
-
-        if (!isset($data['id_usuario'])) {
-            http_response_code(400);
-            echo json_encode([
-                "success" => false,
-                "message" => "Falta id_usuario en el cuerpo de la petición."
-            ]);
-            break;
-        }
-
-        $response = $controller->delete($data['id_usuario']);
-
-        http_response_code(
-            $response['statusCode'] ?? ($response['success'] ? 200 : 400)
-        );
-
-        echo json_encode($response);
-        break;
-
-
-    case "PATCH":
-        requireRole(['Superusuario']);
-
-        $data = json_decode(file_get_contents("php://input"), true) ?? [];
-
-        if (!isset($data['id_usuario'])) {
-            http_response_code(400);
-            echo json_encode([
-                "success" => false,
-                "message" => "Falta id_usuario en el cuerpo de la petición."
-            ]);
-            break;
-        }
-
-        $response = $controller->activar($data['id_usuario']);
-
-        http_response_code(
-            $response['statusCode'] ?? ($response['success'] ? 200 : 400)
-        );
-
-        echo json_encode($response);
-        break;
-
 
     default:
         http_response_code(405);
-
         echo json_encode([
             "success" => false,
             "message" => "Método no permitido."
         ]);
-
         break;
 }
