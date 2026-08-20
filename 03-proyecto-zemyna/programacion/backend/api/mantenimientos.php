@@ -1,15 +1,14 @@
 <?php
 require_once __DIR__ . '/../config/bootstrap.php';
-require_once __DIR__ . '/../controllers/DenunciaController.php';
+require_once __DIR__ . '/../controllers/MantenimientoController.php';
 
 $database = new Database();
 $db = $database->getConnection();
-$controller = new DenunciaController($db);
+$controller = new MantenimientoController($db);
 
 $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
-
     case "GET":
         requireAuth();
 
@@ -24,6 +23,8 @@ switch ($method) {
         break;
 
     case "POST":
+        requireRole(['Superusuario', 'Administrador']);
+
         $data = json_decode(file_get_contents("php://input"), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
@@ -74,16 +75,16 @@ switch ($method) {
 
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
 
-        if (!isset($data['id_denuncia'])) {
+        if (!isset($data['id_mantenimiento'])) {
             http_response_code(400);
             echo json_encode([
                 "success" => false,
-                "message" => "Falta id_denuncia en el cuerpo de la petición."
+                "message" => "Falta id_mantenimiento en el cuerpo de la petición."
             ]);
             break;
         }
 
-        $response = $controller->delete($data['id_denuncia']);
+        $response = $controller->delete($data['id_mantenimiento']);
 
         http_response_code(
             $response['statusCode'] ?? ($response['success'] ? 200 : 400)
