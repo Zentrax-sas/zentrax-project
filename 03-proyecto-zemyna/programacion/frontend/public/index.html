@@ -52,12 +52,8 @@
                     <option value="fuego">Incendio / Vandalismo</option>
                 </select>
 
-                <div id="captcha-wrapper" style="display: none; margin: 14px 0 10px;">
-                    <label for="captcha_respuesta">Captcha de seguridad</label>
-                    <div id="captcha-question" style="font-weight: 700; color: #1f2937; margin: 6px 0;">Cargando pregunta...</div>
-                    <input type="number" id="captcha_respuesta" name="captcha_respuesta" placeholder="Ingrese la respuesta" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #d1d5db; box-sizing: border-box;" required>
-                    <button type="button" id="refresh-captcha" style="margin-top: 8px; width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #d1d5db; background: #f9fafb; cursor: pointer;">Actualizar pregunta</button>
-                </div>
+                <label for="foto_incidencia">Adjuntar una foto (opcional)</label>
+                <input type="file" id="foto_incidencia" name="foto_incidencia" accept="image/*" aria-label="Adjuntar foto de la incidencia">
 
                 <p id="reporte-message" role="status" style="margin-top: 10px; color: #1f2937; font-size: 0.95rem;"></p>
                 <button type="button" id="submit-reporte" class="submit-button">ENVIAR REPORTE</button>

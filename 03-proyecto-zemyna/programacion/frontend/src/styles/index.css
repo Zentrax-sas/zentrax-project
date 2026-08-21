@@ -87,9 +87,11 @@
         /* CONTENEDOR PRINCIPAL - DOS COLUMNAS */
         .main-container {
             display: flex;
-            height: calc(100vh - 200px); /* Resta el espacio del header y el hero */
-            padding: 0 40px 40px 40px;
+            min-height: 560px;
+            height: auto;
+            padding: 0 40px 24px 40px;
             gap: 30px;
+            align-items: stretch;
         }
 
         /* COLUMNA IZQUIERDA: EL MAPA */
@@ -109,15 +111,37 @@
         /* COLUMNA DERECHA: EL FORMULARIO */
         .form-wrapper {
             flex: 1; /* Ocupa el 35% aprox */
-            background: var(--panel-bg);
-            border-radius: 8px;
+            background: linear-gradient(180deg, rgba(26,26,26,0.98), rgba(17,17,17,0.96));
+            border-radius: 14px;
             border: 1px solid var(--border-color);
-            padding: 30px;
+            padding: 26px 20px;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+            min-height: 420px;
+            height: auto;
+            align-self: stretch;
+            position: relative;
+            overflow: hidden;
         }
-        .form-wrapper h3 { margin-top: 0; color: white; border-bottom: 2px solid var(--neon-green); padding-bottom: 10px; }
+        .form-wrapper::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--neon-green), transparent);
+        }
+        .form-wrapper h3 {
+            margin-top: 0;
+            color: white;
+            border-bottom: 2px solid var(--neon-green);
+            padding-bottom: 10px;
+            width: 100%;
+            max-width: 420px;
+            letter-spacing: 0.02em;
+        }
 
         .estado-global {
             min-height: 22px;
@@ -140,14 +164,38 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100%;
+            width: 100%;
+            max-width: 420px;
+            min-height: 220px;
+            margin: 0 auto;
             color: #777;
             text-align: center;
             font-style: italic;
+            padding: 18px;
+            border-radius: 12px;
+            box-sizing: border-box;
+            border: 1px dashed rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.02);
         }
 
         .form-active {
             display: none; /* Se activa mediante JS cuando hacen clic en un contenedor */
+        }
+
+        #form-reporte {
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto;
+            padding: 20px 18px;
+            border: 1px solid rgba(168, 224, 99, 0.25);
+            border-radius: 14px;
+            background: rgba(17, 17, 17, 0.92);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            backdrop-filter: blur(2px);
         }
 
         input, select {
@@ -159,6 +207,19 @@
             color: white;
             border-radius: 5px;
             box-sizing: border-box;
+        }
+        input[type="file"] {
+            padding: 10px;
+            color: #e5e7eb;
+        }
+        input[type="file"]::file-selector-button {
+            background: #1f2937;
+            color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 8px 12px;
+            margin-right: 12px;
+            cursor: pointer;
         }
         input[readonly] {
             background: #111;
@@ -186,6 +247,8 @@
 
         .tracking-section {
             padding: 0 40px 40px;
+            margin-top: 12px;
+            clear: both;
         }
 
         .tracking-card {

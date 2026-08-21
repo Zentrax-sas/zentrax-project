@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/../config/bootstrap.php';
-require_once __DIR__ . '/../helpers/captcha.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -32,18 +31,6 @@ switch ($method) {
                 "success" => false,
                 "message" => "JSON inválido.",
                 "errors" => [json_last_error_msg()]
-            ]);
-            break;
-        }
-
-        if (!validarCaptcha($data['captcha_respuesta'] ?? null)) {
-            http_response_code(400);
-            echo json_encode([
-                "success" => false,
-                "message" => "Captcha incorrecto, intentá de nuevo.",
-                "errors" => [
-                    "captcha_respuesta" => "Captcha incorrecto o expirado."
-                ]
             ]);
             break;
         }

@@ -14,9 +14,6 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
 
 const formReporte = document.getElementById('form-reporte');
 const submitReporteButton = document.getElementById('submit-reporte');
-const captchaWrapper = document.getElementById('captcha-wrapper');
-const captchaQuestion = document.getElementById('captcha-question');
-const captchaInput = document.getElementById('captcha_respuesta');
 const reporteMessage = document.getElementById('reporte-message');
 const estadoGlobalReporte = document.getElementById('estado-global-reporte');
 let toastTimerId = null;
@@ -61,43 +58,6 @@ function mostrarToast(texto, tipo = 'exito') {
     }, 2600);
 }
 
-async function cargarCaptchaReporte() {
-    if (!captchaQuestion) return;
-
-    captchaQuestion.textContent = 'Cargando pregunta...';
-
-    try {
-        const response = await fetch(buildApiUrl('/backend/api/captcha.php'), {
-            credentials: 'same-origin'
-        });
-        const json = await response.json();
-
-        if (!response.ok || !json.success) {
-            throw new Error(json.message || 'No se pudo cargar el captcha.');
-        }
-
-        captchaQuestion.textContent = json.data?.pregunta || 'Captcha no disponible.';
-        if (captchaInput) captchaInput.value = '';
-    } catch (error) {
-        console.error(error);
-        captchaQuestion.textContent = 'Error al cargar captcha.';
-    }
-}
-
-function mostrarCaptchaReporte() {
-    if (captchaWrapper) {
-        captchaWrapper.style.display = 'block';
-    }
-
-    if (captchaInput) {
-        captchaInput.removeAttribute('disabled');
-        captchaInput.setAttribute('required', 'required');
-    }
-
-    // Cada captcha se invalida al enviarse, por eso al mostrar el bloque pedimos uno nuevo siempre.
-    cargarCaptchaReporte();
-}
-
 if (submitReporteButton) {
     submitReporteButton.addEventListener('click', async function () {
         const tieneSeleccion = document.getElementById('form-id-contenedor').value.trim() !== '';
@@ -108,17 +68,12 @@ if (submitReporteButton) {
             return;
         }
 
-        if (captchaWrapper && captchaWrapper.style.display === 'none') {
-            mostrarCaptchaReporte();
-            if (reporteMessage) {
-                reporteMessage.textContent = 'Ingresá la respuesta del captcha y volvé a presionar ENVIAR REPORTE.';
-            }
-            return;
-        }
+        const fotoInput = document.getElementById('foto_incidencia');
+        const fotoSeleccionada = fotoInput && fotoInput.files && fotoInput.files.length > 0 ? fotoInput.files[0] : null;
 
-        if (!captchaInput || !captchaInput.value.trim()) {
+        if (fotoSeleccionada && fotoInput.files.length > 1) {
             if (reporteMessage) {
-                reporteMessage.textContent = 'Ingresá la respuesta del captcha.';
+                reporteMessage.textContent = 'Solo se permite una foto por incidencia.';
             }
             return;
         }
@@ -135,19 +90,41 @@ if (submitReporteButton) {
                 body: JSON.stringify({
                     id_contenedor: document.getElementById('form-id-contenedor').value,
                     tipo_problema: document.getElementById('tipo_incidencia').value,
-                    direccion: document.getElementById('form-direccion').value,
-                    captcha_respuesta: captchaInput.value
+                    direccion: document.getElementById('form-direccion').value
                 })
             });
 
             const json = await response.json();
             if (!response.ok || !json.success) {
-                const detalleCaptcha = json?.errors?.captcha_respuesta;
-                throw new Error(detalleCaptcha || json.message || 'Error al enviar el reporte.');
+                throw new Error(json.message || 'Error al enviar el reporte.');
+            }
+
+            let mensajeFinal = 'Incidencia enviada correctamente.';
+            const idIncidencia = json?.data?.id_incidencia;
+
+            if (fotoSeleccionada && idIncidencia) {
+                const formData = new FormData();
+                formData.append('id_incidencia', String(idIncidencia));
+                formData.append('foto', fotoSeleccionada);
+
+                const fotoResponse = await fetch(buildApiUrl('/backend/api/foto.php'), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: formData
+                });
+
+                const fotoJson = await fotoResponse.json();
+                if (!fotoResponse.ok || !fotoJson.success) {
+                    mensajeFinal = 'Incidencia registrada, pero la foto no pudo guardarse.';
+                    actualizarEstadoGlobal(mensajeFinal, 'error');
+                    mostrarToast(mensajeFinal, 'error');
+                } else {
+                    mensajeFinal = 'Incidencia enviada correctamente con foto adjunta.';
+                }
             }
 
             if (reporteMessage) {
-                reporteMessage.textContent = 'Incidencia enviada correctamente.';
+                reporteMessage.textContent = mensajeFinal;
             }
             actualizarEstadoGlobal(
                 'Ultimo envio exitoso.',
@@ -156,31 +133,19 @@ if (submitReporteButton) {
             mostrarToast('Exito: reporte enviado.', 'exito');
 
             formReporte.reset();
+            if (fotoInput) {
+                fotoInput.value = '';
+            }
             document.getElementById('form-msg-vacio').style.display = 'block';
             formReporte.style.display = 'none';
-            if (captchaWrapper) {
-                captchaWrapper.style.display = 'none';
-            }
-            if (captchaInput) {
-                captchaInput.setAttribute('disabled', 'disabled');
-            }
         } catch (error) {
             if (reporteMessage) {
                 reporteMessage.textContent = error.message;
             }
             actualizarEstadoGlobal(error.message || 'No se pudo enviar el reporte.', 'error');
             mostrarToast(error.message || 'No se pudo enviar el reporte.', 'error');
-            if (captchaInput) {
-                captchaInput.value = '';
-            }
-            cargarCaptchaReporte();
         }
     });
-}
-
-const refreshCaptchaButton = document.getElementById('refresh-captcha');
-if (refreshCaptchaButton) {
-    refreshCaptchaButton.addEventListener('click', cargarCaptchaReporte);
 }
 
 const trackingForm = document.getElementById('tracking-form');
@@ -263,8 +228,6 @@ function renderContenedores(contenedores) {
             document.getElementById('form-id-contenedor').value = idContenedor;
             document.getElementById('form-direccion').value = direccion;
             if (reporteMessage) reporteMessage.textContent = '';
-            if (captchaWrapper) captchaWrapper.style.display = 'none';
-            if (captchaInput) captchaInput.value = '';
         });
     });
 }
