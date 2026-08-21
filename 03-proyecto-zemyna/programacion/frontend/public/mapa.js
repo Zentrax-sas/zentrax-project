@@ -4,13 +4,66 @@ if (window.location.protocol === 'file:') {
 
 const map = L.map('mapa-vedette').setView([-34.9150, -56.1540], 14);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-}).addTo(map);
-
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '© OpenStreetMap contributors © CARTO'
 }).addTo(map);
+
+const userLocationMarker = {
+    marker: null,
+    isLoading: false,
+    controlButton: null
+};
+
+L.Control.Geolocalizacion = L.Control.extend({
+    onAdd() {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        const button = L.DomUtil.create('a', 'leaflet-control-geolocalizacion', container);
+
+        container.style.overflow = 'visible';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+
+        button.href = '#';
+        button.title = 'Mi ubicación';
+        button.setAttribute('role', 'button');
+        button.setAttribute('aria-label', 'Mi ubicación');
+        button.textContent = '📍 Ubicación';
+        button.style.display = 'inline-flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
+        button.style.gap = '5px';
+        button.style.width = 'auto';
+        button.style.minWidth = 'max-content';
+        button.style.maxWidth = 'none';
+        button.style.padding = '6px 10px';
+        button.style.borderRadius = '8px';
+        button.style.border = '1px solid rgba(255,255,255,0.3)';
+        button.style.background = '#ffffff';
+        button.style.color = '#1f2937';
+        button.style.fontSize = '12px';
+        button.style.fontWeight = '700';
+        button.style.lineHeight = '1.1';
+        button.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.18)';
+        button.style.cursor = 'pointer';
+        button.style.whiteSpace = 'nowrap';
+        button.style.overflow = 'visible';
+
+        L.DomEvent.on(button, 'click', L.DomEvent.stopPropagation)
+            .on(button, 'click', L.DomEvent.preventDefault)
+            .on(button, 'click', () => {
+                obtenerUbicacionUsuario();
+            });
+
+        userLocationMarker.controlButton = button;
+        return container;
+    }
+});
+
+L.control.geolocalizacion = function (options) {
+    return new L.Control.Geolocalizacion(options);
+};
+
+L.control.geolocalizacion({ position: 'topright' }).addTo(map);
 
 const formReporte = document.getElementById('form-reporte');
 const submitReporteButton = document.getElementById('submit-reporte');
@@ -56,6 +109,67 @@ function mostrarToast(texto, tipo = 'exito') {
     toastTimerId = setTimeout(() => {
         toastExito.classList.remove('show');
     }, 2600);
+}
+
+function actualizarEstadoBotonGeolocalizacion(cargando = false) {
+    const button = userLocationMarker.controlButton;
+    if (!button) return;
+
+    button.disabled = cargando;
+    button.setAttribute('aria-disabled', String(cargando));
+    button.style.opacity = cargando ? '0.7' : '1';
+    button.style.cursor = cargando ? 'wait' : 'pointer';
+    button.title = cargando ? 'Obteniendo ubicación...' : 'Mi ubicación';
+    button.textContent = cargando ? '⏳ Obteniendo…' : '📍 Mi ubicación';
+}
+
+function actualizarMarcadorUbicacion(latitud, longitud) {
+    const latLng = [latitud, longitud];
+
+    if (!userLocationMarker.marker) {
+        userLocationMarker.marker = L.circleMarker(latLng, {
+            radius: 8,
+            fillColor: '#2563eb',
+            color: '#ffffff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.95
+        }).addTo(map);
+
+        userLocationMarker.marker.bindPopup('Estás aquí');
+    } else {
+        userLocationMarker.marker.setLatLng(latLng);
+    }
+
+    map.setView(latLng, 16);
+    userLocationMarker.marker.openPopup();
+}
+
+function obtenerUbicacionUsuario() {
+    if (!navigator.geolocation) {
+        const error = new Error('Tu navegador no soporta geolocalización.');
+        mostrarToast(error.message, 'error');
+        return;
+    }
+
+    actualizarEstadoBotonGeolocalizacion(true);
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const { latitude, longitude } = position.coords;
+            actualizarMarcadorUbicacion(latitude, longitude);
+            actualizarEstadoBotonGeolocalizacion(false);
+        },
+        (error) => {
+            actualizarEstadoBotonGeolocalizacion(false);
+            mostrarToast(error.message || 'No se pudo obtener tu ubicación.', 'error');
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+        }
+    );
 }
 
 if (submitReporteButton) {
@@ -181,19 +295,6 @@ if (trackingForm) {
     });
 }
 
-const contenedoresIM = [
-    { id: 'CH_RM_CL_101', lat: -34.9011, lng: -56.1645, calle: 'Av. Brasil', esquina: 'Lázaro Gadea' },
-    { id: 'CH_RS_CL_102', lat: -34.9034, lng: -56.1682, calle: 'Brito del Pino', esquina: 'Charrúa' },
-    { id: 'CH_RM_CL_103', lat: -34.8985, lng: -56.1610, calle: 'Pocitos', esquina: 'Av. Francisco Soca' },
-    { id: 'CH_RS_CL_104', lat: -34.9051, lng: -56.1554, calle: 'Benito Blanco', esquina: 'Gabriel A. Pereira' },
-    { id: 'CH_RM_CL_105', lat: -34.9122, lng: -56.1598, calle: 'Juan Benito Blanco', esquina: 'Echevarriarza' },
-    { id: 'B_RM_CL_201', lat: -34.9065, lng: -56.1852, calle: 'Av. 18 de Julio', esquina: 'Tacuarí' },
-    { id: 'B_RS_CL_202', lat: -34.9102, lng: -56.1920, calle: 'San José', esquina: 'Zelmar Michelini' },
-    { id: 'B_RM_CL_203', lat: -34.9021, lng: -56.1789, calle: 'Canelones', esquina: 'Juan Paullier' },
-    { id: 'B_RS_CL_204', lat: -34.9088, lng: -56.2014, calle: 'Soriano', esquina: 'Ciudadela' },
-    { id: 'B_RM_CL_205', lat: -34.8994, lng: -56.1895, calle: 'Colonia', esquina: 'Arenanal Grande' }
-];
-
 function renderContenedores(contenedores) {
     contenedores.forEach(contenedor => {
         const lat = parseFloat(contenedor.latitud ?? contenedor.lat ?? -34.9150);
@@ -242,26 +343,16 @@ async function cargarContenedoresMapa() {
         }
 
         const contenedores = Array.isArray(json.data) ? json.data : [];
-        const tieneGeoCompleta = contenedores.every(c => c?.latitud !== undefined && c?.longitud !== undefined);
 
-        // Si la API devuelve un set parcial (ej. 2-3 mocks), usamos el set local completo para la demo.
-        if (contenedores.length >= contenedoresIM.length && tieneGeoCompleta) {
-            renderContenedores(contenedores);
+        if (contenedores.length === 0) {
+            console.info('No hay contenedores cargados en la base de datos.');
             return;
         }
 
-        throw new Error('La API devolvió un set parcial; se usa fallback local.');
+        renderContenedores(contenedores);
     } catch (error) {
-        console.warn('No se pudo cargar la API de contenedores, usando datos de prueba.', error);
-        renderContenedores(contenedoresIM.map((contenedor, index) => ({
-            id_contenedor: (index % 3) + 1,
-            codigo: contenedor.id,
-            latitud: contenedor.lat,
-            longitud: contenedor.lng,
-            direccion: `${contenedor.calle} y ${contenedor.esquina}`,
-            calle: contenedor.calle,
-            esquina: contenedor.esquina
-        })));
+        console.warn('No se pudieron cargar los contenedores desde la API.', error);
+        mostrarToast('No se pudieron cargar los contenedores.', 'error');
     }
 }
 
