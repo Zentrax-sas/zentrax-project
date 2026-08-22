@@ -13,6 +13,10 @@ switch ($method) {
             'id' => isset($_GET['id']) ? $_GET['id'] : null,
             'page' => isset($_GET['page']) ? $_GET['page'] : 1,
             'limit' => isset($_GET['limit']) ? $_GET['limit'] : 20,
+            'min_lat' => $_GET['min_lat'] ?? null,
+            'min_lon' => $_GET['min_lon'] ?? null,
+            'max_lat' => $_GET['max_lat'] ?? null,
+            'max_lon' => $_GET['max_lon'] ?? null,
         ];
         $response = $controller->getAll($filters);
         http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));

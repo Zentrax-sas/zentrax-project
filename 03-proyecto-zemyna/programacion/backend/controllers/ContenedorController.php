@@ -54,9 +54,19 @@ class ContenedorController {
     public function getAll($filters = []) {
         $id = isset($filters['id']) ? (int) $filters['id'] : null;
         $page = isset($filters['page']) ? max(1, (int) $filters['page']) : 1;
-        $limit = isset($filters['limit']) ? max(1, min(100, (int) $filters['limit'])) : 20;
+        $limit = isset($filters['limit']) ? max(1, min(2000, (int) $filters['limit'])) : 20;
 
-        $stmt = $this->contenedor->read($id, $page, $limit);
+        $bbox = [];
+        foreach (['min_lat', 'min_lon', 'max_lat', 'max_lon'] as $coordinate) {
+            if (isset($filters[$coordinate]) && is_numeric($filters[$coordinate])) {
+                $bbox[$coordinate] = (float) $filters[$coordinate];
+            }
+        }
+        if (count($bbox) !== 4) {
+            $bbox = [];
+        }
+
+        $stmt = $this->contenedor->read($id, $page, $limit, $bbox);
         if ($stmt) {
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if ($id !== null && empty($rows)) {

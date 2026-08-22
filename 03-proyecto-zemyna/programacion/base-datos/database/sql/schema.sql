@@ -7,9 +7,14 @@
 DROP DATABASE IF EXISTS gestion_residuosfinal;
 
 CREATE DATABASE gestion_residuosfinal
-CHARACTER SET utf8mb4;
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
 
 USE gestion_residuosfinal;
+
+ALTER DATABASE gestion_residuosfinal
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
 
 
 -- =====================================
@@ -177,6 +182,8 @@ CREATE TABLE contenedor (
     CONSTRAINT chk_contenedor_longitud
         CHECK (longitud BETWEEN -180 AND 180)
 );
+
+CREATE INDEX idx_contenedor_geo ON contenedor (latitud, longitud);
 
 
 -- =====================================
@@ -614,4 +621,27 @@ CREATE INDEX idx_recorrido_ruta
 
 CREATE INDEX idx_participa_recorrido
     ON participa(id_recorrido);
+
+ALTER TABLE vecino CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE centro CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE tipo_residuo CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE ruta CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE usuario CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE rol CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE usuario_rol CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE contenedor CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE vehiculo CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE cuadrilla CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE usa CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE recorrido CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE participa CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE incidencia CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE denuncia CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE foto CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE acopio CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE vertedero CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE maquinaria CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE solicitud CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE mantenimiento CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE sesion CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     

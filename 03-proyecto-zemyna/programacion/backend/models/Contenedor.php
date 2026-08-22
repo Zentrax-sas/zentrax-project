@@ -17,20 +17,30 @@ class Contenedor {
         $this->conn = $db;
     }
 
-    public function read($id = null, $page = 1, $limit = 20) {
+    public function read($id = null, $page = 1, $limit = 20, $bbox = []) {
         if (!$this->conn) return null;
 
-        $where = '';
+        $conditions = [];
         if ($id !== null && $id !== '') {
-            $where = ' WHERE id_contenedor = :id_contenedor';
+            $conditions[] = 'id_contenedor = :id_contenedor';
+        }
+        if (isset($bbox['min_lat'], $bbox['min_lon'], $bbox['max_lat'], $bbox['max_lon'])) {
+            $conditions[] = 'latitud BETWEEN :min_lat AND :max_lat AND longitud BETWEEN :min_lon AND :max_lon';
         }
 
         $offset = ($page - 1) * $limit;
+        $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
         $query = 'SELECT * FROM ' . $this->table_name . $where . ' ORDER BY id_contenedor ASC LIMIT :limit OFFSET :offset';
         $stmt = $this->conn->prepare($query);
 
         if ($id !== null && $id !== '') {
             $stmt->bindValue(':id_contenedor', (int) $id, PDO::PARAM_INT);
+        }
+        if (isset($bbox['min_lat'], $bbox['min_lon'], $bbox['max_lat'], $bbox['max_lon'])) {
+            $stmt->bindValue(':min_lat', (float) $bbox['min_lat']);
+            $stmt->bindValue(':min_lon', (float) $bbox['min_lon']);
+            $stmt->bindValue(':max_lat', (float) $bbox['max_lat']);
+            $stmt->bindValue(':max_lon', (float) $bbox['max_lon']);
         }
         $stmt->bindValue(':limit', (int) $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', (int) $offset, PDO::PARAM_INT);

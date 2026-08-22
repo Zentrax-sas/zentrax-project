@@ -2,7 +2,13 @@ if (window.location.protocol === 'file:') {
     window.location.replace(`${APP_BASE_URL}/index.html`);
 }
 
-const map = L.map('mapa-vedette').setView([-34.9150, -56.1540], 14);
+const map = L.map('mapa-vedette', { maxZoom: 19 }).setView([-34.9150, -56.1540], 14);
+const clusterGroup = L.markerClusterGroup({
+    chunkedLoading: true,
+    disableClusteringAtZoom: 18
+}).addTo(map);
+const MIN_MAP_ZOOM_FOR_CONTAINERS = 12;
+let contenedoresLoadTimer = null;
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '© OpenStreetMap contributors © CARTO'
@@ -302,13 +308,12 @@ function renderContenedores(contenedores) {
         const idContenedor = contenedor.id_contenedor ?? contenedor.id ?? 'Sin ID';
         const codigoContenedor = contenedor.codigo ?? contenedor.id ?? idContenedor;
         const direccion = contenedor.direccion || (contenedor.calle && contenedor.esquina ? `${contenedor.calle} y ${contenedor.esquina}` : 'Sin dirección');
-        const estado = String(contenedor.estado || 'verde').toLowerCase();
+        const estado = String(contenedor.estado || 'disponible').toLowerCase();
         let colorNeon = '#22c55e';
 
-        if (estado === 'verde') colorNeon = '#22c55e';
-        else if (estado === 'amarillo') colorNeon = '#f59e0b';
-        else if (estado === 'rojo') colorNeon = '#ef4444';
-        else if (estado === 'gris' || estado === 'desconocido') colorNeon = '#6b7280';
+        if (estado === 'lleno' || estado === 'amarillo') colorNeon = '#f59e0b';
+        else if (estado === 'dañado' || estado === 'danado' || estado === 'rojo') colorNeon = '#ef4444';
+        else if (estado === 'fuera de servicio' || estado === 'en mantenimiento' || estado === 'gris' || estado === 'desconocido') colorNeon = '#6b7280';
 
         const marcador = L.circleMarker([lat, lng], {
             radius: 10,
@@ -317,7 +322,9 @@ function renderContenedores(contenedores) {
             weight: 2,
             opacity: 1,
             fillOpacity: 0.9
-        }).addTo(map);
+        });
+
+        clusterGroup.addLayer(marcador);
 
         marcador.bindPopup(`<b>Contenedor:</b> ${codigoContenedor}<br>Hacé clic para reportar.`);
 
@@ -333,9 +340,35 @@ function renderContenedores(contenedores) {
     });
 }
 
+function mostrarAvisoZoom() {
+    mostrarToast('Acercate en el mapa para ver los contenedores.', 'error');
+}
+
+function obtenerParametrosViewport() {
+    const bounds = map.getBounds();
+    const surOeste = bounds.getSouthWest();
+    const norEste = bounds.getNorthEast();
+    const parametros = new URLSearchParams({
+        min_lat: surOeste.lat.toFixed(6),
+        min_lon: surOeste.lng.toFixed(6),
+        max_lat: norEste.lat.toFixed(6),
+        max_lon: norEste.lng.toFixed(6),
+        limit: '2000'
+    });
+    return parametros.toString();
+}
+
 async function cargarContenedoresMapa() {
+    if (map.getZoom() < MIN_MAP_ZOOM_FOR_CONTAINERS) {
+        clusterGroup.clearLayers();
+        mostrarAvisoZoom();
+        return;
+    }
+
+    clusterGroup.clearLayers();
+
     try {
-        const response = await fetch(buildApiUrl('/backend/api/contenedores.php'));
+        const response = await fetch(buildApiUrl(`/backend/api/contenedores.php?${obtenerParametrosViewport()}`));
         const json = await response.json();
 
         if (!response.ok || !json.success) {
@@ -352,8 +385,19 @@ async function cargarContenedoresMapa() {
         renderContenedores(contenedores);
     } catch (error) {
         console.warn('No se pudieron cargar los contenedores desde la API.', error);
+        const contenedoresLocales = Array.isArray(window.contenedoresIM) ? window.contenedoresIM : [];
+        if (contenedoresLocales.length > 0) {
+            renderContenedores(contenedoresLocales);
+            return;
+        }
         mostrarToast('No se pudieron cargar los contenedores.', 'error');
     }
 }
 
+function programarCargaContenedores() {
+    clearTimeout(contenedoresLoadTimer);
+    contenedoresLoadTimer = setTimeout(cargarContenedoresMapa, 400);
+}
+
+map.on('moveend zoomend', programarCargaContenedores);
 cargarContenedoresMapa();
