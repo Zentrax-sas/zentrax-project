@@ -82,11 +82,11 @@ class IncidenciaController {
             $errors[] = 'El id_ruta debe ser un número entero válido.';
         }
 
-        if ($idCuadrilla === null || $idCuadrilla === '' || !ctype_digit((string)$idCuadrilla)) {
+        if ($idCuadrilla !== null && $idCuadrilla !== '' && !ctype_digit((string)$idCuadrilla)) {
             $errors[] = 'El id_cuadrilla debe ser un número entero válido.';
         }
 
-        if ($idUsuario === null || $idUsuario === '' || !ctype_digit((string)$idUsuario)) {
+        if ($idUsuario !== null && $idUsuario !== '' && !ctype_digit((string)$idUsuario)) {
             $errors[] = 'El id_usuario debe ser un número entero válido.';
         }
 
@@ -171,8 +171,8 @@ class IncidenciaController {
                 ? (int)$data['id_ruta']
                 : null;
 
-        $this->incidencia->id_cuadrilla = (int)$data['id_cuadrilla'];
-        $this->incidencia->id_usuario = (int)$data['id_usuario'];
+        $this->incidencia->id_cuadrilla = !empty($data['id_cuadrilla']) ? (int)$data['id_cuadrilla'] : null;
+        $this->incidencia->id_usuario = !empty($data['id_usuario']) ? (int)$data['id_usuario'] : null;
 
         if ($this->incidencia->create()) {
             return [

@@ -368,8 +368,8 @@ CREATE TABLE incidencia (
 
     id_contenedor INT DEFAULT NULL,
     id_ruta INT DEFAULT NULL,
-    id_cuadrilla INT NOT NULL,
-    id_usuario INT NOT NULL,
+    id_cuadrilla INT DEFAULT NULL,
+    id_usuario INT DEFAULT NULL,
 
     PRIMARY KEY (id_incidencia),
 

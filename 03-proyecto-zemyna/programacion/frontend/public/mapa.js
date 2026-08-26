@@ -180,6 +180,9 @@ function obtenerUbicacionUsuario() {
 
 if (submitReporteButton) {
     submitReporteButton.addEventListener('click', async function () {
+        if (!formReporte.reportValidity()) {
+            return;
+        }
         const tieneSeleccion = document.getElementById('form-id-contenedor').value.trim() !== '';
         if (!tieneSeleccion) {
             if (reporteMessage) {
@@ -203,13 +206,20 @@ if (submitReporteButton) {
         }
 
         try {
+            const tiposProblema = {
+                desborde: 'Contenedor Desbordado',
+                roto: 'Contenedor Roto/Dañado',
+                obstruido: 'Obstruido por Vehículo',
+                fuego: 'Incendio/Vandalismo'
+            };
             const response = await fetch(buildApiUrl('/backend/api/incidencias.php'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({
                     id_contenedor: document.getElementById('form-id-contenedor').value,
-                    tipo_problema: document.getElementById('tipo_incidencia').value,
+                    tipo_problema: tiposProblema[document.getElementById('tipo_incidencia').value],
+                    descripcion: document.getElementById('descripcion_incidencia').value.trim(),
                     direccion: document.getElementById('form-direccion').value
                 })
             });
