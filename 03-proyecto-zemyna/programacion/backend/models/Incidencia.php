@@ -62,8 +62,7 @@ class Incidencia {
 
         if (empty($this->descripcion) || empty($this->fecha_reporte) ||
             empty($this->estado) || empty($this->prioridad) ||
-            empty($this->tipo_problema) || empty($this->id_cuadrilla) ||
-            empty($this->id_usuario)) {
+            empty($this->tipo_problema)) {
             return false;
         }
 

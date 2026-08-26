@@ -212,15 +212,18 @@ if (submitReporteButton) {
                 obstruido: 'Obstruido por Vehículo',
                 fuego: 'Incendio/Vandalismo'
             };
+            const tipoSeleccionado = document.getElementById('tipo_incidencia').value;
+            const tipoProblema = tiposProblema[tipoSeleccionado];
+            const direccion = document.getElementById('form-direccion').value.trim();
             const response = await fetch(buildApiUrl('/backend/api/incidencias.php'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({
                     id_contenedor: document.getElementById('form-id-contenedor').value,
-                    tipo_problema: tiposProblema[document.getElementById('tipo_incidencia').value],
-                    descripcion: document.getElementById('descripcion_incidencia').value.trim(),
-                    direccion: document.getElementById('form-direccion').value
+                    tipo_problema: tipoProblema,
+                    descripcion: `${tipoProblema} - ${direccion}`,
+                    direccion
                 })
             });
 
