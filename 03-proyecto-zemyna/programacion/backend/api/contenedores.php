@@ -9,7 +9,6 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        requirePermission('contenedor.consultar', ['PUNTOS_Y_DESTINOS']);
         $filters = [
             'id' => isset($_GET['id']) ? $_GET['id'] : null,
             'page' => isset($_GET['page']) ? $_GET['page'] : 1,
