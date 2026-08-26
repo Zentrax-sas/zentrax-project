@@ -80,6 +80,8 @@ if (empty($roles)) {
 }
 
 $nombresRoles = array_column($roles, 'nombre');
+$permisos = $usuarioModel->getPermisosVigentes($usuario['id_usuario']);
+$autorizaciones = $usuarioModel->getAutorizacionesVigentes($usuario['id_usuario']);
 
 session_regenerate_id(true);
 
@@ -90,7 +92,10 @@ $_SESSION['usuario'] = [
     'email' => $usuario['email'],
     'id_centro' => (int)$usuario['id_centro'],
     'activo' => $usuario['activo'],
-    'roles' => $nombresRoles
+    'roles' => $nombresRoles,
+    'asignaciones' => $roles,
+    'permisos' => $permisos,
+    'autorizaciones' => $autorizaciones
 ];
 
 echo json_encode([
@@ -103,6 +108,8 @@ echo json_encode([
         'email' => $usuario['email'],
         'id_centro' => (int)$usuario['id_centro'],
         'activo' => $usuario['activo'],
-        'roles' => $roles
+        'roles' => $roles,
+        'permisos' => $permisos,
+        'autorizaciones' => $autorizaciones
     ]
-])
+]);

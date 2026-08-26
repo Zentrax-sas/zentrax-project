@@ -9,14 +9,14 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        requireAuth();
+        requirePermission('maquinaria.consultar', ['MANTENIMIENTO']);
         $response = $controller->getAll();
         http_response_code(200);
         echo json_encode($response);
         break;
 
     case "POST":
-        requireRole(['Administrador']);
+        requirePermission('maquinaria.crear', ['MANTENIMIENTO']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -29,7 +29,7 @@ switch ($method) {
         break;
 
     case "PUT":
-        requireRole(['Administrador']);
+        requirePermission('maquinaria.modificar', ['MANTENIMIENTO']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -42,7 +42,7 @@ switch ($method) {
         break;
 
     case "DELETE":
-        requireRole(['Administrador']);
+        requirePermission('maquinaria.baja', ['MANTENIMIENTO']);
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
         if (!isset($data['id_maquinaria'])) {
             http_response_code(400);

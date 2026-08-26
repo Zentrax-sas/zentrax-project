@@ -10,6 +10,7 @@ class Contenedor {
     public $latitud;
     public $longitud;
     public $estado;
+    public $activo;
     public $id_tipo_residuo;
     public $id_ruta;
 
@@ -20,7 +21,7 @@ class Contenedor {
     public function read($id = null, $page = 1, $limit = 20, $bbox = []) {
         if (!$this->conn) return null;
 
-        $conditions = [];
+        $conditions = ['activo = 1'];
         if ($id !== null && $id !== '') {
             $conditions[] = 'id_contenedor = :id_contenedor';
         }
@@ -91,9 +92,13 @@ class Contenedor {
 
     public function delete() {
         if (!$this->conn) return false;
-        $query = "DELETE FROM " . $this->table_name . " WHERE id_contenedor=:id_contenedor";
+        $query = "UPDATE " . $this->table_name . "
+                  SET activo = 0
+                  WHERE id_contenedor = :id_contenedor
+                  AND activo = 1";
         $stmt  = $this->conn->prepare($query);
         $stmt->bindParam(":id_contenedor", $this->id_contenedor);
-        return $stmt->execute();
+        $stmt->execute();
+        return $stmt->rowCount() > 0;
     }
 }

@@ -282,6 +282,15 @@ h1 { margin: 5px 0 0; font-size: clamp(22px, 3vw, 29px); line-height: 1.1; lette
   font-size: 10px;
 }
 .search-box input { padding: 0 13px 0 36px; }
+
+.resource-form { margin: 0 0 18px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: rgba(23, 19, 33, .78); }
+.resource-form[hidden] { display: none; }
+.form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.form-grid label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 600; }
+.form-grid input, .form-grid select { width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-2); color: var(--text); }
+.form-actions { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+.form-actions .primary-button { width: auto; margin: 0; }
+.form-message { min-height: 18px; margin: 10px 0 0; color: var(--amber); font-size: 12px; }
 .search-box::before { content: "⌕"; position: absolute; left: 13px; top: 8px; color: var(--violet-light); }
 .search-box input:focus, .filter-select:focus { border-color: rgba(199,125,255,.45); box-shadow: 0 0 0 3px rgba(157,78,221,.08); }
 .filter-select { width: 155px; padding: 0 10px; }
@@ -365,5 +374,8 @@ td strong { color: var(--text); font-size: 10px; }
 @media (max-width: 470px) {
   .welcome { display: block; }
   .primary-button { width: 100%; margin-top: 15px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-actions { align-items: stretch; flex-direction: column; }
+  .form-actions .primary-button { width: 100%; }
   .panel { padding: 16px; }
 }

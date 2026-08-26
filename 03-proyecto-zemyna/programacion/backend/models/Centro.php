@@ -7,6 +7,7 @@ class Centro {
     public $nombre;
     public $direccion;
     public $telefono;
+    public $activo;
 
     public function __construct($db) {
         $this->conn = $db;
@@ -14,7 +15,7 @@ class Centro {
 
     public function read() {
         if (!$this->conn) return null;
-        $stmt = $this->conn->prepare("SELECT * FROM " . $this->table_name);
+        $stmt = $this->conn->prepare("SELECT * FROM " . $this->table_name . " WHERE activo = 1");
         $stmt->execute();
         return $stmt;
     }
@@ -46,9 +47,13 @@ class Centro {
 
     public function delete() {
         if (!$this->conn) return false;
-        $query = "DELETE FROM " . $this->table_name . " WHERE id_centro=:id_centro";
+        $query = "UPDATE " . $this->table_name . "
+              SET activo = 0
+              WHERE id_centro = :id_centro
+              AND activo = 1";
         $stmt  = $this->conn->prepare($query);
         $stmt->bindParam(":id_centro", $this->id_centro);
-        return $stmt->execute();
+        $stmt->execute();
+        return $stmt->rowCount() > 0;
     }
 }

@@ -328,14 +328,34 @@ function renderContenedores(contenedores) {
 
         marcador.bindPopup(`<b>Contenedor:</b> ${codigoContenedor}<br>Hacé clic para reportar.`);
 
-        marcador.on('click', function() {
+        marcador.on('click', async function() {
             const form = document.getElementById('form-reporte');
             const placeholder = document.getElementById('form-msg-vacio');
             if (placeholder) placeholder.style.display = 'none';
             if (form) form.style.display = 'block';
             document.getElementById('form-id-contenedor').value = idContenedor;
-            document.getElementById('form-direccion').value = direccion;
-            if (reporteMessage) reporteMessage.textContent = '';
+            const direccionInput = document.getElementById('form-direccion');
+            direccionInput.value = direccion;
+            if (reporteMessage) reporteMessage.textContent = 'Buscando dirección...';
+
+            try {
+                const response = await fetch(buildApiUrl(`/backend/api/geocodificacion.php?id_contenedor=${encodeURIComponent(idContenedor)}`));
+                const json = await response.json();
+                if (!response.ok || !json.success) {
+                    throw new Error(json.message || 'No se pudo obtener la dirección.');
+                }
+                if (document.getElementById('form-id-contenedor').value !== String(idContenedor)) {
+                    return;
+                }
+                if (json.data) {
+                    direccionInput.value = json.data.direccion || direccion;
+                }
+                if (reporteMessage) reporteMessage.textContent = '';
+            } catch (error) {
+                if (document.getElementById('form-id-contenedor').value === String(idContenedor) && reporteMessage) {
+                    reporteMessage.textContent = 'No se pudo obtener la dirección; podés reportar usando las coordenadas disponibles.';
+                }
+            }
         });
     });
 }

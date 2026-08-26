@@ -11,8 +11,8 @@ class Usuario {
     public $contrasena;
     public $telefono;
     public $fecha_registro;
-    public $id_centro
-    public $activo
+    public $id_centro;
+    public $activo;
 
     public function __construct($db) {
         $this->conn = $db;
@@ -21,7 +21,7 @@ class Usuario {
     public function read($id = null, $page = 1, $limit = 20) {
         if (!$this->conn) return null;
 
-        $where = ''
+        $where = '';
         if ($id !== null && $id !== '') {
             $where = ' WHERE id_usuario = :id_usuario';
         }
@@ -171,6 +171,54 @@ class Usuario {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function getPermisosVigentes($idUsuario) {
+        if (!$this->conn) return [];
+
+        $query = "SELECT DISTINCT p.nombre
+                  FROM usuario_rol ur
+                  INNER JOIN rol_permiso rp ON rp.id_rol = ur.id_rol
+                  INNER JOIN permiso p ON p.id_permiso = rp.id_permiso
+                  INNER JOIN rol r ON r.id_rol = ur.id_rol
+                  WHERE ur.id_usuario = :id_usuario
+                  AND ur.fecha_desde <= CURDATE()
+                  AND (ur.fecha_hasta IS NULL OR ur.fecha_hasta >= CURDATE())
+                  ORDER BY p.nombre ASC";
+
+        try {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(':id_usuario', (int)$idUsuario, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (PDOException $exception) {
+            return [];
+        }
+    }
+
+    public function getAutorizacionesVigentes($idUsuario) {
+        if (!$this->conn) return [];
+
+        $query = "SELECT r.nombre AS rol, ur.sector, p.nombre AS permiso
+                  FROM usuario_rol ur
+                  INNER JOIN rol r ON r.id_rol = ur.id_rol
+                  INNER JOIN rol_permiso rp ON rp.id_rol = ur.id_rol
+                  INNER JOIN permiso p ON p.id_permiso = rp.id_permiso
+                  WHERE ur.id_usuario = :id_usuario
+                  AND ur.fecha_desde <= CURDATE()
+                  AND (ur.fecha_hasta IS NULL OR ur.fecha_hasta >= CURDATE())
+                  ORDER BY r.nombre, ur.sector, p.nombre";
+
+        try {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(':id_usuario', (int)$idUsuario, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $exception) {
+            return [];
+        }
+    }
+
     public function getHistorialRoles($idUsuario) {
         if (!$this->conn) return [];
 
@@ -187,3 +235,4 @@ class Usuario {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+}

@@ -21,6 +21,8 @@
         <a class="nav-link" href="#camiones" data-view="camiones"><span class="nav-icon">▱</span>Camiones</a>
         <a class="nav-link" href="#incidencias"><span class="nav-icon">!</span>Incidencias<span class="nav-badge">7</span></a>
         <a class="nav-link" href="#contenedores" data-view="contenedores"><span class="nav-icon">□</span>Contenedores</a>
+        <a class="nav-link" href="#centros" data-view="centros"><span class="nav-icon">⌂</span>Centros</a>
+        <a class="nav-link" href="#maquinaria" data-view="maquinaria"><span class="nav-icon">⚙</span>Maquinaria</a>
       </nav>
 
       <div class="menu-caption" style="margin-top:22px">Administración</div>
@@ -152,16 +154,31 @@
 
         <section class="view" id="view-contenedores">
           <div class="view-heading">
-            <div><div class="demo-label">Datos temporales de demostración</div><h2>Listado de contenedores</h2><p>Consulta operativa de ubicación, capacidad estimada y estado de cada unidad.</p></div>
-            <button class="primary-button demo-action">＋ Registrar contenedor</button>
+            <div><h2>Listado de contenedores</h2><p>Consulta operativa de ubicación, capacidad estimada y estado de cada unidad.</p></div>
+              <button class="primary-button" id="newContainerButton" type="button">＋ Registrar contenedor</button>
           </div>
+            <form class="resource-form" id="containerForm" hidden>
+              <input name="id_contenedor" type="hidden">
+              <div class="form-grid">
+                <label>Código<input name="codigo" maxlength="20" required></label>
+                <label>Capacidad<input name="capacidad" type="number" min="0.01" step="0.01" required></label>
+                <label>Dirección<input name="direccion" maxlength="150" required></label>
+                <label>Latitud<input name="latitud" type="number" min="-90" max="90" step="0.0000001" required></label>
+                <label>Longitud<input name="longitud" type="number" min="-180" max="180" step="0.0000001" required></label>
+                <label>Estado<select name="estado" required><option value="Disponible">Disponible</option><option value="Lleno">Lleno</option><option value="Dañado">Dañado</option><option value="Fuera de Servicio">Fuera de Servicio</option></select></label>
+                <label>ID tipo de residuo<input name="id_tipo_residuo" type="number" min="1" step="1" required></label>
+                <label>ID ruta<input name="id_ruta" type="number" min="1" step="1" required></label>
+              </div>
+              <div class="form-actions"><button class="primary-button" type="submit">Guardar contenedor</button><button class="link-button" id="cancelContainerButton" type="button">Cancelar</button></div>
+              <p class="form-message" id="containerFormMessage" role="status"></p>
+            </form>
           <div class="toolbar">
             <label class="search-box"><input type="search" id="containerSearch" placeholder="Buscar por código, ubicación o zona…" aria-label="Buscar contenedores"></label>
             <select class="filter-select" id="containerFilter" aria-label="Filtrar contenedores por estado"><option value="todos">Todos los estados</option><option value="operativo">Operativo</option><option value="atencion">Requiere atención</option><option value="mantenimiento">Mantenimiento</option></select>
           </div>
-          <p class="result-count" id="containerCount">6 contenedores mostrados</p>
+          <p class="result-count" id="containerCount">Cargando contenedores...</p>
           <article class="card data-panel">
-            <div class="table-wrap"><table><thead><tr><th>Contenedor</th><th>Ubicación</th><th>Zona</th><th>Capacidad estimada</th><th>Última recolección</th><th>Estado</th><th></th></tr></thead>
+            <div class="table-wrap"><table><thead><tr><th>Contenedor</th><th>Ubicación</th><th>Zona</th><th>Capacidad</th><th>Coordenadas</th><th>Estado</th><th></th></tr></thead>
               <tbody id="containerRows">
                 <tr data-search="cnt-ch-001 avenida brasil pocitos" data-status="operativo"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-001</div><div class="asset-detail">Carga lateral</div></div></div></td><td>Av. Brasil 2231</td><td>CH · Pocitos</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>42%</span></div><div class="capacity-bar"><span style="--capacity:42%"></span></div></div></td><td>Hoy · 14:32</td><td><span class="state">Operativo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
                 <tr data-search="cnt-ch-014 avenida rivera buceo" data-status="atencion"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-014</div><div class="asset-detail">Carga lateral</div></div></div></td><td>Av. Rivera 2841</td><td>CH · Buceo</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>91%</span></div><div class="capacity-bar"><span class="high" style="--capacity:91%"></span></div></div></td><td>Ayer · 21:10</td><td><span class="priority high">Requiere atención</span></td><td><button class="table-action">Ver detalle</button></td></tr>
@@ -175,14 +192,27 @@
 
         <section class="view" id="view-camiones">
           <div class="view-heading">
-            <div><div class="demo-label">Datos temporales de demostración</div><h2>Listado de camiones</h2><p>Consulta de unidades, tipo de carga, conductor asignado, ruta y disponibilidad.</p></div>
-            <button class="primary-button demo-action">＋ Registrar camión</button>
+            <div><h2>Listado de camiones</h2><p>Consulta de unidades, tipo de carga, conductor asignado, ruta y disponibilidad.</p></div>
+            <button class="primary-button" id="newTruckButton" type="button">＋ Registrar camión</button>
           </div>
+          <form class="resource-form" id="truckForm" hidden>
+            <input name="id_vehiculo" type="hidden">
+            <div class="form-grid">
+              <label>Matrícula<input name="matricula" maxlength="10" required></label>
+              <label>Marca<input name="marca" maxlength="50" required></label>
+              <label>Modelo<input name="modelo" maxlength="50" required></label>
+              <label>Capacidad de carga<input name="capacidad_carga" type="number" min="0.01" step="0.01" required></label>
+              <label>Estado<select name="estado" required><option value="Disponible">Disponible</option><option value="En Servicio">En Servicio</option><option value="En Mantenimiento">En Mantenimiento</option></select></label>
+              <label>ID tipo de residuo<input name="id_tipo_residuo" type="number" min="1" step="1" required></label>
+            </div>
+            <div class="form-actions"><button class="primary-button" type="submit">Guardar vehículo</button><button class="link-button" id="cancelTruckButton" type="button">Cancelar</button></div>
+            <p class="form-message" id="truckFormMessage" role="status"></p>
+          </form>
           <div class="toolbar">
             <label class="search-box"><input type="search" id="truckSearch" placeholder="Buscar por unidad, matrícula, conductor o zona…" aria-label="Buscar camiones"></label>
             <select class="filter-select" id="truckFilter" aria-label="Filtrar camiones por estado"><option value="todos">Todos los estados</option><option value="activo">Activo</option><option value="disponible">Disponible</option><option value="mantenimiento">Mantenimiento</option></select>
           </div>
-          <p class="result-count" id="truckCount">6 camiones mostrados</p>
+          <p class="result-count" id="truckCount">Cargando camiones...</p>
           <article class="card data-panel"><div class="table-wrap"><table><thead><tr><th>Unidad</th><th>Matrícula</th><th>Tipo</th><th>Conductor</th><th>Asignación</th><th>Estado</th><th></th></tr></thead>
             <tbody id="truckRows">
               <tr data-search="zm-014 stb 2145 carga lateral martín silva pocitos ch-04" data-status="activo"><td><div class="asset-cell"><span class="asset-icon">▱</span><div><div class="asset-code">ZM-014</div><div class="asset-detail">Mercedes-Benz</div></div></div></td><td>STB 2145</td><td>Carga lateral</td><td>Martín Silva</td><td>CH-04 · Pocitos</td><td><span class="state">Activo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
@@ -194,13 +224,47 @@
             </tbody></table></div><div class="empty-state" id="truckEmpty">No se encontraron camiones con esos criterios.</div></article>
         </section>
 
+        <section class="view" id="view-centros">
+          <div class="view-heading"><div><h2>Centros y destinos</h2><p>Consulta de centros de acopio, bases y destinos operativos.</p></div><button class="primary-button" id="newCenterButton" type="button">＋ Registrar centro</button></div>
+          <form class="resource-form" id="centerForm" hidden>
+            <input name="id_centro" type="hidden">
+            <div class="form-grid"><label>Nombre<input name="nombre" maxlength="100" required></label><label>Dirección<input name="direccion" maxlength="150" required></label><label>Teléfono<input name="telefono" maxlength="20" required></label></div>
+            <div class="form-actions"><button class="primary-button" type="submit">Guardar centro</button><button class="link-button" id="cancelCenterButton" type="button">Cancelar</button></div>
+            <p class="form-message" id="centerFormMessage" role="status"></p>
+          </form>
+          <p class="result-count" id="centerCount">Cargando centros...</p>
+          <article class="card data-panel"><div class="table-wrap"><table><thead><tr><th>Centro</th><th>Dirección</th><th>Teléfono</th><th>Estado</th><th></th></tr></thead><tbody id="centerRows"></tbody></table></div><div class="empty-state" id="centerEmpty" hidden>No se pudieron cargar centros.</div></article>
+        </section>
+
+        <section class="view" id="view-maquinaria">
+          <div class="view-heading"><div><h2>Maquinaria</h2><p>Consulta de maquinaria asignada a centros operativos.</p></div><button class="primary-button" id="newMachineButton" type="button">＋ Registrar maquinaria</button></div>
+          <form class="resource-form" id="machineForm" hidden>
+            <input name="id_maquinaria" type="hidden">
+            <div class="form-grid"><label>Nombre<input name="nombre" maxlength="50" required></label><label>Tipo<input name="tipo" maxlength="50" required></label><label>Estado<select name="estado" required><option value="Disponible">Disponible</option><option value="En Uso">En Uso</option><option value="En Mantenimiento">En Mantenimiento</option></select></label><label>ID centro<input name="id_centro" type="number" min="1" step="1" required></label></div>
+            <div class="form-actions"><button class="primary-button" type="submit">Guardar maquinaria</button><button class="link-button" id="cancelMachineButton" type="button">Cancelar</button></div>
+            <p class="form-message" id="machineFormMessage" role="status"></p>
+          </form>
+          <p class="result-count" id="machineCount">Cargando maquinaria...</p>
+          <article class="card data-panel"><div class="table-wrap"><table><thead><tr><th>Recurso</th><th>Tipo</th><th>Centro</th><th>Estado</th><th></th></tr></thead><tbody id="machineRows"></tbody></table></div><div class="empty-state" id="machineEmpty" hidden>No se pudo cargar maquinaria.</div></article>
+        </section>
+
         <section class="view" id="view-usuarios">
-          <div class="view-heading"><div><div class="demo-label">Datos temporales de demostración</div><h2>Usuarios y roles</h2><p>Vista administrativa de cuentas internas y permisos asignados.</p></div><button class="primary-button demo-action">＋ Registrar usuario</button></div>
-          <article class="card data-panel"><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Correo</th><th>Rol</th><th>Sector</th><th>Último acceso</th><th>Estado</th><th></th></tr></thead><tbody>
-            <tr><td><div class="asset-cell"><span class="avatar">FB</span><strong>Facundo Bustamante</strong></div></td><td>facundo@zentrax.uy</td><td>Coordinador</td><td>Programación</td><td>Hoy · 19:34</td><td><span class="state">Activo</span></td><td><button class="table-action">Ver perfil</button></td></tr>
-            <tr><td><div class="asset-cell"><span class="avatar">AR</span><strong>Andrea Romero</strong></div></td><td>andrea@zentrax.uy</td><td>Subcoordinadora</td><td>Análisis y arquitectura</td><td>Hoy · 18:52</td><td><span class="state">Activo</span></td><td><button class="table-action">Ver perfil</button></td></tr>
-            <tr><td><div class="asset-cell"><span class="avatar">D</span><strong>Diego</strong></div></td><td>diego@zentrax.uy</td><td>Administrador</td><td>Datos y seguridad</td><td>Hoy · 17:40</td><td><span class="state">Activo</span></td><td><button class="table-action">Ver perfil</button></td></tr>
-          </tbody></table></div></article>
+          <div class="view-heading"><div><h2>Usuarios y roles</h2><p>Vista administrativa de cuentas internas y permisos asignados.</p></div><button class="primary-button" id="newUserButton" type="button">＋ Registrar usuario</button></div>
+          <form class="resource-form" id="userForm" hidden>
+            <input name="id_usuario" type="hidden">
+            <div class="form-grid">
+              <label>Nombre<input name="nombre" maxlength="50" required></label>
+              <label>Apellido<input name="apellido" maxlength="50" required></label>
+              <label>Email<input name="email" type="email" maxlength="100" required></label>
+              <label>Contraseña<input name="contrasena" type="password" minlength="6" maxlength="72"></label>
+              <label>Teléfono<input name="telefono" maxlength="20" required></label>
+              <label>ID centro<input name="id_centro" type="number" min="1" step="1" required></label>
+            </div>
+            <div class="form-actions"><button class="primary-button" type="submit">Guardar usuario</button><button class="link-button" id="cancelUserButton" type="button">Cancelar</button></div>
+            <p class="form-message" id="userFormMessage" role="status"></p>
+          </form>
+          <p class="result-count" id="userCount">Cargando usuarios...</p>
+          <article class="card data-panel"><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Correo</th><th>Rol</th><th>Sector</th><th>Último acceso</th><th>Estado</th><th></th></tr></thead><tbody id="userRows"></tbody></table></div><div class="empty-state" id="userEmpty" hidden>No se pudieron cargar usuarios.</div></article>
         </section>
       </div>
     </main>

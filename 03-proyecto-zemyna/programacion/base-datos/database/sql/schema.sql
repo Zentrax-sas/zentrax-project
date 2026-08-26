@@ -40,6 +40,7 @@ CREATE TABLE centro (
     nombre VARCHAR(100) NOT NULL,
     direccion VARCHAR(150) NOT NULL,
     telefono VARCHAR(20),
+    activo TINYINT(1) NOT NULL DEFAULT 1,
 
     PRIMARY KEY (id_centro)
 );
@@ -157,6 +158,7 @@ CREATE TABLE contenedor (
         'Dañado',
         'Fuera de Servicio'
     ) NOT NULL,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
 
     id_tipo_residuo INT NOT NULL,
     id_ruta INT NOT NULL,
@@ -185,6 +187,20 @@ CREATE TABLE contenedor (
 
 CREATE INDEX idx_contenedor_geo ON contenedor (latitud, longitud);
 
+-- Cache tecnica de geocodificacion inversa.
+CREATE TABLE geocodificacion_cache (
+    id_contenedor INT NOT NULL,
+    direccion VARCHAR(255) NOT NULL,
+    barrio VARCHAR(150) DEFAULT NULL,
+    localidad VARCHAR(150) DEFAULT NULL,
+    fecha_consulta DATETIME NOT NULL,
+    PRIMARY KEY (id_contenedor),
+    CONSTRAINT fk_geocodificacion_contenedor
+        FOREIGN KEY (id_contenedor)
+        REFERENCES contenedor(id_contenedor)
+        ON DELETE RESTRICT
+);
+
 
 -- =====================================
 -- TABLA VEHICULO
@@ -203,6 +219,7 @@ CREATE TABLE vehiculo (
         'En Servicio',
         'En Mantenimiento'
     ) NOT NULL,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
 
     PRIMARY KEY (id_vehiculo),
 
@@ -472,6 +489,7 @@ CREATE TABLE maquinaria (
         'En Uso',
         'En Mantenimiento'
     ) NOT NULL,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
 
     id_centro INT NOT NULL,
 

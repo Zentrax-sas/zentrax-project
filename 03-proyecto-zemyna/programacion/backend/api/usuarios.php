@@ -10,7 +10,7 @@ $method = $_SERVER["REQUEST_METHOD"];
 switch ($method) {
 
     case "GET":
-        requireRole(['Superusuario']);
+        requirePermission('usuario.consultar', ['TI']);
 
         $filters = [
             'id' => isset($_GET['id']) ? $_GET['id'] : null,
@@ -29,7 +29,7 @@ switch ($method) {
 
 
     case "POST":
-        requireRole(['Superusuario']);
+        requirePermission('usuario.crear', ['TI']);
 
         $data = json_decode(file_get_contents("php://input"), true);
 
@@ -54,7 +54,7 @@ switch ($method) {
 
 
     case "PUT":
-        requireRole(['Superusuario']);
+        requirePermission('usuario.modificar', ['TI']);
 
         $data = json_decode(file_get_contents("php://input"), true);
 
@@ -79,7 +79,7 @@ switch ($method) {
 
 
     case "DELETE":
-        requireRole(['Superusuario']);
+        requirePermission('usuario.suspender', ['TI']);
 
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
 
@@ -103,7 +103,7 @@ switch ($method) {
 
 
     case "PATCH":
-        requireRole(['Superusuario']);
+        requirePermission('usuario.modificar', ['TI']);
 
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
 

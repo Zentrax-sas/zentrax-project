@@ -51,6 +51,9 @@ class CentroController {
 
         $errors = [];
         if (empty($this->centro->id_centro)) $errors[] = "El id_centro es obligatorio para actualizar.";
+        if (empty($this->centro->nombre)) $errors[] = "El nombre es obligatorio.";
+        if (empty($this->centro->direccion)) $errors[] = "La dirección es obligatoria.";
+        if (empty($this->centro->telefono)) $errors[] = "El teléfono es obligatorio.";
         if ($errors) {
             return ["success" => false, "data" => null, "message" => "No se pudo actualizar el centro.", "errors" => $errors];
         }
@@ -64,7 +67,7 @@ class CentroController {
     public function delete($id) {
         $this->centro->id_centro = $id;
         if ($this->centro->delete()) {
-            return ["success" => true, "data" => null, "message" => "Centro eliminado correctamente.", "errors" => []];
+            return ["success" => true, "data" => null, "message" => "Centro dado de baja lógicamente.", "errors" => []];
         }
         return ["success" => false, "data" => null, "message" => "Error al eliminar el centro.", "errors" => []];
     }

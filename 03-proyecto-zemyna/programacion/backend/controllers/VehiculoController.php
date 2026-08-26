@@ -61,6 +61,12 @@ class VehiculoController {
 
         $errors = [];
         if (empty($this->vehiculo->id_vehiculo)) $errors[] = "El id_vehiculo es obligatorio para actualizar.";
+        if (empty($this->vehiculo->matricula)) $errors[] = "La matrícula es obligatoria.";
+        if (empty($this->vehiculo->marca)) $errors[] = "La marca es obligatoria.";
+        if (empty($this->vehiculo->modelo)) $errors[] = "El modelo es obligatorio.";
+        if (!is_numeric($this->vehiculo->capacidad_carga) || $this->vehiculo->capacidad_carga <= 0) $errors[] = "La capacidad de carga debe ser un número positivo.";
+        if (!in_array($this->vehiculo->estado, ['Disponible', 'En Servicio', 'En Mantenimiento'], true)) $errors[] = "El estado no es válido.";
+        if (empty($this->vehiculo->id_tipo_residuo) || !ctype_digit((string) $this->vehiculo->id_tipo_residuo)) $errors[] = "El id_tipo_residuo debe ser un entero válido.";
         if ($errors) {
             return ["success" => false, "data" => null, "message" => "No se pudo actualizar el vehículo.", "errors" => $errors];
         }
@@ -74,7 +80,7 @@ class VehiculoController {
     public function delete($id) {
         $this->vehiculo->id_vehiculo = $id;
         if ($this->vehiculo->delete()) {
-            return ["success" => true, "data" => null, "message" => "Vehículo eliminado correctamente.", "errors" => []];
+            return ["success" => true, "data" => null, "message" => "Vehículo dado de baja lógicamente.", "errors" => []];
         }
         return ["success" => false, "data" => null, "message" => "Error al eliminar el vehículo.", "errors" => []];
     }

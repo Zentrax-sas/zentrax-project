@@ -9,6 +9,7 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
+        requirePermission('contenedor.consultar', ['PUNTOS_Y_DESTINOS']);
         $filters = [
             'id' => isset($_GET['id']) ? $_GET['id'] : null,
             'page' => isset($_GET['page']) ? $_GET['page'] : 1,
@@ -24,6 +25,7 @@ switch ($method) {
         break;
 
     case "POST":
+        requirePermission('contenedor.crear', ['PUNTOS_Y_DESTINOS']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -36,6 +38,7 @@ switch ($method) {
         break;
 
     case "PUT":
+        requirePermission('contenedor.modificar', ['PUNTOS_Y_DESTINOS']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -48,6 +51,7 @@ switch ($method) {
         break;
 
     case "DELETE":
+        requirePermission('contenedor.baja', ['PUNTOS_Y_DESTINOS']);
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
         if (!isset($data['id_contenedor'])) {
             http_response_code(400);

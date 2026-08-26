@@ -11,7 +11,7 @@ $method = $_SERVER["REQUEST_METHOD"];
 switch ($method) {
 
     case "GET":
-        requireRole(['Superusuario']);
+        requirePermission('usuario.consultar', ['TI']);
 
         $idUsuario = $_GET['id_usuario'] ?? null;
         $response = $controller->getByUsuario($idUsuario);
@@ -24,7 +24,7 @@ switch ($method) {
         break;
 
     case "POST":
-        requireRole(['Superusuario']);
+        requirePermission('usuario.asignar_rol', ['TI']);
 
         $data = json_decode(file_get_contents("php://input"), true);
 
@@ -48,7 +48,7 @@ switch ($method) {
         break;
 
     case "PUT":
-        requireRole(['Superusuario']);
+        requirePermission('usuario.asignar_rol', ['TI']);
 
         $data = json_decode(file_get_contents("php://input"), true);
 

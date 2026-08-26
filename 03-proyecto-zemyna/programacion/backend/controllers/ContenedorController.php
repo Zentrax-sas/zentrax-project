@@ -27,19 +27,19 @@ class ContenedorController {
         $idRuta = $data['id_ruta'] ?? null;
 
         if ($codigo === null || $codigo === '') $errors[] = 'El código es obligatorio.';
-        elseif (mb_strlen($codigo) > 50) $errors[] = 'El código no puede superar los 50 caracteres.';
+        elseif (mb_strlen($codigo) > 20) $errors[] = 'El código no puede superar los 20 caracteres.';
 
         if ($direccion === null || $direccion === '') $errors[] = 'La dirección es obligatoria.';
-        elseif (mb_strlen($direccion) > 255) $errors[] = 'La dirección no puede superar los 255 caracteres.';
+        elseif (mb_strlen($direccion) > 150) $errors[] = 'La dirección no puede superar los 150 caracteres.';
 
         if ($capacidad === null || $capacidad === '') $errors[] = 'La capacidad es obligatoria.';
         elseif (!is_numeric($capacidad) || (float) $capacidad <= 0) $errors[] = 'La capacidad debe ser un número positivo.';
 
-        if ($latitud !== null && $latitud !== '' && (!is_numeric($latitud) || $latitud < -90 || $latitud > 90)) $errors[] = 'La latitud debe estar entre -90 y 90.';
-        if ($longitud !== null && $longitud !== '' && (!is_numeric($longitud) || $longitud < -180 || $longitud > 180)) $errors[] = 'La longitud debe estar entre -180 y 180.';
+        if ($latitud === null || $latitud === '' || !is_numeric($latitud) || $latitud < -90 || $latitud > 90) $errors[] = 'La latitud es obligatoria y debe estar entre -90 y 90.';
+        if ($longitud === null || $longitud === '' || !is_numeric($longitud) || $longitud < -180 || $longitud > 180) $errors[] = 'La longitud es obligatoria y debe estar entre -180 y 180.';
 
         if ($estado === null || $estado === '') $errors[] = 'El estado es obligatorio.';
-        elseif (!in_array($estado, ['Disponible', 'Lleno', 'En Mantenimiento', 'Fuera de Servicio', 'Dañado', 'Danado'], true)) $errors[] = 'El estado no es válido.';
+        elseif (!in_array($estado, ['Disponible', 'Lleno', 'Dañado', 'Fuera de Servicio'], true)) $errors[] = 'El estado no es válido.';
 
         if ($idTipoResiduo === null || $idTipoResiduo === '' || !ctype_digit((string) $idTipoResiduo)) $errors[] = 'El id_tipo_residuo debe ser un número entero válido.';
         if ($idRuta === null || $idRuta === '' || !ctype_digit((string) $idRuta)) $errors[] = 'El id_ruta debe ser un número entero válido.';
@@ -134,7 +134,7 @@ class ContenedorController {
     public function delete($id) {
         $this->contenedor->id_contenedor = $id;
         if ($this->contenedor->delete()) {
-            return ["success" => true, "data" => null, "message" => "Contenedor removido del sistema.", "errors" => [], "statusCode" => 200];
+            return ["success" => true, "data" => null, "message" => "Contenedor dado de baja lógicamente.", "errors" => [], "statusCode" => 200];
         }
         return ["success" => false, "data" => null, "message" => "Contenedor no encontrado.", "errors" => ["No existe el contenedor solicitado."], "statusCode" => 404];
     }

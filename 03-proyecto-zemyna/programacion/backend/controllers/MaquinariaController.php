@@ -55,6 +55,10 @@ class MaquinariaController {
 
         $errors = [];
         if (empty($this->maquinaria->id_maquinaria)) $errors[] = "El id_maquinaria es obligatorio para actualizar.";
+        if (empty($this->maquinaria->nombre)) $errors[] = "El nombre es obligatorio.";
+        if (empty($this->maquinaria->tipo)) $errors[] = "El tipo es obligatorio.";
+        if (!in_array($this->maquinaria->estado, ['Disponible', 'En Uso', 'En Mantenimiento'], true)) $errors[] = "El estado no es válido.";
+        if (empty($this->maquinaria->id_centro) || !ctype_digit((string) $this->maquinaria->id_centro)) $errors[] = "El id_centro debe ser un entero válido.";
         if ($errors) {
             return ["success" => false, "data" => null, "message" => "No se pudo actualizar la maquinaria.", "errors" => $errors];
         }
@@ -68,7 +72,7 @@ class MaquinariaController {
     public function delete($id) {
         $this->maquinaria->id_maquinaria = $id;
         if ($this->maquinaria->delete()) {
-            return ["success" => true, "data" => null, "message" => "Maquinaria eliminada correctamente.", "errors" => []];
+            return ["success" => true, "data" => null, "message" => "Maquinaria dada de baja lógicamente.", "errors" => []];
         }
         return ["success" => false, "data" => null, "message" => "Error al eliminar la maquinaria.", "errors" => []];
     }

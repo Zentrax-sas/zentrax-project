@@ -7,6 +7,7 @@ class Maquinaria {
     public $nombre;
     public $tipo;
     public $estado;
+    public $activo;
     public $id_centro;
 
     public function __construct($db) {
@@ -15,7 +16,7 @@ class Maquinaria {
 
     public function read() {
         if (!$this->conn) return null;
-        $stmt = $this->conn->prepare("SELECT * FROM " . $this->table_name);
+        $stmt = $this->conn->prepare("SELECT * FROM " . $this->table_name . " WHERE activo = 1");
         $stmt->execute();
         return $stmt;
     }
@@ -49,9 +50,13 @@ class Maquinaria {
 
     public function delete() {
         if (!$this->conn) return false;
-        $query = "DELETE FROM " . $this->table_name . " WHERE id_maquinaria=:id_maquinaria";
+        $query = "UPDATE " . $this->table_name . "
+              SET activo = 0
+              WHERE id_maquinaria = :id_maquinaria
+              AND activo = 1";
         $stmt  = $this->conn->prepare($query);
         $stmt->bindParam(":id_maquinaria", $this->id_maquinaria);
-        return $stmt->execute();
+        $stmt->execute();
+        return $stmt->rowCount() > 0;
     }
 }
