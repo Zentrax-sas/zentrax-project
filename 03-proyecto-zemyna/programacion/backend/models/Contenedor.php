@@ -49,6 +49,17 @@ class Contenedor {
         return $stmt;
     }
 
+    public function findByCodigo($codigo) {
+        if (!$this->conn) return null;
+
+        $query = 'SELECT * FROM ' . $this->table_name . ' WHERE codigo = :codigo LIMIT 1';
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':codigo', trim((string) $codigo));
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
     public function create() {
         if (!$this->conn) return false;
         if (empty($this->codigo) || empty($this->capacidad) || empty($this->direccion) ||

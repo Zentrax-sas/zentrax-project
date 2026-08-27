@@ -32,8 +32,13 @@ class IncidenciaController {
             $errors[] = 'La descripción no puede superar los 500 caracteres.';
         }
 
-        if ($fechaReporte !== null && $fechaReporte !== '' && strtotime($fechaReporte) > time()) {
-            $errors[] = 'La fecha de reporte no puede ser posterior a la fecha actual.';
+        if ($fechaReporte !== null && $fechaReporte !== '') {
+            $fechaTimestamp = strtotime($fechaReporte);
+            if ($fechaTimestamp === false) {
+                $errors[] = 'La fecha de reporte no tiene un formato válido.';
+            } elseif ($fechaTimestamp > time()) {
+                $errors[] = 'La fecha de reporte no puede ser posterior a la fecha actual.';
+            }
         }
 
         $estados = ['Pendiente', 'En Proceso', 'Resuelta'];
@@ -225,8 +230,14 @@ class IncidenciaController {
                 ? (int)$data['id_ruta']
                 : null;
 
-        $this->incidencia->id_cuadrilla = (int)$data['id_cuadrilla'];
-        $this->incidencia->id_usuario = (int)$data['id_usuario'];
+        $this->incidencia->id_cuadrilla =
+            isset($data['id_cuadrilla']) && $data['id_cuadrilla'] !== ''
+                ? (int)$data['id_cuadrilla']
+                : null;
+        $this->incidencia->id_usuario =
+            isset($data['id_usuario']) && $data['id_usuario'] !== ''
+                ? (int)$data['id_usuario']
+                : null;
 
         if ($this->incidencia->update()) {
             return [

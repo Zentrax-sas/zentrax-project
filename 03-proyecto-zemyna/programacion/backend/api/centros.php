@@ -9,14 +9,14 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        requirePermission('centro.consultar', ['PUNTOS_Y_DESTINOS']);
+        requirePermission('centro.consultar', ['PUNTOS_Y_DESTINOS', 'OPERACIONES', 'LOGISTICA']);
         $response = $controller->getAll();
         http_response_code(200);
         echo json_encode($response);
         break;
 
     case "POST":
-        requirePermission('centro.crear', ['PUNTOS_Y_DESTINOS']);
+        requirePermission('centro.crear', ['PUNTOS_Y_DESTINOS', 'OPERACIONES']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -29,7 +29,7 @@ switch ($method) {
         break;
 
     case "PUT":
-        requirePermission('centro.modificar', ['PUNTOS_Y_DESTINOS']);
+        requirePermission('centro.modificar', ['PUNTOS_Y_DESTINOS', 'OPERACIONES']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -42,7 +42,7 @@ switch ($method) {
         break;
 
     case "DELETE":
-        requirePermission('centro.baja', ['PUNTOS_Y_DESTINOS']);
+        requirePermission('centro.baja', ['PUNTOS_Y_DESTINOS', 'OPERACIONES']);
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
         if (!isset($data['id_centro'])) {
             http_response_code(400);

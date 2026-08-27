@@ -9,14 +9,14 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        requirePermission('vehiculo.consultar', ['LOGISTICA']);
+        requirePermission('vehiculo.consultar', ['LOGISTICA', 'OPERACIONES', 'MANTENIMIENTO']);
         $response = $controller->getAll();
         http_response_code(200);
         echo json_encode($response);
         break;
 
     case "POST":
-        requirePermission('vehiculo.crear', ['LOGISTICA']);
+        requirePermission('vehiculo.crear', ['LOGISTICA', 'OPERACIONES', 'MANTENIMIENTO']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -29,7 +29,7 @@ switch ($method) {
         break;
 
     case "PUT":
-        requirePermission('vehiculo.modificar', ['LOGISTICA']);
+        requirePermission('vehiculo.modificar', ['LOGISTICA', 'OPERACIONES', 'MANTENIMIENTO']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -42,7 +42,7 @@ switch ($method) {
         break;
 
     case "DELETE":
-        requirePermission('vehiculo.baja', ['LOGISTICA']);
+        requirePermission('vehiculo.baja', ['LOGISTICA', 'OPERACIONES', 'MANTENIMIENTO']);
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
         if (!isset($data['id_vehiculo'])) {
             http_response_code(400);

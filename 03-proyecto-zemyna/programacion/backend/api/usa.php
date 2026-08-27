@@ -10,7 +10,7 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        requireAuth();
+        requirePermission('vehiculo.asignar', ['LOGISTICA', 'OPERACIONES']);
 
         $filters = [
             'id' => $_GET['id'] ?? null,
@@ -24,7 +24,7 @@ switch ($method) {
         break;
 
     case "POST":
-        requireRole(['Superusuario', 'Administrador']);
+        requirePermission('vehiculo.asignar', ['LOGISTICA', 'OPERACIONES']);
 
         $data = json_decode(file_get_contents("php://input"), true);
 
@@ -44,7 +44,7 @@ switch ($method) {
         break;
 
     case "PUT":
-        requireRole(['Superusuario', 'Administrador']);
+        requirePermission('vehiculo.asignar', ['LOGISTICA', 'OPERACIONES']);
 
         $data = json_decode(file_get_contents("php://input"), true);
 
@@ -64,7 +64,7 @@ switch ($method) {
         break;
 
     case "DELETE":
-        requireRole(['Superusuario', 'Administrador']);
+        requirePermission('vehiculo.asignar', ['LOGISTICA', 'OPERACIONES']);
 
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
 

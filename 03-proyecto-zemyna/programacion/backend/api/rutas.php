@@ -9,12 +9,16 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
+        requirePermission('ruta.consultar', ['LOGISTICA', 'OPERACIONES']);
+
         $response = $controller->getAll();
         http_response_code(200);
         echo json_encode($response);
         break;
 
     case "POST":
+        requirePermission('ruta.crear', ['LOGISTICA', 'OPERACIONES']);
+
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -27,6 +31,8 @@ switch ($method) {
         break;
 
     case "PUT":
+        requirePermission('ruta.modificar', ['LOGISTICA', 'OPERACIONES']);
+
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -39,6 +45,8 @@ switch ($method) {
         break;
 
     case "DELETE":
+        requirePermission('ruta.baja', ['LOGISTICA', 'OPERACIONES']);
+
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
         if (!isset($data['id_ruta'])) {
             http_response_code(400);

@@ -79,9 +79,18 @@ if (empty($roles)) {
     exit;
 }
 
-$nombresRoles = array_column($roles, 'nombre');
-$permisos = $usuarioModel->getPermisosVigentes($usuario['id_usuario']);
-$autorizaciones = $usuarioModel->getAutorizacionesVigentes($usuario['id_usuario']);
+$nombresRoles = array_map(function ($rol) {
+    return normalizeRoleName($rol['nombre'] ?? $rol);
+}, $roles);
+
+$permisos = array_map('trim', $usuarioModel->getPermisosVigentes($usuario['id_usuario']));
+$autorizaciones = array_map(function ($autorizacion) {
+    return [
+        'rol' => normalizeRoleName($autorizacion['rol'] ?? ''),
+        'sector' => strtoupper(trim((string) ($autorizacion['sector'] ?? ''))),
+        'permiso' => trim((string) ($autorizacion['permiso'] ?? '')),
+    ];
+}, $usuarioModel->getAutorizacionesVigentes($usuario['id_usuario']));
 
 session_regenerate_id(true);
 

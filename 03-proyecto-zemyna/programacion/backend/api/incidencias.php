@@ -9,7 +9,7 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        requireAuth();
+        requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
 
         $filters = [
             'id' => $_GET['id'] ?? null,
@@ -23,6 +23,8 @@ switch ($method) {
         break;
 
     case "POST":
+        requirePermission('incidencia.crear', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
+
         $data = json_decode(file_get_contents("php://input"), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
@@ -41,7 +43,7 @@ switch ($method) {
         break;
 
     case "PUT":
-        requireRole(['Superusuario', 'Administrador']);
+        requirePermission('incidencia.modificar', ['OPERACIONES', 'PUNTOS_Y_DESTINOS']);
 
         $data = json_decode(file_get_contents("php://input"), true);
 
@@ -61,7 +63,7 @@ switch ($method) {
         break;
 
     case "DELETE":
-        requireRole(['Superusuario', 'Administrador']);
+        requirePermission('incidencia.modificar', ['OPERACIONES', 'PUNTOS_Y_DESTINOS']);
 
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
 

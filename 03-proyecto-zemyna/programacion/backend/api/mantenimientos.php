@@ -10,7 +10,7 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        requireAuth();
+        requirePermission('mantenimiento.consultar', ['MANTENIMIENTO', 'OPERACIONES']);
 
         $id = $_GET['id'] ?? null;
         $response = $controller->getAll($id);
@@ -23,7 +23,7 @@ switch ($method) {
         break;
 
     case "POST":
-        requireRole(['Superusuario', 'Administrador']);
+        requirePermission('mantenimiento.crear', ['MANTENIMIENTO', 'OPERACIONES']);
 
         $data = json_decode(file_get_contents("php://input"), true);
 
@@ -47,7 +47,7 @@ switch ($method) {
         break;
 
     case "PUT":
-        requireRole(['Superusuario', 'Administrador']);
+        requirePermission('mantenimiento.modificar', ['MANTENIMIENTO', 'OPERACIONES']);
 
         $data = json_decode(file_get_contents("php://input"), true);
 
@@ -71,7 +71,7 @@ switch ($method) {
         break;
 
     case "DELETE":
-        requireRole(['Superusuario', 'Administrador']);
+        requirePermission('mantenimiento.baja', ['MANTENIMIENTO', 'OPERACIONES']);
 
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
 

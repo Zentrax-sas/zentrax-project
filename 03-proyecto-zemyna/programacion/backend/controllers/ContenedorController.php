@@ -93,7 +93,21 @@ class ContenedorController {
             return ["success" => false, "data" => null, "message" => "No se pudo registrar el contenedor.", "errors" => $errors];
         }
 
-        $this->contenedor->codigo          = $this->normalizeString($data['codigo'] ?? null);
+        $codigo = $this->normalizeString($data['codigo'] ?? null);
+        if ($codigo !== null && $codigo !== '' && method_exists($this->contenedor, 'findByCodigo')) {
+            $existente = $this->contenedor->findByCodigo($codigo);
+            if ($existente) {
+                return [
+                    "success" => false,
+                    "data" => null,
+                    "message" => "El código del contenedor ya existe.",
+                    "errors" => ["El código ya está registrado."],
+                    "statusCode" => 409
+                ];
+            }
+        }
+
+        $this->contenedor->codigo          = $codigo;
         $this->contenedor->capacidad       = (float) ($data['capacidad'] ?? 0);
         $this->contenedor->direccion       = $this->normalizeString($data['direccion'] ?? null);
         $this->contenedor->latitud         = isset($data['latitud']) && $data['latitud'] !== '' ? (float) $data['latitud'] : null;
@@ -115,8 +129,23 @@ class ContenedorController {
             return ["success" => false, "data" => null, "message" => "No se pudo actualizar el contenedor.", "errors" => $errors];
         }
 
-        $this->contenedor->id_contenedor   = (int) ($data['id_contenedor'] ?? 0);
-        $this->contenedor->codigo          = $this->normalizeString($data['codigo'] ?? null);
+        $codigo = $this->normalizeString($data['codigo'] ?? null);
+        $idContenedor = (int) ($data['id_contenedor'] ?? 0);
+        if ($codigo !== null && $codigo !== '' && method_exists($this->contenedor, 'findByCodigo')) {
+            $existente = $this->contenedor->findByCodigo($codigo);
+            if ($existente && ((int) ($existente['id_contenedor'] ?? 0)) !== $idContenedor) {
+                return [
+                    "success" => false,
+                    "data" => null,
+                    "message" => "El código del contenedor ya existe para otro registro.",
+                    "errors" => ["El código ya está registrado."],
+                    "statusCode" => 409
+                ];
+            }
+        }
+
+        $this->contenedor->id_contenedor   = $idContenedor;
+        $this->contenedor->codigo          = $codigo;
         $this->contenedor->capacidad       = (float) ($data['capacidad'] ?? 0);
         $this->contenedor->direccion       = $this->normalizeString($data['direccion'] ?? null);
         $this->contenedor->latitud         = isset($data['latitud']) && $data['latitud'] !== '' ? (float) $data['latitud'] : null;

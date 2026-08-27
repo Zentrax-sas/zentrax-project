@@ -9,14 +9,14 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        requirePermission('maquinaria.consultar', ['MANTENIMIENTO']);
+        requirePermission('maquinaria.consultar', ['MANTENIMIENTO', 'OPERACIONES']);
         $response = $controller->getAll();
         http_response_code(200);
         echo json_encode($response);
         break;
 
     case "POST":
-        requirePermission('maquinaria.crear', ['MANTENIMIENTO']);
+        requirePermission('maquinaria.crear', ['MANTENIMIENTO', 'OPERACIONES']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -29,7 +29,7 @@ switch ($method) {
         break;
 
     case "PUT":
-        requirePermission('maquinaria.modificar', ['MANTENIMIENTO']);
+        requirePermission('maquinaria.modificar', ['MANTENIMIENTO', 'OPERACIONES']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -42,7 +42,7 @@ switch ($method) {
         break;
 
     case "DELETE":
-        requirePermission('maquinaria.baja', ['MANTENIMIENTO']);
+        requirePermission('maquinaria.baja', ['MANTENIMIENTO', 'OPERACIONES']);
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
         if (!isset($data['id_maquinaria'])) {
             http_response_code(400);
