@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="assets/logo.jpeg" type="image/jpeg">
     <title>Zemyna | Inicio</title>
-    <link rel="stylesheet" href="../src/styles/index.css">
+    <link rel="stylesheet" href="../src/styles/index.css?v=3">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
@@ -18,7 +18,7 @@
         <div class="brand">
             <img src="assets/logo_sin_fondo2.png" alt="Zemyna" style="height: 50px; width: auto;">
         </div>
-        <a href="landing.html" class="btn-login" style="margin: 0;">← Volver a la Landing</a>
+        <a href="landing.html" class="btn-login" style="margin: 0;">← Pagina principal</a>
     </header>
 
     <section class="hero">
@@ -37,6 +37,19 @@
             <div id="form-msg-vacio" class="form-placeholder">
                 <p>Seleccioná un contenedor del mapa para habilitar el formulario de reportes.</p>
             </div>
+
+            <section id="reporte-confirmacion" class="report-confirmation" hidden aria-labelledby="confirmacion-title">
+                <div class="confirmation-mark" aria-hidden="true">✓</div>
+                <h4 id="confirmacion-title">Reporte recibido</h4>
+                <p>Guardá este número para consultar el estado de tu incidencia.</p>
+                <div class="tracking-code" id="tracking-code-confirmacion" aria-live="polite"></div>
+                <div class="confirmation-actions">
+                    <button type="button" class="secondary-button" id="copiar-tracking">Copiar número</button>
+                    <button type="button" class="secondary-button" id="descargar-comprobante">Descargar comprobante</button>
+                </div>
+                <button type="button" class="link-button confirmation-new-report" id="nuevo-reporte">Registrar otra incidencia</button>
+                <p id="confirmacion-message" class="confirmation-message" role="status" aria-live="polite"></p>
+            </section>
 
             <form id="form-reporte" class="form-active" style="display: none;">
                 <label for="form-id-contenedor">ID Contenedor:</label>
@@ -60,6 +73,7 @@
                 <p id="reporte-message" role="status" style="margin-top: 10px; color: #1f2937; font-size: 0.95rem;"></p>
                 <button type="button" id="submit-reporte" class="submit-button">ENVIAR REPORTE</button>
             </form>
+
         </div>
     </main>
 
@@ -82,6 +96,6 @@
     <script src="config.js?v=2"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="mapa.js"></script>
+    <script src="mapa.js?v=4"></script>
 </body>
 </html>

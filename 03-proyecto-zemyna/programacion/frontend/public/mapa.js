@@ -10,8 +10,10 @@ const clusterGroup = L.markerClusterGroup({
 const MIN_MAP_ZOOM_FOR_CONTAINERS = 12;
 let contenedoresLoadTimer = null;
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap contributors © CARTO'
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19,
+    className: 'zemyna-map-tiles'
 }).addTo(map);
 
 const userLocationMarker = {
@@ -75,7 +77,70 @@ const formReporte = document.getElementById('form-reporte');
 const submitReporteButton = document.getElementById('submit-reporte');
 const reporteMessage = document.getElementById('reporte-message');
 const estadoGlobalReporte = document.getElementById('estado-global-reporte');
+const reporteConfirmacion = document.getElementById('reporte-confirmacion');
+const trackingCodeConfirmacion = document.getElementById('tracking-code-confirmacion');
+const confirmacionMessage = document.getElementById('confirmacion-message');
+const copiarTrackingButton = document.getElementById('copiar-tracking');
+const descargarComprobanteButton = document.getElementById('descargar-comprobante');
+const nuevoReporteButton = document.getElementById('nuevo-reporte');
 let toastTimerId = null;
+
+let ultimoReporte = null;
+
+function mostrarConfirmacionReporte(trackingNumber, datos = {}) {
+    ultimoReporte = { trackingNumber, ...datos };
+    if (trackingCodeConfirmacion) trackingCodeConfirmacion.textContent = trackingNumber;
+    if (reporteConfirmacion) reporteConfirmacion.hidden = false;
+    if (formReporte) formReporte.style.display = 'none';
+    const placeholder = document.getElementById('form-msg-vacio');
+    if (placeholder) placeholder.style.display = 'none';
+}
+
+async function copiarTracking() {
+    if (!ultimoReporte?.trackingNumber) return;
+
+    try {
+        await navigator.clipboard.writeText(ultimoReporte.trackingNumber);
+        if (confirmacionMessage) confirmacionMessage.textContent = 'Número copiado.';
+    } catch (error) {
+        if (confirmacionMessage) confirmacionMessage.textContent = 'No se pudo copiar automáticamente. Anotalo desde el comprobante.';
+    }
+}
+
+function descargarComprobante() {
+    if (!ultimoReporte?.trackingNumber) return;
+
+    const contenido = [
+        'ZEMYNA - COMPROBANTE DE INCIDENCIA',
+        '',
+        `Número de seguimiento: ${ultimoReporte.trackingNumber}`,
+        `Contenedor: ${ultimoReporte.idContenedor || 'No informado'}`,
+        `Ubicación: ${ultimoReporte.direccion || 'No informada'}`,
+        `Problema: ${ultimoReporte.tipoProblema || 'No informado'}`,
+        '',
+        'Conservá este número para consultar el estado de tu incidencia.'
+    ].join('\n');
+    const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${ultimoReporte.trackingNumber}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+if (copiarTrackingButton) copiarTrackingButton.addEventListener('click', copiarTracking);
+if (descargarComprobanteButton) descargarComprobanteButton.addEventListener('click', descargarComprobante);
+if (nuevoReporteButton) {
+    nuevoReporteButton.addEventListener('click', () => {
+        ultimoReporte = null;
+        reporteConfirmacion.hidden = true;
+        formReporte.reset();
+        document.getElementById('form-msg-vacio').style.display = 'none';
+        formReporte.style.display = 'block';
+        if (reporteMessage) reporteMessage.textContent = '';
+    });
+}
 
 function actualizarEstadoGlobal(mensaje, tipo = 'exito') {
     if (!estadoGlobalReporte) return;
@@ -234,6 +299,10 @@ if (submitReporteButton) {
 
             let mensajeFinal = 'Incidencia enviada correctamente.';
             const idIncidencia = json?.data?.id_incidencia;
+            const trackingNumber = json?.data?.tracking_number;
+            if (trackingNumber) {
+                mensajeFinal = `Incidencia enviada. Tu número de seguimiento es ${trackingNumber}.`;
+            }
 
             if (fotoSeleccionada && idIncidencia) {
                 const formData = new FormData();
@@ -259,6 +328,13 @@ if (submitReporteButton) {
             if (reporteMessage) {
                 reporteMessage.textContent = mensajeFinal;
             }
+            if (trackingNumber) {
+                mostrarConfirmacionReporte(trackingNumber, {
+                    idContenedor: document.getElementById('form-id-contenedor').value,
+                    direccion,
+                    tipoProblema
+                });
+            }
             actualizarEstadoGlobal(
                 'Ultimo envio exitoso.',
                 'exito'
@@ -269,7 +345,7 @@ if (submitReporteButton) {
             if (fotoInput) {
                 fotoInput.value = '';
             }
-            document.getElementById('form-msg-vacio').style.display = 'block';
+            document.getElementById('form-msg-vacio').style.display = 'none';
             formReporte.style.display = 'none';
         } catch (error) {
             if (reporteMessage) {
@@ -344,6 +420,7 @@ function renderContenedores(contenedores) {
         marcador.on('click', async function() {
             const form = document.getElementById('form-reporte');
             const placeholder = document.getElementById('form-msg-vacio');
+            if (reporteConfirmacion) reporteConfirmacion.hidden = true;
             if (placeholder) placeholder.style.display = 'none';
             if (form) form.style.display = 'block';
             document.getElementById('form-id-contenedor').value = idContenedor;

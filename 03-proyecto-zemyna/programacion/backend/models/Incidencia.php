@@ -5,6 +5,7 @@ class Incidencia {
     private string $table_name = "incidencia";
 
     public $id_incidencia;
+    public $tracking_number;
     public $descripcion;
     public $fecha_reporte;
     public $estado;
@@ -19,12 +20,14 @@ class Incidencia {
         $this->conn = $db;
     }
 
-    public function read($id = null, $page = 1, $limit = 20) {
+    public function read($id = null, $page = 1, $limit = 20, $trackingNumber = null) {
         if (!$this->conn) return null;
 
         $where = '';
         if ($id !== null && $id !== '') {
             $where = ' WHERE i.id_incidencia = :id_incidencia';
+        } elseif ($trackingNumber !== null && $trackingNumber !== '') {
+            $where = ' WHERE i.tracking_number = :tracking_number';
         }
 
         $offset = ($page - 1) * $limit;
@@ -38,8 +41,8 @@ class Incidencia {
                   FROM " . $this->table_name . " i
                   LEFT JOIN contenedor c ON c.id_contenedor = i.id_contenedor
                   LEFT JOIN ruta r ON r.id_ruta = i.id_ruta
-                  INNER JOIN cuadrilla q ON q.id_cuadrilla = i.id_cuadrilla
-                  INNER JOIN usuario u ON u.id_usuario = i.id_usuario"
+                  LEFT JOIN cuadrilla q ON q.id_cuadrilla = i.id_cuadrilla
+                  LEFT JOIN usuario u ON u.id_usuario = i.id_usuario"
                   . $where . "
                   ORDER BY i.id_incidencia ASC
                   LIMIT :limit OFFSET :offset";
@@ -48,6 +51,8 @@ class Incidencia {
 
         if ($id !== null && $id !== '') {
             $stmt->bindValue(':id_incidencia', (int)$id, PDO::PARAM_INT);
+        } elseif ($trackingNumber !== null && $trackingNumber !== '') {
+            $stmt->bindValue(':tracking_number', $trackingNumber);
         }
 
         $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
@@ -74,13 +79,14 @@ class Incidencia {
         }
 
         $query = "INSERT INTO " . $this->table_name . "
-                  (descripcion, fecha_reporte, estado, prioridad, tipo_problema,
+                   (tracking_number, descripcion, fecha_reporte, estado, prioridad, tipo_problema,
                    id_contenedor, id_ruta, id_cuadrilla, id_usuario)
-                  VALUES (:descripcion, :fecha_reporte, :estado, :prioridad, :tipo_problema,
+                  VALUES (:tracking_number, :descripcion, :fecha_reporte, :estado, :prioridad, :tipo_problema,
                           :id_contenedor, :id_ruta, :id_cuadrilla, :id_usuario)";
 
         $stmt = $this->conn->prepare($query);
 
+        $stmt->bindParam(':tracking_number', $this->tracking_number);
         $stmt->bindParam(':descripcion', $this->descripcion);
         $stmt->bindParam(':fecha_reporte', $this->fecha_reporte);
         $stmt->bindParam(':estado', $this->estado);

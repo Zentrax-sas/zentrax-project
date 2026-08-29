@@ -13,18 +13,22 @@ switch ($method) {
 
         $filters = [
             'id' => $_GET['id'] ?? null,
+            'tracking_number' => $_GET['tracking_number'] ?? null,
             'page' => $_GET['page'] ?? 1,
             'limit' => $_GET['limit'] ?? 20,
         ];
 
-        $response = $controller->getAll($filters);
+        if (!empty($filters['tracking_number'])) {
+            $response = $controller->getPublicByTracking($filters['tracking_number']);
+        } else {
+            requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
+            $response = $controller->getAll($filters);
+        }
         http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));
         echo json_encode($response);
         break;
 
     case "POST":
-        requirePermission('incidencia.crear', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
-
         $data = json_decode(file_get_contents("php://input"), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {

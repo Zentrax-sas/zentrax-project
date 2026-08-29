@@ -104,10 +104,11 @@ class IncidenciaController {
 
     public function getAll($filters = []) {
         $id = isset($filters['id']) ? (int)$filters['id'] : null;
+        $trackingNumber = isset($filters['tracking_number']) ? strtoupper(trim($filters['tracking_number'])) : null;
         $page = isset($filters['page']) ? max(1, (int)$filters['page']) : 1;
         $limit = isset($filters['limit']) ? max(1, min(100, (int)$filters['limit'])) : 20;
 
-        $stmt = $this->incidencia->read($id, $page, $limit);
+        $stmt = $this->incidencia->read($id, $page, $limit, $trackingNumber);
 
         if (!$stmt) {
             return [
@@ -120,7 +121,7 @@ class IncidenciaController {
 
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        if ($id !== null && empty($rows)) {
+        if (($id !== null || $trackingNumber !== null) && empty($rows)) {
             return [
                 "success" => false,
                 "data" => [],
@@ -134,6 +135,39 @@ class IncidenciaController {
             "data" => $rows,
             "message" => "Incidencias cargadas correctamente.",
             "statusCode" => 200
+        ];
+    }
+
+    public function getPublicByTracking($trackingNumber) {
+        $response = $this->getAll([
+            'tracking_number' => $trackingNumber,
+            'limit' => 1
+        ]);
+
+        if (!$response['success']) {
+            return $response;
+        }
+
+        $incidencia = $response['data'][0] ?? null;
+        if (!$incidencia) {
+            return [
+                'success' => false,
+                'data' => null,
+                'message' => 'No se encontró una incidencia con ese número de seguimiento.',
+                'statusCode' => 404
+            ];
+        }
+
+        return [
+            'success' => true,
+            'data' => [
+                'tracking_number' => $incidencia['tracking_number'],
+                'estado' => $incidencia['estado'],
+                'fecha_reporte' => $incidencia['fecha_reporte'],
+                'tipo_problema' => $incidencia['tipo_problema']
+            ],
+            'message' => 'Estado de la incidencia consultado correctamente.',
+            'statusCode' => 200
         ];
     }
 
@@ -161,6 +195,7 @@ class IncidenciaController {
         }
 
         $this->incidencia->descripcion = $this->normalizeString($data['descripcion']);
+        $this->incidencia->tracking_number = 'INC-' . date('Y') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
         $this->incidencia->fecha_reporte = $data['fecha_reporte'];
         $this->incidencia->estado = $this->normalizeString($data['estado']);
         $this->incidencia->prioridad = $this->normalizeString($data['prioridad']);
@@ -182,7 +217,10 @@ class IncidenciaController {
         if ($this->incidencia->create()) {
             return [
                 "success" => true,
-                "data" => ["id_incidencia" => $this->incidencia->id_incidencia],
+                "data" => [
+                    "id_incidencia" => $this->incidencia->id_incidencia,
+                    "tracking_number" => $this->incidencia->tracking_number
+                ],
                 "message" => "Incidencia registrada correctamente.",
                 "errors" => [],
                 "statusCode" => 201

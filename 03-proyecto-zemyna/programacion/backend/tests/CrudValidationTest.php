@@ -69,6 +69,8 @@ $incidenciaController = new IncidenciaController(null);
 $incidenciaProp = new ReflectionProperty(IncidenciaController::class, 'incidencia');
 $incidenciaProp->setAccessible(true);
 $incidenciaProp->setValue($incidenciaController, new class {
+    public $id_incidencia = 55;
+    public function create() { return true; }
     public function update() { return true; }
 });
 
@@ -82,6 +84,17 @@ $resultIncidencia = $incidenciaController->update([
     'id_contenedor' => 1,
 ]);
 assertCrud(($resultIncidencia['success'] ?? false) === true && ($resultIncidencia['statusCode'] ?? null) === 200, 'Incidencia actualiza sin exigir relaciones opcionales');
+
+$resultNuevaIncidencia = $incidenciaController->create([
+    'descripcion' => 'Contenedor desbordado',
+    'tipo_problema' => 'Contenedor Desbordado',
+    'id_contenedor' => 1,
+]);
+assertCrud(
+    ($resultNuevaIncidencia['success'] ?? false) === true
+        && preg_match('/^INC-\d{4}-[A-F0-9]{5}$/', $resultNuevaIncidencia['data']['tracking_number'] ?? '') === 1,
+    'Incidencia nueva devuelve un número de seguimiento'
+);
 
 $resultFecha = $incidenciaController->create([
     'descripcion' => 'Fecha inválida',

@@ -349,6 +349,7 @@ CREATE TABLE participa (
 
 CREATE TABLE incidencia (
     id_incidencia INT NOT NULL AUTO_INCREMENT,
+    tracking_number VARCHAR(20) NOT NULL,
     descripcion TEXT NOT NULL,
     fecha_reporte DATETIME NOT NULL,
 
@@ -372,6 +373,7 @@ CREATE TABLE incidencia (
     id_usuario INT DEFAULT NULL,
 
     PRIMARY KEY (id_incidencia),
+    UNIQUE KEY uk_incidencia_tracking_number (tracking_number),
 
     CONSTRAINT fk_incidencia_contenedor
         FOREIGN KEY (id_contenedor)
