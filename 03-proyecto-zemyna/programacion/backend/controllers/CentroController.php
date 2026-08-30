@@ -10,18 +10,16 @@ class CentroController {
 
     public function getAll() {
         $stmt = $this->centro->read();
-        if ($stmt) {
-            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Centros cargados correctamente."];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de centros.",
+                "statusCode" => 500
+            ];
         }
-        return [
-            "success" => true,
-            "data" => [
-                ["id_centro" => 1, "nombre" => "Centro de Acopio Norte",  "direccion" => "Av. Gral. Rivera 1500",  "telefono" => "099-100100"],
-                ["id_centro" => 2, "nombre" => "Vertedero Municipal Sur", "direccion" => "Camino Maldonado km 12", "telefono" => "099-200200"],
-                ["id_centro" => 3, "nombre" => "Centro de Acopio Este",   "direccion" => "Av. Italia 3200",        "telefono" => "099-300300"],
-            ],
-            "message" => "Centros cargados en modo demo."
-        ];
+
+        return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Centros cargados correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

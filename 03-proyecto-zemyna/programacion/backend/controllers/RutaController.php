@@ -10,18 +10,16 @@ class RutaController {
 
     public function getAll() {
         $stmt = $this->ruta->read();
-        if ($stmt) {
-            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Rutas cargadas correctamente."];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de rutas.",
+                "statusCode" => 500
+            ];
         }
-        return [
-            "success" => true,
-            "data" => [
-                ["id_ruta" => 1, "nombre" => "Ruta Norte",   "zona" => "Zona norte de la ciudad"],
-                ["id_ruta" => 2, "nombre" => "Ruta Centro",  "zona" => "Zona céntrica y microcentro"],
-                ["id_ruta" => 3, "nombre" => "Ruta Sur",     "zona" => "Zona sur y periferia"],
-            ],
-            "message" => "Rutas cargadas en modo demo."
-        ];
+
+        return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Rutas cargadas correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

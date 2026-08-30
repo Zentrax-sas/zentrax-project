@@ -10,17 +10,16 @@ class FotoController {
 
     public function getAll() {
         $stmt = $this->foto->read();
-        if ($stmt) {
-            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Fotos cargadas correctamente."];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de fotos.",
+                "statusCode" => 500
+            ];
         }
-        return [
-            "success" => true,
-            "data" => [
-                ["id_foto" => 1, "fecha" => "2025-06-01 09:05:00", "url" => "/uploads/incidencias/inc1_foto1.jpg", "id_incidencia" => 1],
-                ["id_foto" => 2, "fecha" => "2025-06-02 11:35:00", "url" => "/uploads/incidencias/inc2_foto1.jpg", "id_incidencia" => 2],
-            ],
-            "message" => "Fotos cargadas en modo demo."
-        ];
+
+        return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Fotos cargadas correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

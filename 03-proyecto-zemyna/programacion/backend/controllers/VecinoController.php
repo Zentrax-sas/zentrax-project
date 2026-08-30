@@ -10,18 +10,16 @@ class VecinoController {
 
     public function getAll() {
         $stmt = $this->vecino->read();
-        if ($stmt) {
-            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Vecinos cargados correctamente."];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de vecinos.",
+                "statusCode" => 500
+            ];
         }
-        return [
-            "success" => true,
-            "data" => [
-                ["ci" => "12345678", "nombre" => "Carlos",  "apellido" => "García",    "telefono" => "092-111111"],
-                ["ci" => "87654321", "nombre" => "Laura",   "apellido" => "Rodríguez", "telefono" => "092-222222"],
-                ["ci" => "11223344", "nombre" => "Martín",  "apellido" => "López",     "telefono" => "092-333333"],
-            ],
-            "message" => "Vecinos cargados en modo demo."
-        ];
+
+        return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Vecinos cargados correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

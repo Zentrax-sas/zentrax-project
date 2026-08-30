@@ -10,18 +10,16 @@ class MaquinariaController {
 
     public function getAll() {
         $stmt = $this->maquinaria->read();
-        if ($stmt) {
-            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Maquinaria cargada correctamente."];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de maquinaria.",
+                "statusCode" => 500
+            ];
         }
-        return [
-            "success" => true,
-            "data" => [
-                ["id_maquinaria" => 1, "nombre" => "Prensadora P-01",  "tipo" => "Prensadora",  "estado" => "Disponible",        "id_centro" => 1],
-                ["id_maquinaria" => 2, "nombre" => "Trituradora T-01", "tipo" => "Trituradora", "estado" => "En Mantenimiento",  "id_centro" => 2],
-                ["id_maquinaria" => 3, "nombre" => "Cargador C-01",    "tipo" => "Cargador",    "estado" => "En Uso",            "id_centro" => 1],
-            ],
-            "message" => "Maquinaria cargada en modo demo."
-        ];
+
+        return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Maquinaria cargada correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

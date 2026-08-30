@@ -10,17 +10,16 @@ class SolicitudController {
 
     public function getAll() {
         $stmt = $this->solicitud->read();
-        if ($stmt) {
-            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Solicitudes cargadas correctamente."];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de solicitudes.",
+                "statusCode" => 500
+            ];
         }
-        return [
-            "success" => true,
-            "data" => [
-                ["id_solicitud" => 1, "fecha" => "2025-06-05 08:00:00", "descripcion" => "Retiro de electrodomestico viejo.", "direccion" => "Dr. Luis Bonavita 1294", "estado" => "Pendiente", "ci" => "11223344", "id_tipo_residuo" => 1, "email" => "martin@gmail.com", "telefono" => "092-333333", "tipo_solicitud" => "Retiro domiciliario", "tracking_number" => "REF-2025-AB123"],
-                ["id_solicitud" => 2, "fecha" => "2025-06-06 09:30:00", "descripcion" => "Gran cantidad de cartones para retirar.", "direccion" => "Paraguay 1450", "estado" => "Programada", "ci" => "12345678", "id_tipo_residuo" => 2, "email" => "carlos@gmail.com", "telefono" => "092-111111", "tipo_solicitud" => "Retiro domiciliario", "tracking_number" => "REF-2025-XY789"]
-            ],
-            "message" => "Solicitudes cargadas en modo demo."
-        ];
+
+        return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Solicitudes cargadas correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

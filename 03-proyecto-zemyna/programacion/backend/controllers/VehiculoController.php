@@ -10,18 +10,16 @@ class VehiculoController {
 
     public function getAll() {
         $stmt = $this->vehiculo->read();
-        if ($stmt) {
-            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Vehículos cargados correctamente."];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de vehículos.",
+                "statusCode" => 500
+            ];
         }
-        return [
-            "success" => true,
-            "data" => [
-                ["id_vehiculo" => 1, "matricula" => "ABC1234", "marca" => "Mercedes-Benz", "modelo" => "Atego 1725", "capacidad_carga" => 8.50,  "estado" => "Disponible",  "id_tipo_residuo" => 1],
-                ["id_vehiculo" => 2, "matricula" => "XYZ5678", "marca" => "Volvo",         "modelo" => "FE 280",     "capacidad_carga" => 6.00,  "estado" => "En Servicio", "id_tipo_residuo" => 2],
-                ["id_vehiculo" => 3, "matricula" => "MNO9012", "marca" => "Scania",        "modelo" => "P 360",      "capacidad_carga" => 10.00, "estado" => "Disponible",  "id_tipo_residuo" => 3],
-            ],
-            "message" => "Vehículos cargados en modo demo."
-        ];
+
+        return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Vehículos cargados correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

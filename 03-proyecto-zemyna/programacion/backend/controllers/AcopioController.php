@@ -10,17 +10,16 @@ class AcopioController {
 
     public function getAll() {
         $stmt = $this->acopio->read();
-        if ($stmt) {
-            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Centros de acopio cargados correctamente."];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de acopios.",
+                "statusCode" => 500
+            ];
         }
-        return [
-            "success" => true,
-            "data" => [
-                ["id_centro" => 1, "nombre" => "Centro de Acopio Norte", "direccion" => "Av. Gral. Rivera 1500", "telefono" => "099-100100", "horario_atencion" => "Lunes a viernes 08:00–17:00"],
-                ["id_centro" => 3, "nombre" => "Centro de Acopio Este",  "direccion" => "Av. Italia 3200",       "telefono" => "099-300300", "horario_atencion" => "Lunes a sábado 07:00–15:00"],
-            ],
-            "message" => "Centros de acopio cargados en modo demo."
-        ];
+
+        return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Centros de acopio cargados correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

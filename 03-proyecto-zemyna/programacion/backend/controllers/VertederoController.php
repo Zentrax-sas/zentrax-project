@@ -10,16 +10,16 @@ class VertederoController {
 
     public function getAll() {
         $stmt = $this->vertedero->read();
-        if ($stmt) {
-            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Vertederos cargados correctamente."];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de vertederos.",
+                "statusCode" => 500
+            ];
         }
-        return [
-            "success" => true,
-            "data" => [
-                ["id_centro" => 2, "nombre" => "Vertedero Municipal Sur", "direccion" => "Camino Maldonado km 12", "telefono" => "099-200200", "capacidad_maxima" => 50000.00],
-            ],
-            "message" => "Vertederos cargados en modo demo."
-        ];
+
+        return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Vertederos cargados correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

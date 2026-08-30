@@ -69,13 +69,121 @@ INSERT INTO vecino (ci, nombre, apellido, telefono) VALUES
 
 
 -- =====================================
+-- SECTORES Y PERMISOS
+-- =====================================
+
+INSERT INTO sector (nombre, descripcion) VALUES
+('TI', 'Tecnología e infraestructura del sistema'),
+('LOGISTICA', 'Gestión de vehículos, rutas y recorridos'),
+('MANTENIMIENTO', 'Mantenimiento y reparación de recursos'),
+('PUNTOS_Y_DESTINOS', 'Contenedores, centros, acopios y destinos'),
+('OPERACIONES', 'Organización operativa diaria y tareas'),
+('INSPECCION', 'Inspección, evidencias y observaciones')
+ON DUPLICATE KEY UPDATE descripcion = VALUES(descripcion);
+
+INSERT INTO permiso (nombre, descripcion) VALUES
+('usuario.crear', 'Crear usuarios'),
+('usuario.consultar', 'Consultar usuarios'),
+('usuario.modificar', 'Modificar usuarios'),
+('usuario.suspender', 'Suspender usuarios'),
+('usuario.asignar_rol', 'Asignar roles'),
+('usuario.asignar_sector', 'Asignar sectores'),
+('contenedor.crear', 'Crear contenedores'),
+('contenedor.consultar', 'Consultar contenedores'),
+('contenedor.modificar', 'Modificar contenedores'),
+('contenedor.baja', 'Dar de baja contenedores'),
+('contenedor.cambiar_estado', 'Cambiar estado operativo del contenedor'),
+('vehiculo.crear', 'Crear vehículos'),
+('vehiculo.consultar', 'Consultar vehículos'),
+('vehiculo.modificar', 'Modificar vehículos'),
+('vehiculo.baja', 'Dar de baja vehículos'),
+('vehiculo.cambiar_estado', 'Cambiar estado del vehículo'),
+('vehiculo.asignar', 'Asignar vehículos a tareas o recorridos'),
+('lugar.crear', 'Crear lugares o centros'),
+('lugar.consultar', 'Consultar lugares o centros'),
+('lugar.modificar', 'Modificar lugares o centros'),
+('lugar.baja', 'Dar de baja lugares o centros'),
+('lugar.cambiar_estado', 'Cambiar estado del lugar'),
+('maquinaria.crear', 'Crear maquinaria'),
+('maquinaria.consultar', 'Consultar maquinaria'),
+('maquinaria.modificar', 'Modificar maquinaria'),
+('maquinaria.baja', 'Dar de baja maquinaria'),
+('maquinaria.cambiar_estado', 'Cambiar estado de la maquinaria'),
+('incidencia.crear', 'Crear incidencias'),
+('incidencia.consultar', 'Consultar incidencias'),
+('incidencia.modificar', 'Modificar incidencias'),
+('incidencia.adjuntar_evidencia', 'Adjuntar evidencia a incidencias')
+ON DUPLICATE KEY UPDATE descripcion = VALUES(descripcion);
+
+-- =====================================
 -- ROLES
 -- =====================================
 
 INSERT INTO rol (nombre, descripcion) VALUES
-('Superusuario', 'Gestiona usuarios, roles y accesos del sistema'),
-('Administrador', 'Gestiona las funciones administrativas y operativas del sistema'),
-('Operario', 'Realiza tareas operativas y de recolección');
+('ADMINISTRADOR_TI', 'Responsable de usuarios, accesos y permisos del sistema'),
+('RESPONSABLE_SECTORIAL', 'Administra recursos y permisos de su sector'),
+('ADMINISTRATIVO_OPERATIVO', 'Organiza tareas, asignaciones y recorridos diarios'),
+('OPERARIO', 'Ejecuta tareas operativas y registra incidencias'),
+('INSPECTOR', 'Consulta estados, verifica situaciones y registra observaciones')
+ON DUPLICATE KEY UPDATE descripcion = VALUES(descripcion);
+
+INSERT INTO rol_permiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso
+FROM rol r
+JOIN permiso p ON p.nombre IN (
+    'usuario.crear', 'usuario.consultar', 'usuario.modificar', 'usuario.suspender',
+    'usuario.asignar_rol', 'usuario.asignar_sector', 'contenedor.crear',
+    'contenedor.consultar', 'contenedor.modificar', 'contenedor.baja', 'contenedor.cambiar_estado',
+    'vehiculo.crear', 'vehiculo.consultar', 'vehiculo.modificar', 'vehiculo.baja', 'vehiculo.cambiar_estado',
+    'vehiculo.asignar', 'lugar.crear', 'lugar.consultar', 'lugar.modificar', 'lugar.baja', 'lugar.cambiar_estado',
+    'maquinaria.crear', 'maquinaria.consultar', 'maquinaria.modificar', 'maquinaria.baja', 'maquinaria.cambiar_estado',
+    'incidencia.crear', 'incidencia.consultar', 'incidencia.modificar', 'incidencia.adjuntar_evidencia'
+)
+WHERE r.nombre = 'ADMINISTRADOR_TI'
+ON DUPLICATE KEY UPDATE id_permiso = VALUES(id_permiso);
+
+INSERT INTO rol_permiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso
+FROM rol r
+JOIN permiso p ON p.nombre IN (
+    'contenedor.consultar', 'contenedor.crear', 'contenedor.modificar', 'contenedor.baja', 'contenedor.cambiar_estado',
+    'vehiculo.consultar', 'vehiculo.crear', 'vehiculo.modificar', 'vehiculo.baja', 'vehiculo.cambiar_estado',
+    'vehiculo.asignar', 'lugar.consultar', 'lugar.crear', 'lugar.modificar', 'lugar.baja', 'lugar.cambiar_estado',
+    'maquinaria.consultar', 'maquinaria.crear', 'maquinaria.modificar', 'maquinaria.baja', 'maquinaria.cambiar_estado',
+    'incidencia.crear', 'incidencia.consultar', 'incidencia.modificar', 'incidencia.adjuntar_evidencia'
+)
+WHERE r.nombre = 'RESPONSABLE_SECTORIAL'
+ON DUPLICATE KEY UPDATE id_permiso = VALUES(id_permiso);
+
+INSERT INTO rol_permiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso
+FROM rol r
+JOIN permiso p ON p.nombre IN (
+    'contenedor.consultar', 'vehiculo.consultar', 'vehiculo.asignar', 'lugar.consultar',
+    'incidencia.crear', 'incidencia.consultar', 'incidencia.modificar'
+)
+WHERE r.nombre = 'ADMINISTRATIVO_OPERATIVO'
+ON DUPLICATE KEY UPDATE id_permiso = VALUES(id_permiso);
+
+INSERT INTO rol_permiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso
+FROM rol r
+JOIN permiso p ON p.nombre IN (
+    'contenedor.consultar', 'contenedor.cambiar_estado', 'vehiculo.consultar', 'maquinaria.consultar',
+    'incidencia.crear', 'incidencia.consultar', 'incidencia.adjuntar_evidencia'
+)
+WHERE r.nombre = 'OPERARIO'
+ON DUPLICATE KEY UPDATE id_permiso = VALUES(id_permiso);
+
+INSERT INTO rol_permiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso
+FROM rol r
+JOIN permiso p ON p.nombre IN (
+    'contenedor.consultar', 'vehiculo.consultar', 'maquinaria.consultar',
+    'incidencia.crear', 'incidencia.consultar', 'incidencia.adjuntar_evidencia'
+)
+WHERE r.nombre = 'INSPECTOR'
+ON DUPLICATE KEY UPDATE id_permiso = VALUES(id_permiso);
 
 
 -- =====================================
@@ -133,11 +241,31 @@ VALUES
 
 INSERT INTO usuario_rol
 (id_usuario, id_rol, sector, fecha_desde, fecha_hasta)
-VALUES
-(1, 1, 'Sistemas',       '2025-01-01', NULL),
-(2, 2, 'Administración', '2025-01-10', NULL),
-(3, 3, 'Recolección',    '2025-02-15', NULL),
-(4, 3, 'Recolección',    '2025-03-20', NULL);
+SELECT id_usuario, id_rol, 'TI', '2025-01-01', NULL
+FROM rol
+WHERE nombre = 'ADMINISTRADOR_TI'
+LIMIT 1;
+
+INSERT INTO usuario_rol
+(id_usuario, id_rol, sector, fecha_desde, fecha_hasta)
+SELECT 2, id_rol, 'OPERACIONES', '2025-01-10', NULL
+FROM rol
+WHERE nombre = 'ADMINISTRATIVO_OPERATIVO'
+LIMIT 1;
+
+INSERT INTO usuario_rol
+(id_usuario, id_rol, sector, fecha_desde, fecha_hasta)
+SELECT 3, id_rol, 'OPERACIONES', '2025-02-15', NULL
+FROM rol
+WHERE nombre = 'OPERARIO'
+LIMIT 1;
+
+INSERT INTO usuario_rol
+(id_usuario, id_rol, sector, fecha_desde, fecha_hasta)
+SELECT 4, id_rol, 'INSPECCION', '2025-03-20', NULL
+FROM rol
+WHERE nombre = 'INSPECTOR'
+LIMIT 1;
 
 
 -- =====================================

@@ -10,18 +10,16 @@ class CuadrillaController {
 
     public function getAll() {
         $stmt = $this->cuadrilla->read();
-        if ($stmt) {
-            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Cuadrillas cargadas correctamente."];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de cuadrillas.",
+                "statusCode" => 500
+            ];
         }
-        return [
-            "success" => true,
-            "data" => [
-                ["id_cuadrilla" => 1, "nombre" => "Cuadrilla Alpha", "turno" => "Matutino",   "id_centro" => 1],
-                ["id_cuadrilla" => 2, "nombre" => "Cuadrilla Beta",  "turno" => "Vespertino", "id_centro" => 2],
-                ["id_cuadrilla" => 3, "nombre" => "Cuadrilla Gamma", "turno" => "Nocturno",   "id_centro" => 1],
-            ],
-            "message" => "Cuadrillas cargadas en modo demo."
-        ];
+
+        return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Cuadrillas cargadas correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

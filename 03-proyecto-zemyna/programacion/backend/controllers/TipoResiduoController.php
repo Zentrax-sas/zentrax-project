@@ -10,25 +10,16 @@ class TipoResiduoController {
 
     public function getAll() {
         $stmt = $this->tipoResiduo->read();
-        if ($stmt) {
-            return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Tipos de residuo cargados correctamente."];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de tipos de residuo.",
+                "statusCode" => 500
+            ];
         }
-        // RNE-27: valores canónicos del sistema
-        return [
-            "success" => true,
-            "data" => [
-                ["id_tipo_residuo" => 1, "nombre" => "Orgánico",             "descripcion" => "Restos de comida, hojas y residuos de origen biológico."],
-                ["id_tipo_residuo" => 2, "nombre" => "Papel y cartón",       "descripcion" => "Papeles, diarios, cartones limpios y secos."],
-                ["id_tipo_residuo" => 3, "nombre" => "Plástico",             "descripcion" => "Envases plásticos, botellas PET, tapas y bolsas."],
-                ["id_tipo_residuo" => 4, "nombre" => "Vidrio",               "descripcion" => "Botellas, frascos y envases de vidrio."],
-                ["id_tipo_residuo" => 5, "nombre" => "Metal",                "descripcion" => "Latas, chatarra y envases metálicos."],
-                ["id_tipo_residuo" => 6, "nombre" => "Electrónicos",         "descripcion" => "Equipos y aparatos electrónicos en desuso."],
-                ["id_tipo_residuo" => 7, "nombre" => "Pilas y baterías",     "descripcion" => "Pilas, baterías y acumuladores usados."],
-                ["id_tipo_residuo" => 8, "nombre" => "Escombros",            "descripcion" => "Residuos de construcción y demolición."],
-                ["id_tipo_residuo" => 9, "nombre" => "Residuos voluminosos", "descripcion" => "Muebles, electrodomésticos y objetos de gran tamaño."],
-            ],
-            "message" => "Tipos de residuo cargados en modo demo."
-        ];
+
+        return ["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC), "message" => "Tipos de residuo cargados correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

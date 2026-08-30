@@ -106,4 +106,7 @@ $resultFecha = $incidenciaController->create([
 ]);
 assertCrud(($resultFecha['success'] ?? false) === false && ($resultFecha['statusCode'] ?? null) === 400, 'Incidencia rechaza fecha de reporte inválida');
 
+$resultContenedoresSinBD = $contenedorController->getAll();
+assertCrud(($resultContenedoresSinBD['success'] ?? false) === false && ($resultContenedoresSinBD['statusCode'] ?? null) === 500, 'Contenedor sin conexión a BD responde error real y no retorna datos demo');
+
 echo "SUMMARY: CRUD validation checks passed\n";

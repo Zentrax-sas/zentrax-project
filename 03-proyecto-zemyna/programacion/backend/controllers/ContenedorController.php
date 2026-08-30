@@ -67,23 +67,21 @@ class ContenedorController {
         }
 
         $stmt = $this->contenedor->read($id, $page, $limit, $bbox);
-        if ($stmt) {
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            if ($id !== null && empty($rows)) {
-                return ["success" => false, "data" => [], "message" => "Contenedor no encontrado.", "statusCode" => 404];
-            }
-            return ["success" => true, "data" => $rows, "message" => "Contenedores cargados correctamente.", "statusCode" => 200];
+        if (!$stmt) {
+            return [
+                "success" => false,
+                "data" => [],
+                "message" => "No se pudo conectar con la base de datos de contenedores.",
+                "statusCode" => 500
+            ];
         }
-        return [
-            "success" => true,
-            "data" => [
-                ["id_contenedor" => 1, "codigo" => "CTN-001", "capacidad" => 2400, "direccion" => "Av. Brasil y Lazaro Gadea", "latitud" => -34.9142000, "longitud" => -56.1495000, "estado" => "Disponible", "id_tipo_residuo" => 1, "id_ruta" => 1],
-                ["id_contenedor" => 2, "codigo" => "CTN-002", "capacidad" => 3200, "direccion" => "Brito del Pino y Charrua", "latitud" => -34.9210000, "longitud" => -56.1585000, "estado" => "Lleno", "id_tipo_residuo" => 2, "id_ruta" => 1],
-                ["id_contenedor" => 3, "codigo" => "CTN-003", "capacidad" => 2400, "direccion" => "Av. 18 de Julio y Tacuari", "latitud" => -34.9065000, "longitud" => -56.1852000, "estado" => "Disponible", "id_tipo_residuo" => 3, "id_ruta" => 2]
-            ],
-            "message" => "Contenedores cargados en modo demo.",
-            "statusCode" => 200
-        ];
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if ($id !== null && empty($rows)) {
+            return ["success" => false, "data" => [], "message" => "Contenedor no encontrado.", "statusCode" => 404];
+        }
+
+        return ["success" => true, "data" => $rows, "message" => "Contenedores cargados correctamente.", "statusCode" => 200];
     }
 
     public function create($data) {

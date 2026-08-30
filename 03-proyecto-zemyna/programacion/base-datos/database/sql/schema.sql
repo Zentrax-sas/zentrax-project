@@ -111,6 +111,44 @@ CREATE TABLE rol (
 
 
 -- =====================================
+-- TABLAS DE AUTORIZACIÓN
+-- =====================================
+
+CREATE TABLE sector (
+    id_sector INT NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(50) NOT NULL,
+    descripcion VARCHAR(150),
+
+    PRIMARY KEY (id_sector),
+    UNIQUE (nombre)
+);
+
+CREATE TABLE permiso (
+    id_permiso INT NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(200),
+
+    PRIMARY KEY (id_permiso),
+    UNIQUE (nombre)
+);
+
+CREATE TABLE rol_permiso (
+    id_rol INT NOT NULL,
+    id_permiso INT NOT NULL,
+
+    PRIMARY KEY (id_rol, id_permiso),
+
+    CONSTRAINT fk_rol_permiso_rol
+        FOREIGN KEY (id_rol)
+        REFERENCES rol(id_rol),
+
+    CONSTRAINT fk_rol_permiso_permiso
+        FOREIGN KEY (id_permiso)
+        REFERENCES permiso(id_permiso)
+);
+
+
+-- =====================================
 -- TABLA USUARIO_ROL
 -- =====================================
 
@@ -648,6 +686,9 @@ ALTER TABLE tipo_residuo CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicod
 ALTER TABLE ruta CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE usuario CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE rol CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE sector CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE permiso CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE rol_permiso CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE usuario_rol CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE contenedor CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE vehiculo CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
