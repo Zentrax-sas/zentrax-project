@@ -241,31 +241,31 @@ VALUES
 
 INSERT INTO usuario_rol
 (id_usuario, id_rol, sector, fecha_desde, fecha_hasta)
-SELECT id_usuario, id_rol, 'TI', '2025-01-01', NULL
-FROM rol
-WHERE nombre = 'ADMINISTRADOR_TI'
-LIMIT 1;
+SELECT u.id_usuario, r.id_rol, 'TI', '2025-01-01', NULL
+FROM usuario u
+JOIN rol r ON r.nombre = 'ADMINISTRADOR_TI'
+WHERE u.email = 'sistemas@zemyna.com';
 
 INSERT INTO usuario_rol
 (id_usuario, id_rol, sector, fecha_desde, fecha_hasta)
-SELECT 2, id_rol, 'OPERACIONES', '2025-01-10', NULL
-FROM rol
-WHERE nombre = 'ADMINISTRATIVO_OPERATIVO'
-LIMIT 1;
+SELECT u.id_usuario, r.id_rol, 'OPERACIONES', '2025-01-10', NULL
+FROM usuario u
+JOIN rol r ON r.nombre = 'ADMINISTRATIVO_OPERATIVO'
+WHERE u.email = 'facu@zemyna.com';
 
 INSERT INTO usuario_rol
 (id_usuario, id_rol, sector, fecha_desde, fecha_hasta)
-SELECT 3, id_rol, 'OPERACIONES', '2025-02-15', NULL
-FROM rol
-WHERE nombre = 'OPERARIO'
-LIMIT 1;
+SELECT u.id_usuario, r.id_rol, 'OPERACIONES', '2025-02-15', NULL
+FROM usuario u
+JOIN rol r ON r.nombre = 'OPERARIO'
+WHERE u.email = 'diego@zemyna.com';
 
 INSERT INTO usuario_rol
 (id_usuario, id_rol, sector, fecha_desde, fecha_hasta)
-SELECT 4, id_rol, 'INSPECCION', '2025-03-20', NULL
-FROM rol
-WHERE nombre = 'INSPECTOR'
-LIMIT 1;
+SELECT u.id_usuario, r.id_rol, 'INSPECCION', '2025-03-20', NULL
+FROM usuario u
+JOIN rol r ON r.nombre = 'INSPECTOR'
+WHERE u.email = 'andrea@zemyna.com';
 
 
 -- =====================================
@@ -404,10 +404,11 @@ VALUES
 -- =====================================
 
 INSERT INTO incidencia
-(descripcion, fecha_reporte, estado, prioridad, tipo_problema,
+(tracking_number, descripcion, fecha_reporte, estado, prioridad, tipo_problema,
  id_contenedor, id_ruta, id_cuadrilla, id_usuario)
 VALUES
 (
+    'INC-001',
     'Contenedor dañado, tapa rota.',
     '2025-06-01 09:00:00',
     'Pendiente',
@@ -419,6 +420,7 @@ VALUES
     3
 ),
 (
+    'INC-002',
     'Contenedor desbordado, necesita vaciado.',
     '2025-06-02 11:30:00',
     'En Proceso',
@@ -430,6 +432,7 @@ VALUES
     4
 ),
 (
+    'INC-003',
     'Residuos obstruyen parte de la ruta.',
     '2025-06-03 10:15:00',
     'Pendiente',

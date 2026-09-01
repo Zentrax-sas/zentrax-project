@@ -27,13 +27,9 @@
 -- 1. ESTRUCTURA BASE: Schema oficial Zemyna
 SOURCE ./schema.sql;
 
--- 2. MIGRACIONES INCREMENTALES (en orden)
-SOURCE ./migration_v2_roles_normalizados.sql;
-SOURCE ./migration_v3_autorizacion.sql;
-SOURCE ./migration_v4_baja_logica_contenedores.sql;
-SOURCE ./migration_v5_bajas_logicas_recursos.sql;
-SOURCE ./migration_v6_geocodificacion_cache.sql;
-SOURCE ./migration_v7_incidentes_ciudadanos.sql;
+-- 2. MIGRACIONES INCREMENTALES SEGURAS PARA INSTALACIÓN NUEVA
+-- Se omiten migraciones históricas incompatibles con el schema actual
+-- y se ejecutan solo las que corresponden al estado final del proyecto.
 SOURCE ./migration_v8_roles_genericos.sql;
 SOURCE ./migration_v9_permisos_rutas.sql;
 SOURCE ./migration_v10_permisos_operativos.sql;
