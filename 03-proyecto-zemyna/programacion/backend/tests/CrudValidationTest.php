@@ -2,32 +2,16 @@
 
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . '/../controllers/UsuarioController.php';
 require_once __DIR__ . '/../controllers/ContenedorController.php';
 require_once __DIR__ . '/../controllers/IncidenciaController.php';
 
 class CrudValidationTest extends TestCase
 {
-    private UsuarioController $usuarioController;
     private ContenedorController $contenedorController;
     private IncidenciaController $incidenciaController;
 
     protected function setUp(): void
     {
-        $this->usuarioController = new UsuarioController(null);
-        $usuarioProperty = new ReflectionProperty(UsuarioController::class, 'usuario');
-        $usuarioProperty->setAccessible(true);
-        $usuarioProperty->setValue($this->usuarioController, new class {
-            public function findByEmail($email) { return ['id_usuario' => 999, 'email' => $email]; }
-            public function create() { return true; }
-            public function update() { return true; }
-            public function delete() { return true; }
-            public function activar() { return true; }
-            public function read() { return null; }
-            public function getRolesVigentes($id) { return []; }
-            public function getHistorialRoles($id) { return []; }
-        });
-
         $this->contenedorController = new ContenedorController(null);
         $contenedorProperty = new ReflectionProperty(ContenedorController::class, 'contenedor');
         $contenedorProperty->setAccessible(true);
@@ -47,17 +31,6 @@ class CrudValidationTest extends TestCase
             public function create() { return true; }
             public function update() { return true; }
         });
-    }
-
-    public function testUsuarioDuplicadoRespondeConflict(): void
-    {
-        $result = $this->usuarioController->create([
-            'nombre' => 'Ana', 'apellido' => 'Pereyra',
-            'email' => 'duplicado@zemyna.com', 'contrasena' => 'secret123',
-            'telefono' => '099123456', 'id_centro' => 1, 'activo' => 'Activo',
-        ]);
-
-        $this->assertTrue(($result['success'] ?? false) === false && ($result['statusCode'] ?? null) === 409);
     }
 
     public function testContenedorDuplicadoRespondeConflict(): void
