@@ -150,12 +150,12 @@ mysql -u root -p gestion_residuosfinal < init.sql
 
 | Email | Contraseña | Rol | Sector | Centro |
 |-------|------------|-----|--------|--------|
-| sistemas@zemyna.com | password | ADMINISTRADOR_TI | TI | 1 |
-| facu@zemyna.com | password | ADMINISTRATIVO_OPERATIVO | OPERACIONES | 1 |
-| diego@zemyna.com | password | OPERARIO | OPERACIONES | 1 |
-| andrea@zemyna.com | password | INSPECTOR | INSPECCION | 2 |
+| sistemas@zemyna.com | zentrax123 | ADMINISTRADOR_TI | TI | 1 |
+| facu@zemyna.com | zentrax123 | ADMINISTRATIVO_OPERATIVO | OPERACIONES | 1 |
+| diego@zemyna.com | zentrax123 | OPERARIO | OPERACIONES | 1 |
+| andrea@zemyna.com | zentrax123 | INSPECTOR | INSPECCION | 2 |
 
-**Contraseña Demo (todas):** `password` (hash: $2y$10$A32/CEXLhCrbRkgub3SeWeGMtn3.TOB3K/Xivs/DEVdbk0D6Iqxoe)
+**Contraseña Demo (todas):** `zentrax123`
 
 ### 8. DATOS DEMO INICIALES
 

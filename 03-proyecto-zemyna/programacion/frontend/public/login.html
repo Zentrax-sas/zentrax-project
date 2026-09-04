@@ -91,7 +91,7 @@
             const json = await response.json();
             if (!response.ok || !json.success) {
                 if (response.status === 401) {
-                    throw new Error('Credenciales inválidas. Prueba con facu@zemyna.com y contraseña 123456.');
+                    throw new Error('Credenciales inválidas. Prueba con facu@zemyna.com y contraseña zentrax123.');
                 }
                 throw new Error(json.message || 'Error al iniciar sesión');
             }

@@ -108,7 +108,7 @@ SELECT COUNT(*) as contenedores FROM contenedor;
 ```bash
 curl -X POST http://localhost/03-proyecto-zemyna/programacion/backend/api/login.php \
   -H "Content-Type: application/json" \
-  -d '{"email":"sistemas@zemyna.com","password":"password"}'
+  -d '{"email":"sistemas@zemyna.com","password":"zentrax123"}'
 
 # Resultado esperado: 200 OK con sesión y roles
 ```
