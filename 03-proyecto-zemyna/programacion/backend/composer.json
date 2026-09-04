@@ -1,0 +1,12 @@
+{
+    "name": "zentrax/zemyna-backend",
+    "description": "Backend PHP de Zemyna",
+    "type": "project",
+    "license": "proprietary",
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

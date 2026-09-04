@@ -1,294 +1,251 @@
 <?php
+
+use PHPUnit\Framework\TestCase;
+
 require_once __DIR__ . '/../helpers/auth.php';
 
-$passed = 0;
-$failed = 0;
+class AuthorizationLogicTest extends TestCase
+{
+    private string $originalSessionSavePath;
+    private bool $sessionStartedByTest = false;
+    private bool $sessionWasActive = false;
+    private array $originalSessionData = [];
 
-function assertCondition(bool $condition, string $message): void {
-    global $passed, $failed;
+    protected function setUp(): void
+    {
+        $this->originalSessionSavePath = session_save_path();
+        $this->sessionWasActive = session_status() === PHP_SESSION_ACTIVE;
 
-    if ($condition) {
-        $passed++;
-        echo "PASS: $message\n";
-        return;
+        if ($this->sessionWasActive) {
+            $this->originalSessionData = $_SESSION;
+        } else {
+            session_save_path(sys_get_temp_dir());
+            session_start();
+            $this->sessionStartedByTest = true;
+        }
+
+        $_SESSION = [];
     }
 
-    $failed++;
-    echo "FAIL: $message\n";
-}
+    protected function tearDown(): void
+    {
+        $_SESSION = [];
 
-function runCase(string $name, callable $callback): void {
-    try {
-        $callback();
-        echo "CASE: $name\n";
-    } catch (Throwable $e) {
-        global $failed;
-        $failed++;
-        echo "ERROR: $name => " . $e->getMessage() . "\n";
+        if ($this->sessionStartedByTest) {
+            session_unset();
+            session_destroy();
+            session_save_path($this->originalSessionSavePath);
+        } elseif ($this->sessionWasActive) {
+            $_SESSION = $this->originalSessionData;
+        }
+
+        $this->sessionStartedByTest = false;
+        $this->sessionWasActive = false;
+        $this->originalSessionData = [];
+        parent::tearDown();
     }
-}
 
-runCase('normalize role Superusuario', function () {
-    assertCondition(normalizeRoleName('Superusuario') === 'ADMINISTRADOR_TI', 'Superusuario normaliza a ADMINISTRADOR_TI');
-    assertCondition(normalizeRoleName('Administrador') === 'ADMINISTRADOR_TI', 'Administrador normaliza a ADMINISTRADOR_TI');
-    assertCondition(normalizeRoleName('Operario') === 'OPERARIO', 'Operario conserva su valor');
-    assertCondition(normalizeRoleName('Inspector') === 'INSPECTOR', 'Inspector conserva su valor');
-});
+    private function setUser(array $roles, array $authorizations = []): void
+    {
+        $_SESSION['usuario'] = ['roles' => $roles, 'autorizaciones' => $authorizations];
+    }
 
-runCase('normalize role list', function () {
-    $roles = normalizeRoleList(['Superusuario', 'Administrador', 'Operario', 'Operario', 'Inspector']);
-    assertCondition($roles === ['ADMINISTRADOR_TI', 'OPERARIO', 'INSPECTOR'], 'La lista normalizada elimina duplicados y unifica roles legacy');
-    assertCondition(normalizeRoleList(null) === [], 'Listado nulo se normaliza a arreglo vacío');
-});
+    public function testNormalizeRoleSuperusuario(): void
+    {
+        $this->assertSame('ADMINISTRADOR_TI', normalizeRoleName('Superusuario'));
+        $this->assertSame('ADMINISTRADOR_TI', normalizeRoleName('Administrador'));
+        $this->assertSame('OPERARIO', normalizeRoleName('Operario'));
+        $this->assertSame('INSPECTOR', normalizeRoleName('Inspector'));
+    }
 
-runCase('normalize permissions', function () {
-    assertCondition(normalizePermissionName('usuario.crear') === 'usuario.crear', 'Permiso simple se conserva');
-    assertCondition(normalizePermissionName(' usuario.modificar ') === 'usuario.modificar', 'Permiso con espacios se limpia');
-});
+    public function testNormalizeRoleList(): void
+    {
+        $this->assertSame(['ADMINISTRADOR_TI', 'OPERARIO', 'INSPECTOR'], normalizeRoleList(['Superusuario', 'Administrador', 'Operario', 'Operario', 'Inspector']));
+        $this->assertSame([], normalizeRoleList(null));
+    }
 
-runCase('admin access and sector guard', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['ADMINISTRADOR_TI'],
-        'autorizaciones' => [
-            ['permiso' => 'usuario.crear', 'sector' => 'TI'],
-        ],
-    ];
+    public function testNormalizePermissions(): void
+    {
+        $this->assertSame('usuario.crear', normalizePermissionName('usuario.crear'));
+        $this->assertSame('usuario.modificar', normalizePermissionName(' usuario.modificar '));
+    }
 
-    assertCondition(hasEffectivePermission('usuario.crear', ['TI']) === true, 'ADMINISTRADOR_TI tiene permiso en TI');
-    assertCondition(hasEffectivePermission('usuario.crear', ['LOGISTICA']) === true, 'ADMINISTRADOR_TI tiene permiso sin restringir sector');
-    assertCondition(hasEffectivePermission('contenedor.consultar', ['LOGISTICA']) === true, 'ADMINISTRADOR_TI conserva acceso global al sistema');
-});
+    public function testAdminAccessAndSectorGuard(): void
+    {
+        $this->setUser(['ADMINISTRADOR_TI'], [['permiso' => 'usuario.crear', 'sector' => 'TI']]);
+        $this->assertTrue(hasEffectivePermission('usuario.crear', ['TI']));
+        $this->assertTrue(hasEffectivePermission('usuario.crear', ['LOGISTICA']));
+        $this->assertTrue(hasEffectivePermission('contenedor.consultar', ['LOGISTICA']));
+    }
 
-runCase('responsable sectorial with matching sector', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['RESPONSABLE_SECTORIAL'],
-        'autorizaciones' => [
+    public function testResponsableSectorialWithMatchingSector(): void
+    {
+        $this->setUser(['RESPONSABLE_SECTORIAL'], [
             ['permiso' => 'contenedor.consultar', 'sector' => 'PUNTOS_Y_DESTINOS'],
             ['permiso' => 'vehiculo.consultar', 'sector' => 'LOGISTICA'],
-        ],
-    ];
+        ]);
+        $this->assertTrue(hasEffectivePermission('contenedor.consultar', ['PUNTOS_Y_DESTINOS']));
+        $this->assertTrue(hasEffectivePermission('vehiculo.consultar', ['LOGISTICA']));
+        $this->assertFalse(hasEffectivePermission('contenedor.consultar', ['LOGISTICA']));
+    }
 
-    assertCondition(hasEffectivePermission('contenedor.consultar', ['PUNTOS_Y_DESTINOS']) === true, 'Responsable sectorial accede a su sector');
-    assertCondition(hasEffectivePermission('vehiculo.consultar', ['LOGISTICA']) === true, 'Responsable sectorial accede a un sector distinto asignado');
-    assertCondition(hasEffectivePermission('contenedor.consultar', ['LOGISTICA']) === false, 'Responsable sectorial no accede a otro sector sin permisos');
-});
-
-runCase('operario with valid and invalid sectors', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['OPERARIO'],
-        'autorizaciones' => [
+    public function testOperarioWithValidAndInvalidSectors(): void
+    {
+        $this->setUser(['OPERARIO'], [
             ['permiso' => 'contenedor.cambiar_estado', 'sector' => 'OPERACIONES'],
             ['permiso' => 'incidencia.adjuntar_evidencia', 'sector' => 'INSPECCION'],
-        ],
-    ];
+        ]);
+        $this->assertTrue(hasEffectivePermission('contenedor.cambiar_estado', ['OPERACIONES']));
+        $this->assertTrue(hasEffectivePermission('incidencia.adjuntar_evidencia', ['INSPECCION']));
+        $this->assertFalse(hasEffectivePermission('contenedor.cambiar_estado', ['INSPECCION']));
+    }
 
-    assertCondition(hasEffectivePermission('contenedor.cambiar_estado', ['OPERACIONES']) === true, 'Operario cambia estado en su sector');
-    assertCondition(hasEffectivePermission('incidencia.adjuntar_evidencia', ['INSPECCION']) === true, 'Operario adjunta evidencia en inspección');
-    assertCondition(hasEffectivePermission('contenedor.cambiar_estado', ['INSPECCION']) === false, 'Operario no cambia estado fuera de su sector');
-});
+    public function testInspectorReadOnlyGuards(): void
+    {
+        $this->setUser(['INSPECTOR'], [['permiso' => 'incidencia.consultar', 'sector' => 'INSPECCION']]);
+        $this->assertTrue(hasEffectivePermission('incidencia.consultar', ['INSPECCION']));
+        $this->assertFalse(hasEffectivePermission('usuario.modificar', ['TI']));
+        $this->assertFalse(hasEffectivePermission('contenedor.modificar', ['PUNTOS_Y_DESTINOS']));
+    }
 
-runCase('inspector read-only guards', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['INSPECTOR'],
-        'autorizaciones' => [
-            ['permiso' => 'incidencia.consultar', 'sector' => 'INSPECCION'],
-        ],
-    ];
+    public function testLegacyCompatibilityMapsOldRoles(): void
+    {
+        $this->assertSame('ADMINISTRADOR_TI', normalizeRoleName('SUPERUSUARIO'));
+        $this->assertSame('ADMINISTRADOR_TI', normalizeRoleName('ADMINISTRADOR'));
+        $this->assertSame('RESPONSABLE_SECTORIAL', normalizeRoleName('RESPONSABLE'));
+        $this->assertSame('ADMINISTRADOR_TI', normalizeRoleName('TI'));
+    }
 
-    assertCondition(hasEffectivePermission('incidencia.consultar', ['INSPECCION']) === true, 'Inspector consulta incidencias en su sector');
-    assertCondition(hasEffectivePermission('usuario.modificar', ['TI']) === false, 'Inspector no puede modificar usuarios');
-    assertCondition(hasEffectivePermission('contenedor.modificar', ['PUNTOS_Y_DESTINOS']) === false, 'Inspector no modifica recursos maestros');
-});
+    public function testGeographicAndGeneralSectorNormalization(): void
+    {
+        $this->assertSame('LOGISTICA', normalizeRoleName('logistica'));
+        $this->assertSame('OPERACIONES', normalizeRoleName(' operaciones '));
+        $this->assertSame('', normalizeRoleName('   '));
+    }
 
-runCase('legacy compatibility maps old roles', function () {
-    assertCondition(normalizeRoleName('SUPERUSUARIO') === 'ADMINISTRADOR_TI', 'SUPERUSUARIO se mapea a ADMINISTRADOR_TI');
-    assertCondition(normalizeRoleName('ADMINISTRADOR') === 'ADMINISTRADOR_TI', 'ADMINISTRADOR se mapea a ADMINISTRADOR_TI');
-    assertCondition(normalizeRoleName('RESPONSABLE') === 'RESPONSABLE_SECTORIAL', 'RESPONSABLE se mapea a RESPONSABLE_SECTORIAL');
-    assertCondition(normalizeRoleName('TI') === 'ADMINISTRADOR_TI', 'TI se mapea a ADMINISTRADOR_TI');
-});
+    public function testPermissionChecksOnArrayOfRoles(): void
+    {
+        $this->setUser(['OPERARIO', 'INSPECTOR'], [['permiso' => 'incidencia.crear', 'sector' => 'INSPECCION']]);
+        $this->assertTrue(hasEffectivePermission('incidencia.crear', ['INSPECCION']));
+        $this->assertFalse(hasEffectivePermission('usuario.crear', ['TI']));
+    }
 
-runCase('geographic and general sector normalization', function () {
-    assertCondition(normalizeRoleName('logistica') === 'LOGISTICA', 'Sector con lowercase se normaliza');
-    assertCondition(normalizeRoleName(' operaciones ') === 'OPERACIONES', 'Sector con espacios se normaliza');
-    assertCondition(normalizeRoleName('   ') === '', 'Espacios vacíos se convierten en vacío');
-});
-
-runCase('permission checks on array of roles', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['OPERARIO', 'INSPECTOR'],
-        'autorizaciones' => [
-            ['permiso' => 'incidencia.crear', 'sector' => 'INSPECCION'],
-        ],
-    ];
-
-    assertCondition(hasEffectivePermission('incidencia.crear', ['INSPECCION']) === true, 'Usuario con roles múltiples mantiene permiso válido');
-    assertCondition(hasEffectivePermission('usuario.crear', ['TI']) === false, 'Usuario con roles no admin no obtiene permisos de TI sin asignación');
-});
-
-runCase('duplicate entries and empty values guard', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['ADMINISTRADOR_TI', 'ADMINISTRADOR_TI'],
-        'autorizaciones' => [
+    public function testDuplicateEntriesAndEmptyValuesGuard(): void
+    {
+        $this->setUser(['ADMINISTRADOR_TI', 'ADMINISTRADOR_TI'], [
             ['permiso' => 'usuario.consultar', 'sector' => 'TI'],
             ['permiso' => 'usuario.consultar', 'sector' => 'TI'],
-        ],
-    ];
+        ]);
+        $this->assertTrue(hasEffectivePermission('usuario.consultar', ['TI']));
+        $this->assertSame(['OPERARIO'], normalizeRoleList(['', '   ', 'OPERARIO']));
+    }
 
-    assertCondition(hasEffectivePermission('usuario.consultar', ['TI']) === true, 'Permisos duplicados no rompen la validación');
-    assertCondition(normalizeRoleList(['', '   ', 'OPERARIO']) === ['OPERARIO'], 'Valores vacíos se ignoraron');
-});
+    public function testNegativeGrantScenarios(): void
+    {
+        $this->setUser(['OPERARIO'], [['permiso' => 'incidencia.crear', 'sector' => 'OPERACIONES']]);
+        $this->assertFalse(hasEffectivePermission('usuario.modificar', ['TI']));
+        $this->assertFalse(hasEffectivePermission('vehiculo.modificar', ['LOGISTICA']));
+        $this->assertFalse(hasEffectivePermission('contenedor.baja', ['PUNTOS_Y_DESTINOS']));
+    }
 
-runCase('negative grant scenarios', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['OPERARIO'],
-        'autorizaciones' => [
-            ['permiso' => 'incidencia.crear', 'sector' => 'OPERACIONES'],
-        ],
-    ];
+    public function testAdminCompatibilityWithLegacyName(): void
+    {
+        $this->setUser(['Superusuario']);
+        $this->assertTrue(hasEffectivePermission('usuario.crear', ['TI']));
+        $this->assertTrue(hasEffectivePermission('usuario.crear', ['LOGISTICA']));
+    }
 
-    assertCondition(hasEffectivePermission('usuario.modificar', ['TI']) === false, 'Operario no puede modificar usuarios');
-    assertCondition(hasEffectivePermission('vehiculo.modificar', ['LOGISTICA']) === false, 'Operario no puede modificar vehículos');
-    assertCondition(hasEffectivePermission('contenedor.baja', ['PUNTOS_Y_DESTINOS']) === false, 'Operario no puede dar de baja contenedores');
-});
+    public function testEmptySessionDeniesAccess(): void
+    {
+        $this->assertFalse(hasEffectivePermission('usuario.consultar', ['TI']));
+    }
 
-runCase('admin compatibility with legacy name', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['Superusuario'],
-        'autorizaciones' => [],
-    ];
+    public function testSpecialRolesRemainUppercaseSafe(): void
+    {
+        $this->assertSame('ADMINISTRATIVO_OPERATIVO', normalizeRoleName('administRativo_operativo'));
+        $this->assertSame('RESPONSABLE_SECTORIAL', normalizeRoleName('responsable_sectorial'));
+        $this->assertSame('PUNTOS_Y_DESTINOS', normalizeRoleName(' pUnToS_y_dEstInOs '));
+    }
 
-    assertCondition(hasEffectivePermission('usuario.crear', ['TI']) === true, 'Legacy Superusuario mantiene acceso TI');
-    assertCondition(hasEffectivePermission('usuario.crear', ['LOGISTICA']) === true, 'Legacy Superusuario conserva permisos generales');
-});
+    public function testPermissionTypeNormalizationWithExactNames(): void
+    {
+        $this->assertSame('contenedor.cambiar_estado', normalizePermissionName('contenedor.cambiar_estado'));
+        $this->assertSame('vehiculo.asignar', normalizePermissionName('  vehiculo.asignar  '));
+        $this->assertSame('', normalizePermissionName(''));
+    }
 
-runCase('empty session denies access', function () {
-    $_SESSION = [];
-    assertCondition(hasEffectivePermission('usuario.consultar', ['TI']) === false, 'Sesión vacía niega permiso');
-});
-
-runCase('special roles remain uppercase-safe', function () {
-    assertCondition(normalizeRoleName('administRativo_operativo') === 'ADMINISTRATIVO_OPERATIVO', 'Nombre con mayúsculas mezcladas normaliza');
-    assertCondition(normalizeRoleName('responsable_sectorial') === 'RESPONSABLE_SECTORIAL', 'Nombre con underscore normaliza');
-    assertCondition(normalizeRoleName(' pUnToS_y_dEstInOs ') === 'PUNTOS_Y_DESTINOS', 'Nombre con espacios y case mix normaliza');
-});
-
-runCase('permission-type normalization with exact names', function () {
-    assertCondition(normalizePermissionName('contenedor.cambiar_estado') === 'contenedor.cambiar_estado', 'Permiso exacto se conserva');
-    assertCondition(normalizePermissionName('  vehiculo.asignar  ') === 'vehiculo.asignar', 'Permiso con espacios se normaliza');
-    assertCondition(normalizePermissionName('') === '', 'Permiso vacío se normaliza a vacío');
-});
-
-runCase('security matrix valid scenarios', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['RESPONSABLE_SECTORIAL'],
-        'autorizaciones' => [
+    public function testSecurityMatrixValidScenarios(): void
+    {
+        $this->setUser(['RESPONSABLE_SECTORIAL'], [
             ['permiso' => 'lugar.crear', 'sector' => 'PUNTOS_Y_DESTINOS'],
             ['permiso' => 'vehiculo.asignar', 'sector' => 'LOGISTICA'],
-        ],
-    ];
+        ]);
+        $this->assertTrue(hasEffectivePermission('lugar.crear', ['PUNTOS_Y_DESTINOS']));
+        $this->assertTrue(hasEffectivePermission('vehiculo.asignar', ['LOGISTICA']));
+        $this->assertFalse(hasEffectivePermission('lugar.crear', ['LOGISTICA']));
+    }
 
-    assertCondition(hasEffectivePermission('lugar.crear', ['PUNTOS_Y_DESTINOS']) === true, 'Responsable puede crear lugares en su sector');
-    assertCondition(hasEffectivePermission('vehiculo.asignar', ['LOGISTICA']) === true, 'Responsable puede asignar vehículos en su sector');
-    assertCondition(hasEffectivePermission('lugar.crear', ['LOGISTICA']) === false, 'Responsable no crea lugar en sector ajeno');
-});
+    public function testRoleListGeneralization(): void
+    {
+        $this->assertSame(['RESPONSABLE_SECTORIAL', 'ADMINISTRADOR_TI', 'INSPECTOR', 'OPERARIO'], normalizeRoleList(['RESPONSABLE', 'admin', 'Inspector', 'OPERARIO', '']));
+    }
 
-runCase('role list generalization', function () {
-    $roles = normalizeRoleList(['RESPONSABLE', 'admin', 'Inspector', 'OPERARIO', '']);
-    assertCondition($roles === ['RESPONSABLE_SECTORIAL', 'ADMINISTRADOR_TI', 'INSPECTOR', 'OPERARIO'], 'Lista generaliza roles legacy y nuevos');
-});
+    public function testNegativeEmptyAuthData(): void
+    {
+        $this->setUser([]);
+        $this->assertFalse(hasEffectivePermission('usuario.consultar', ['TI']));
+        $this->assertFalse(hasEffectivePermission('contenedor.consultar', null));
+    }
 
-runCase('negative empty auth data', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = ['roles' => [], 'autorizaciones' => []];
-    assertCondition(hasEffectivePermission('usuario.consultar', ['TI']) === false, 'Sin roles no hay acceso');
-    assertCondition(hasEffectivePermission('contenedor.consultar', null) === false, 'Sin autorizaciones no hay acceso sin sector');
-});
+    public function testSectorNamesWithDifferentEncodingsAreNormalized(): void
+    {
+        $this->assertSame('PUNTOS_Y_DESTINOS', normalizeRoleName('puntos_y_destinos'));
+        $this->assertSame('MANTENIMIENTO', normalizeRoleName('MANTENIMIENTO'));
+        $this->assertSame('INSPECCION', normalizeRoleName('inspeccion'));
+    }
 
-runCase('sector names with different encodings are normalized', function () {
-    assertCondition(normalizeRoleName('puntos_y_destinos') === 'PUNTOS_Y_DESTINOS', 'Sector con guion bajo se normaliza');
-    assertCondition(normalizeRoleName('MANTENIMIENTO') === 'MANTENIMIENTO', 'Sector ya normalizado se mantiene');
-    assertCondition(normalizeRoleName('inspeccion') === 'INSPECCION', 'Sector lowercase se normaliza');
-});
+    public function testCrossSectorCheckForInspector(): void
+    {
+        $this->setUser(['INSPECTOR'], [['permiso' => 'incidencia.consultar', 'sector' => 'INSPECCION']]);
+        $this->assertTrue(hasEffectivePermission('incidencia.consultar', ['INSPECCION']));
+        $this->assertFalse(hasEffectivePermission('incidencia.consultar', ['MANTENIMIENTO']));
+        $this->assertFalse(hasEffectivePermission('maquinaria.consultar', ['MANTENIMIENTO']));
+    }
 
-runCase('cross-sector check for inspector', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['INSPECTOR'],
-        'autorizaciones' => [
-            ['permiso' => 'incidencia.consultar', 'sector' => 'INSPECCION'],
-        ],
-    ];
+    public function testPermissionGrantWhenSectorListIsNull(): void
+    {
+        $this->setUser(['ADMINISTRADOR_TI'], [['permiso' => 'usuario.consultar', 'sector' => 'TI']]);
+        $this->assertTrue(hasEffectivePermission('usuario.consultar', null));
+    }
 
-    assertCondition(hasEffectivePermission('incidencia.consultar', ['INSPECCION']) === true, 'Inspector puede consultar en inspección');
-    assertCondition(hasEffectivePermission('incidencia.consultar', ['MANTENIMIENTO']) === false, 'Inspector no consulta fuera de inspección');
-    assertCondition(hasEffectivePermission('maquinaria.consultar', ['MANTENIMIENTO']) === false, 'Inspector no consulta maquinaria fuera de su sector');
-});
-
-runCase('permission grant when sector list is null', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['ADMINISTRADOR_TI'],
-        'autorizaciones' => [
-            ['permiso' => 'usuario.consultar', 'sector' => 'TI'],
-        ],
-    ];
-
-    assertCondition(hasEffectivePermission('usuario.consultar', null) === true, 'Si no hay sector, el permiso se evalúa por autorización efectiva');
-});
-
-runCase('permission array values are not mutated', function () {
-    $original = ['usuario.crear', 'contenedor.consultar'];
-    $copy = $original;
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['ADMINISTRADOR_TI'],
-        'autorizaciones' => [
+    public function testPermissionArrayValuesAreNotMutated(): void
+    {
+        $original = ['usuario.crear', 'contenedor.consultar'];
+        $copy = $original;
+        $this->setUser(['ADMINISTRADOR_TI'], [
             ['permiso' => 'usuario.crear', 'sector' => 'TI'],
             ['permiso' => 'contenedor.consultar', 'sector' => 'PUNTOS_Y_DESTINOS'],
-        ],
-    ];
+        ]);
+        $this->assertSame($original, $copy);
+        $this->assertTrue(hasEffectivePermission('usuario.crear', ['TI']));
+    }
 
-    assertCondition($copy === $original, 'Arreglos originales no se mutan');
-    assertCondition(hasEffectivePermission('usuario.crear', ['TI']) === true, 'Permiso de admin se mantiene estable');
-});
+    public function testNormalizationOfSeveralNamesWithExtraSpaces(): void
+    {
+        $this->assertSame('RESPONSABLE_SECTORIAL', normalizeRoleName('   responsable_sectorial   '));
+        $this->assertSame('ADMINISTRADOR_TI', normalizeRoleName('  admin  '));
+        $this->assertSame('LOGISTICA', normalizeRoleName(' logistica '));
+    }
 
-runCase('normalization of several names with extra spaces', function () {
-    assertCondition(normalizeRoleName('   responsable_sectorial   ') === 'RESPONSABLE_SECTORIAL', 'Nombre con espacios se limpia');
-    assertCondition(normalizeRoleName('  admin  ') === 'ADMINISTRADOR_TI', 'Rol admin se normaliza');
-    assertCondition(normalizeRoleName(' logistica ') === 'LOGISTICA', 'Nombre con espacios y lowercase se corrige');
-});
+    public function testUniqueReductionForAdminAndLegacyAliases(): void
+    {
+        $this->assertSame(['ADMINISTRADOR_TI'], normalizeRoleList(['ADMINISTRADOR_TI', 'Superusuario', 'Administrador', 'TI']));
+    }
 
-runCase('unique reduction for admin and legacy aliases', function () {
-    $roles = normalizeRoleList(['ADMINISTRADOR_TI', 'Superusuario', 'Administrador', 'TI']);
-    assertCondition($roles === ['ADMINISTRADOR_TI'], 'Alias del administrador se reducen a una sola entrada');
-});
-
-runCase('last negative check for no sector match', function () {
-    $_SESSION = [];
-    $_SESSION['usuario'] = [
-        'roles' => ['RESPONSABLE_SECTORIAL'],
-        'autorizaciones' => [
-            ['permiso' => 'maquinaria.consultar', 'sector' => 'MANTENIMIENTO'],
-        ],
-    ];
-
-    assertCondition(hasEffectivePermission('maquinaria.consultar', ['LOGISTICA']) === false, 'Responsable no tiene acceso a maquinaria en otro sector');
-    assertCondition(hasEffectivePermission('maquinaria.consultar', ['MANTENIMIENTO']) === true, 'Responsable sí tiene acceso en su sector');
-});
-
-$summary = "Total tests: " . ($passed + $failed) . "; Passed: $passed; Failed: $failed";
-if ($failed > 0) {
-    echo "\nSUMMARY: $summary\n";
-    exit(1);
+    public function testLastNegativeCheckForNoSectorMatch(): void
+    {
+        $this->setUser(['RESPONSABLE_SECTORIAL'], [['permiso' => 'maquinaria.consultar', 'sector' => 'MANTENIMIENTO']]);
+        $this->assertFalse(hasEffectivePermission('maquinaria.consultar', ['LOGISTICA']));
+        $this->assertTrue(hasEffectivePermission('maquinaria.consultar', ['MANTENIMIENTO']));
+    }
 }
-
-echo "\nSUMMARY: $summary\n";

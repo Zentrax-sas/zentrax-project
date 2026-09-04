@@ -4,7 +4,8 @@
 
 /03-proyecto-zemyna/programacion/.venv/
 .venv/
-/vendor/
+vendor/
+.phpunit.result.cache
 /node_modules/
 
 .DS_Store
