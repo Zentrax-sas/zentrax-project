@@ -498,10 +498,12 @@ userForm?.addEventListener('submit', async event => {
   event.preventDefault();
   userFormMessage.textContent = 'Guardando usuario...';
   const payload = Object.fromEntries(new FormData(userForm).entries());
-  const idUsuario = payload.id_usuario;
-  const method = idUsuario ? 'PUT' : 'POST';
+  const idUsuario = Number(payload.id_usuario);
+  const isUpdate = Number.isInteger(idUsuario) && idUsuario > 0;
+  const method = isUpdate ? 'PUT' : 'POST';
   delete payload.id_usuario;
-  if (idUsuario && payload.contrasena === '') delete payload.contrasena;
+  if (isUpdate) payload.id_usuario = idUsuario;
+  if (isUpdate && payload.contrasena === '') delete payload.contrasena;
   payload.id_centro = Number(payload.id_centro);
 
   try {
@@ -515,7 +517,7 @@ userForm?.addEventListener('submit', async event => {
     userForm.reset();
     userForm.hidden = true;
     userFormMessage.textContent = '';
-    showToast(idUsuario ? 'Usuario actualizado.' : 'Usuario registrado.', 'La lista se actualizó correctamente.');
+    showToast(isUpdate ? 'Usuario actualizado.' : 'Usuario registrado.', 'La lista se actualizó correctamente.');
     await cargarUsuariosAdmin();
   } catch (error) {
     userFormMessage.textContent = error.message;

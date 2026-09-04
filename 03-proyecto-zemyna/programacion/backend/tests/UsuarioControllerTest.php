@@ -217,7 +217,7 @@ class UsuarioControllerTest extends TestCase
         $this->assertSame([], $result['errors']);
     }
 
-    public function testUpdateActualizaSinCambiarContrasena(): void
+    public function testUpdateSinNuevaContrasenaConservaElHashActual(): void
     {
         $this->expectExistingUser();
         $this->usuario->expects($this->once())->method('findByEmail')->with('ana@zemyna.com')
@@ -303,15 +303,69 @@ class UsuarioControllerTest extends TestCase
         $this->assertArrayNotHasKey('contrasena', $result);
     }
 
-    public function testUpdateDevuelveErrorCuandoFallaComprobacionDelModelo(): void
+    /** @dataProvider failedReadProvider */
+    public function testUpdateDevuelveErrorCuandoReadRetornaNullOFalse($modelResult): void
     {
-        $this->usuario->expects($this->once())->method('read')->willReturn(false);
+        $this->usuario->expects($this->once())->method('read')->willReturn($modelResult);
         $this->usuario->expects($this->never())->method('update');
 
         $result = $this->controller->update($this->validUpdateData());
 
         $this->assertResponse($result, false, 500, 'No se pudo actualizar el usuario.');
         $this->assertSame(['La verificación del usuario falló.'], $result['errors']);
+    }
+
+    public static function failedReadProvider(): array
+    {
+        return ['null' => [null], 'false' => [false]];
+    }
+
+    /** @dataProvider persistenceExceptionProvider */
+    public function testUpdateConvierteExcepcionDePersistenciaEnErrorSeguro(RuntimeException $exception): void
+    {
+        $this->usuario->expects($this->once())->method('read')
+            ->willThrowException($exception);
+        $this->usuario->expects($this->never())->method('update');
+
+        $result = $this->controller->update($this->validUpdateData());
+
+        $this->assertResponse($result, false, 500, 'No se pudo actualizar el usuario.');
+        $this->assertSame(['La verificación del usuario falló.'], $result['errors']);
+        $serialized = json_encode($result);
+        $this->assertStringNotContainsString('SQLSTATE', $serialized);
+        $this->assertStringNotContainsString('secreto', $serialized);
+        $this->assertStringNotContainsString('ruta/interna', $serialized);
+    }
+
+    public static function persistenceExceptionProvider(): array
+    {
+        return [
+            'PDOException' => [new PDOException('SQLSTATE[HY000] password=secreto ruta/interna')],
+            'RuntimeException de persistencia' => [new RuntimeException('SQLSTATE[HY000] password=secreto ruta/interna')],
+        ];
+    }
+
+    public function testUpdateNoOcultaErroresDeProgramacion(): void
+    {
+        $this->usuario->expects($this->once())->method('read')
+            ->willThrowException(new TypeError('Defecto de programación'));
+        $this->expectException(TypeError::class);
+
+        $this->controller->update($this->validUpdateData());
+    }
+
+    public function testUpdateConvierteExcepcionPdoAlBuscarEmailEnErrorSeguro(): void
+    {
+        $this->expectExistingUser();
+        $this->usuario->expects($this->once())->method('findByEmail')
+            ->willThrowException(new PDOException('SQL interno sensible'));
+        $this->usuario->expects($this->never())->method('update');
+
+        $result = $this->controller->update($this->validUpdateData());
+
+        $this->assertResponse($result, false, 500, 'No se pudo actualizar el usuario.');
+        $this->assertSame(['La verificación del email falló.'], $result['errors']);
+        $this->assertStringNotContainsString('SQL interno sensible', json_encode($result));
     }
 
     public function testUpdateDevuelveErrorCuandoFallaGuardadoDelModelo(): void
@@ -369,6 +423,19 @@ class UsuarioControllerTest extends TestCase
         $this->assertSame(['La desactivación del usuario falló.'], $result['errors']);
     }
 
+    public function testDeleteConvierteExcepcionPdoEnErrorSeguro(): void
+    {
+        $this->expectExistingUser();
+        $this->usuario->expects($this->once())->method('delete')
+            ->willThrowException(new PDOException('SQL de baja sensible'));
+
+        $result = $this->controller->delete(7);
+
+        $this->assertResponse($result, false, 500, 'No se pudo desactivar el usuario.');
+        $this->assertSame(['La desactivación del usuario falló.'], $result['errors']);
+        $this->assertStringNotContainsString('SQL de baja sensible', json_encode($result));
+    }
+
     public function testActivarReactivaUsuarioExistente(): void
     {
         $this->expectExistingUser();
@@ -409,6 +476,19 @@ class UsuarioControllerTest extends TestCase
 
         $this->assertResponse($result, false, 500, 'No se pudo activar el usuario.');
         $this->assertSame(['La activación del usuario falló.'], $result['errors']);
+    }
+
+    public function testActivarConvierteExcepcionPdoEnErrorSeguro(): void
+    {
+        $this->expectExistingUser();
+        $this->usuario->expects($this->once())->method('activar')
+            ->willThrowException(new PDOException('SQL de activación sensible'));
+
+        $result = $this->controller->activar(7);
+
+        $this->assertResponse($result, false, 500, 'No se pudo activar el usuario.');
+        $this->assertSame(['La activación del usuario falló.'], $result['errors']);
+        $this->assertStringNotContainsString('SQL de activación sensible', json_encode($result));
     }
 
     public function testHistorialRolesDevuelveDatosDelModelo(): void

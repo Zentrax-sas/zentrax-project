@@ -17,6 +17,33 @@ class UsuarioController {
         return is_string($value) ? trim($value) : $value;
     }
 
+    private function normalizePositiveId($value): ?int {
+        if (is_int($value)) {
+            return $value > 0 ? $value : null;
+        }
+
+        if (!is_string($value) || !ctype_digit($value)) {
+            return null;
+        }
+
+        $id = (int)$value;
+        return $id > 0 ? $id : null;
+    }
+
+    private function findUsuarioById(int $id) {
+        try {
+            $stmt = $this->usuario->read($id, 1, 1);
+            if (!$stmt) {
+                return false;
+            }
+
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return $rows[0] ?? null;
+        } catch (PDOException | RuntimeException $exception) {
+            return false;
+        }
+    }
+
     private function validateUsuarioPayload($data, $isUpdate = false) {
         $errors = [];
 
@@ -87,8 +114,10 @@ class UsuarioController {
         }
 
         foreach ($rows as &$row) {
+            unset($row['contrasena']);
             $row['roles'] = $this->usuario->getRolesVigentes($row['id_usuario']);
         }
+        unset($row);
 
         return [
             "success" => true,
@@ -157,9 +186,8 @@ class UsuarioController {
         $data = $data ?? [];
         $errors = $this->validateUsuarioPayload($data, true);
 
-        if (($data['id_usuario'] ?? null) === null || ($data['id_usuario'] ?? null) === '') {
-            $errors[] = 'El id_usuario es obligatorio para actualizar.';
-        }
+        $id = $this->normalizePositiveId($data['id_usuario'] ?? null);
+        if ($id === null) $errors[] = 'El id_usuario debe ser un número entero positivo.';
 
         if ($errors) {
             return [
@@ -171,10 +199,52 @@ class UsuarioController {
             ];
         }
 
-        $this->usuario->id_usuario = (int)($data['id_usuario'] ?? 0);
+        $existing = $this->findUsuarioById($id);
+        if ($existing === false) {
+            return [
+                "success" => false,
+                "data" => null,
+                "message" => "No se pudo actualizar el usuario.",
+                "errors" => ["La verificación del usuario falló."],
+                "statusCode" => 500
+            ];
+        }
+        if ($existing === null) {
+            return [
+                "success" => false,
+                "data" => null,
+                "message" => "No se pudo actualizar el usuario.",
+                "errors" => ["El usuario no existe o la actualización falló."],
+                "statusCode" => 404
+            ];
+        }
+
+        $email = $this->normalizeString($data['email'] ?? null);
+        try {
+            $emailOwner = $this->usuario->findByEmail($email);
+        } catch (PDOException | RuntimeException $exception) {
+            return [
+                "success" => false,
+                "data" => null,
+                "message" => "No se pudo actualizar el usuario.",
+                "errors" => ["La verificación del email falló."],
+                "statusCode" => 500
+            ];
+        }
+        if ($emailOwner && (int)$emailOwner['id_usuario'] !== $id) {
+            return [
+                "success" => false,
+                "data" => null,
+                "message" => "El email ya está registrado.",
+                "errors" => ["El email ya existe."],
+                "statusCode" => 409
+            ];
+        }
+
+        $this->usuario->id_usuario = $id;
         $this->usuario->nombre = $this->normalizeString($data['nombre'] ?? null);
         $this->usuario->apellido = $this->normalizeString($data['apellido'] ?? null);
-        $this->usuario->email = $this->normalizeString($data['email'] ?? null);
+        $this->usuario->email = $email;
         $this->usuario->telefono = $this->normalizeString($data['telefono'] ?? null);
         $this->usuario->id_centro = (int)($data['id_centro'] ?? 0);
         $this->usuario->activo = $this->normalizeString($data['activo'] ?? 'Activo');
@@ -184,7 +254,13 @@ class UsuarioController {
             ? password_hash($rawPassword, PASSWORD_BCRYPT)
             : null;
 
-        if ($this->usuario->update()) {
+        try {
+            $updated = $this->usuario->update();
+        } catch (PDOException | RuntimeException $exception) {
+            $updated = false;
+        }
+
+        if ($updated) {
             return [
                 "success" => true,
                 "data" => null,
@@ -198,15 +274,49 @@ class UsuarioController {
             "success" => false,
             "data" => null,
             "message" => "No se pudo actualizar el usuario.",
-            "errors" => ["El usuario no existe o la actualización falló."],
-            "statusCode" => 404
+            "errors" => ["La actualización del usuario falló."],
+            "statusCode" => 500
         ];
     }
 
     public function delete($id) {
-        $this->usuario->id_usuario = (int)$id;
+        $normalizedId = $this->normalizePositiveId($id);
+        if ($normalizedId === null) {
+            return [
+                "success" => false, "data" => null,
+                "message" => "El id_usuario no es válido.",
+                "errors" => ["El id_usuario debe ser un número entero positivo."],
+                "statusCode" => 400
+            ];
+        }
 
-        if ($this->usuario->delete()) {
+        $existing = $this->findUsuarioById($normalizedId);
+        if ($existing === false) {
+            return [
+                "success" => false, "data" => null,
+                "message" => "No se pudo desactivar el usuario.",
+                "errors" => ["La verificación del usuario falló."],
+                "statusCode" => 500
+            ];
+        }
+        if ($existing === null) {
+            return [
+                "success" => false, "data" => null,
+                "message" => "Usuario no encontrado.",
+                "errors" => ["No existe el usuario solicitado."],
+                "statusCode" => 404
+            ];
+        }
+
+        $this->usuario->id_usuario = $normalizedId;
+
+        try {
+            $deleted = $this->usuario->delete();
+        } catch (PDOException | RuntimeException $exception) {
+            $deleted = false;
+        }
+
+        if ($deleted) {
             return [
                 "success" => true,
                 "data" => null,
@@ -219,16 +329,50 @@ class UsuarioController {
         return [
             "success" => false,
             "data" => null,
-            "message" => "Usuario no encontrado.",
-            "errors" => ["No existe el usuario solicitado."],
-            "statusCode" => 404
+            "message" => "No se pudo desactivar el usuario.",
+            "errors" => ["La desactivación del usuario falló."],
+            "statusCode" => 500
         ];
     }
 
     public function activar($id) {
-        $this->usuario->id_usuario = (int)$id;
+        $normalizedId = $this->normalizePositiveId($id);
+        if ($normalizedId === null) {
+            return [
+                "success" => false, "data" => null,
+                "message" => "El id_usuario no es válido.",
+                "errors" => ["El id_usuario debe ser un número entero positivo."],
+                "statusCode" => 400
+            ];
+        }
 
-        if ($this->usuario->activar()) {
+        $existing = $this->findUsuarioById($normalizedId);
+        if ($existing === false) {
+            return [
+                "success" => false, "data" => null,
+                "message" => "No se pudo activar el usuario.",
+                "errors" => ["La verificación del usuario falló."],
+                "statusCode" => 500
+            ];
+        }
+        if ($existing === null) {
+            return [
+                "success" => false, "data" => null,
+                "message" => "No se pudo activar el usuario.",
+                "errors" => ["No existe el usuario solicitado."],
+                "statusCode" => 404
+            ];
+        }
+
+        $this->usuario->id_usuario = $normalizedId;
+
+        try {
+            $activated = $this->usuario->activar();
+        } catch (PDOException | RuntimeException $exception) {
+            $activated = false;
+        }
+
+        if ($activated) {
             return [
                 "success" => true,
                 "data" => null,
@@ -242,8 +386,8 @@ class UsuarioController {
             "success" => false,
             "data" => null,
             "message" => "No se pudo activar el usuario.",
-            "errors" => ["No existe el usuario solicitado."],
-            "statusCode" => 404
+            "errors" => ["La activación del usuario falló."],
+            "statusCode" => 500
         ];
     }
 
