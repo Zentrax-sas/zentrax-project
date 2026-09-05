@@ -7,8 +7,12 @@ const clusterGroup = L.markerClusterGroup({
     chunkedLoading: true,
     disableClusteringAtZoom: 18
 }).addTo(map);
-const MIN_MAP_ZOOM_FOR_CONTAINERS = 12;
+const MIN_MAP_ZOOM_FOR_CONTAINERS = 13;
+const CONTAINER_LOAD_DEBOUNCE_MS = 300;
 let contenedoresLoadTimer = null;
+let contenedoresRequestController = null;
+let contenedoresRequestSequence = 0;
+const contenedorMarkers = new Map();
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
@@ -411,72 +415,117 @@ if (trackingForm) {
     });
 }
 
-function renderContenedores(contenedores) {
+function markerColor(estado) {
+    const normalizedState = String(estado || 'disponible').toLowerCase();
+    if (normalizedState === 'lleno' || normalizedState === 'amarillo') return '#f59e0b';
+    if (normalizedState === 'dañado' || normalizedState === 'danado' || normalizedState === 'rojo') return '#ef4444';
+    if (normalizedState === 'fuera de servicio' || normalizedState === 'en mantenimiento' || normalizedState === 'gris' || normalizedState === 'desconocido') return '#6b7280';
+    return '#22c55e';
+}
+
+function popupContent(codigoContenedor) {
+    const popup = document.createElement('p');
+    const popupTitle = document.createElement('strong');
+    popupTitle.textContent = 'Contenedor: ';
+    popup.append(popupTitle, document.createTextNode(String(codigoContenedor)), document.createElement('br'), document.createTextNode('Hacé clic para reportar.'));
+    return popup;
+}
+
+function createContainerMarker(contenedor, idKey) {
+    const record = { data: contenedor, marker: null };
+    const lat = parseFloat(contenedor.latitud);
+    const lng = parseFloat(contenedor.longitud);
+    const marcador = L.circleMarker([lat, lng], {
+        radius: 10,
+        fillColor: markerColor(contenedor.estado),
+        color: '#ffffff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.9
+    });
+    record.marker = marcador;
+    marcador.bindPopup(popupContent(contenedor.codigo ?? idKey));
+
+    marcador.on('click', async function() {
+        const current = record.data;
+        const idContenedor = current.id_contenedor;
+        const direccion = current.direccion || 'Sin dirección';
+        const form = document.getElementById('form-reporte');
+        const placeholder = document.getElementById('form-msg-vacio');
+        if (reporteConfirmacion) reporteConfirmacion.hidden = true;
+        if (placeholder) placeholder.style.display = 'none';
+        if (form) form.style.display = 'block';
+        document.getElementById('form-id-contenedor').value = idContenedor;
+        const direccionInput = document.getElementById('form-direccion');
+        direccionInput.value = direccion;
+        if (reporteMessage) reporteMessage.textContent = 'Buscando dirección...';
+
+        try {
+            const response = await fetch(buildApiUrl(`/backend/api/geocodificacion.php?id_contenedor=${encodeURIComponent(idContenedor)}`));
+            const json = await response.json();
+            if (!response.ok || !json.success) {
+                throw new Error(json.message || 'No se pudo obtener la dirección.');
+            }
+            if (document.getElementById('form-id-contenedor').value !== String(idContenedor)) {
+                return;
+            }
+            if (json.data) {
+                direccionInput.value = json.data.direccion || direccion;
+            }
+            if (reporteMessage) reporteMessage.textContent = '';
+        } catch (error) {
+            if (document.getElementById('form-id-contenedor').value === String(idContenedor) && reporteMessage) {
+                reporteMessage.textContent = 'No se pudo obtener la dirección; podés reportar usando las coordenadas disponibles.';
+            }
+        }
+    });
+
+    return record;
+}
+
+function reconcileContainerMarkers(contenedores) {
+    const visibleIds = new Set();
+
     contenedores.forEach(contenedor => {
+        const idContenedor = contenedor.id_contenedor;
+        if (idContenedor === null || idContenedor === undefined) return;
+        const idKey = String(idContenedor);
         const lat = parseFloat(contenedor.latitud ?? contenedor.lat ?? -34.9150);
         const lng = parseFloat(contenedor.longitud ?? contenedor.lng ?? -56.1540);
-        const idContenedor = contenedor.id_contenedor ?? contenedor.id ?? 'Sin ID';
-        const codigoContenedor = contenedor.codigo ?? contenedor.id ?? idContenedor;
-        const direccion = contenedor.direccion || (contenedor.calle && contenedor.esquina ? `${contenedor.calle} y ${contenedor.esquina}` : 'Sin dirección');
-        const estado = String(contenedor.estado || 'disponible').toLowerCase();
-        let colorNeon = '#22c55e';
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        visibleIds.add(idKey);
 
-        if (estado === 'lleno' || estado === 'amarillo') colorNeon = '#f59e0b';
-        else if (estado === 'dañado' || estado === 'danado' || estado === 'rojo') colorNeon = '#ef4444';
-        else if (estado === 'fuera de servicio' || estado === 'en mantenimiento' || estado === 'gris' || estado === 'desconocido') colorNeon = '#6b7280';
+        const existing = contenedorMarkers.get(idKey);
+        if (existing) {
+            existing.data = contenedor;
+            existing.marker.setLatLng([lat, lng]);
+            existing.marker.setStyle({ fillColor: markerColor(contenedor.estado) });
+            existing.marker.setPopupContent(popupContent(contenedor.codigo ?? idContenedor));
+            return;
+        }
 
-        const marcador = L.circleMarker([lat, lng], {
-            radius: 10,
-            fillColor: colorNeon,
-            color: '#ffffff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.9
-        });
+        const record = createContainerMarker(contenedor, idKey);
+        contenedorMarkers.set(idKey, record);
+        clusterGroup.addLayer(record.marker);
+    });
 
-        clusterGroup.addLayer(marcador);
-
-        const popup = document.createElement('p');
-        const popupTitle = document.createElement('strong');
-        popupTitle.textContent = 'Contenedor: ';
-        popup.append(popupTitle, document.createTextNode(String(codigoContenedor)), document.createElement('br'), document.createTextNode('Hacé clic para reportar.'));
-        marcador.bindPopup(popup);
-
-        marcador.on('click', async function() {
-            const form = document.getElementById('form-reporte');
-            const placeholder = document.getElementById('form-msg-vacio');
-            if (reporteConfirmacion) reporteConfirmacion.hidden = true;
-            if (placeholder) placeholder.style.display = 'none';
-            if (form) form.style.display = 'block';
-            document.getElementById('form-id-contenedor').value = idContenedor;
-            const direccionInput = document.getElementById('form-direccion');
-            direccionInput.value = direccion;
-            if (reporteMessage) reporteMessage.textContent = 'Buscando dirección...';
-
-            try {
-                const response = await fetch(buildApiUrl(`/backend/api/geocodificacion.php?id_contenedor=${encodeURIComponent(idContenedor)}`));
-                const json = await response.json();
-                if (!response.ok || !json.success) {
-                    throw new Error(json.message || 'No se pudo obtener la dirección.');
-                }
-                if (document.getElementById('form-id-contenedor').value !== String(idContenedor)) {
-                    return;
-                }
-                if (json.data) {
-                    direccionInput.value = json.data.direccion || direccion;
-                }
-                if (reporteMessage) reporteMessage.textContent = '';
-            } catch (error) {
-                if (document.getElementById('form-id-contenedor').value === String(idContenedor) && reporteMessage) {
-                    reporteMessage.textContent = 'No se pudo obtener la dirección; podés reportar usando las coordenadas disponibles.';
-                }
-            }
-        });
+    contenedorMarkers.forEach((record, idKey) => {
+        if (visibleIds.has(idKey)) return;
+        clusterGroup.removeLayer(record.marker);
+        contenedorMarkers.delete(idKey);
     });
 }
 
-function mostrarAvisoZoom() {
-    mostrarToast('Acercate en el mapa para ver los contenedores.', 'error');
+function clearContainerMarkers() {
+    clusterGroup.clearLayers();
+    contenedorMarkers.clear();
+}
+
+function setMapStatus(message, state = '') {
+    const status = document.getElementById('mapa-status');
+    if (!status) return;
+    status.textContent = message;
+    status.dataset.state = state;
 }
 
 function obtenerParametrosViewport() {
@@ -484,54 +533,69 @@ function obtenerParametrosViewport() {
     const surOeste = bounds.getSouthWest();
     const norEste = bounds.getNorthEast();
     const parametros = new URLSearchParams({
-        min_lat: surOeste.lat.toFixed(6),
-        min_lon: surOeste.lng.toFixed(6),
-        max_lat: norEste.lat.toFixed(6),
-        max_lon: norEste.lng.toFixed(6),
-        limit: '2000'
+        view: 'map',
+        north: norEste.lat.toFixed(6),
+        south: surOeste.lat.toFixed(6),
+        east: norEste.lng.toFixed(6),
+        west: surOeste.lng.toFixed(6),
+        zoom: String(map.getZoom())
     });
     return parametros.toString();
 }
 
 async function cargarContenedoresMapa() {
     if (map.getZoom() < MIN_MAP_ZOOM_FOR_CONTAINERS) {
-        clusterGroup.clearLayers();
-        mostrarAvisoZoom();
+        contenedoresRequestSequence++;
+        contenedoresRequestController?.abort();
+        contenedoresRequestController = null;
+        clearContainerMarkers();
+        setMapStatus('Acercá el mapa para ver los contenedores.', 'zoom');
         return;
     }
 
-    clusterGroup.clearLayers();
+    contenedoresRequestController?.abort();
+    const requestController = new AbortController();
+    contenedoresRequestController = requestController;
+    const requestId = ++contenedoresRequestSequence;
+    setMapStatus('Cargando contenedores...', 'loading');
 
     try {
-        const response = await fetch(buildApiUrl(`/backend/api/contenedores.php?${obtenerParametrosViewport()}`));
+        const response = await fetch(buildApiUrl(`/backend/api/contenedores.php?${obtenerParametrosViewport()}`), {
+            signal: requestController.signal
+        });
         const json = await response.json();
+
+        if (requestId !== contenedoresRequestSequence) return;
 
         if (!response.ok || !json.success) {
             throw new Error(json.message || 'Error al cargar contenedores');
         }
 
         const contenedores = Array.isArray(json.data) ? json.data : [];
+        reconcileContainerMarkers(contenedores);
 
-        if (contenedores.length === 0) {
-            console.info('No hay contenedores cargados en la base de datos.');
-            return;
+        if (json.meta?.hasMore) {
+            setMapStatus('Hay demasiados resultados. Acercá el mapa para ver un área menor.', 'limit');
+        } else if (contenedores.length === 0) {
+            setMapStatus('No hay contenedores visibles en esta zona.', 'empty');
+        } else {
+            setMapStatus(`${contenedores.length} contenedores visibles.`, 'success');
         }
-
-        renderContenedores(contenedores);
     } catch (error) {
+        if (error.name === 'AbortError') return;
+        if (requestId !== contenedoresRequestSequence) return;
         console.warn('No se pudieron cargar los contenedores desde la API.', error);
-        const contenedoresLocales = Array.isArray(window.contenedoresIM) ? window.contenedoresIM : [];
-        if (contenedoresLocales.length > 0) {
-            renderContenedores(contenedoresLocales);
-            return;
+        setMapStatus('No se pudieron cargar los contenedores. Intentá nuevamente.', 'error');
+    } finally {
+        if (contenedoresRequestController === requestController) {
+            contenedoresRequestController = null;
         }
-        mostrarToast('No se pudieron cargar los contenedores.', 'error');
     }
 }
 
 function programarCargaContenedores() {
     clearTimeout(contenedoresLoadTimer);
-    contenedoresLoadTimer = setTimeout(cargarContenedoresMapa, 400);
+    contenedoresLoadTimer = setTimeout(cargarContenedoresMapa, CONTAINER_LOAD_DEBOUNCE_MS);
 }
 
 map.on('moveend zoomend', programarCargaContenedores);

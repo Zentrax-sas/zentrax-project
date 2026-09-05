@@ -2,6 +2,12 @@
 require_once __DIR__ . '/../models/Contenedor.php';
 
 class ContenedorController {
+    private const MAP_MIN_ZOOM = 13;
+    private const MAP_MAX_ZOOM = 19;
+    private const MAP_LIMIT = 500;
+    private const MAP_MAX_LATITUDE_SPAN = 0.5;
+    private const MAP_MAX_LONGITUDE_SPAN = 0.5;
+
     private $contenedor;
 
     public function __construct($db) {
@@ -82,6 +88,124 @@ class ContenedorController {
         }
 
         return ["success" => true, "data" => $rows, "message" => "Contenedores cargados correctamente.", "statusCode" => 200];
+    }
+
+    public function getMap(array $filters): array {
+        $errors = [];
+        $coordinates = [];
+
+        foreach (['north', 'south', 'east', 'west'] as $field) {
+            if (!array_key_exists($field, $filters) || $filters[$field] === '') {
+                $errors[$field] = "El límite {$field} es obligatorio.";
+                continue;
+            }
+            if (!is_numeric($filters[$field])) {
+                $errors[$field] = "El límite {$field} debe ser numérico.";
+                continue;
+            }
+            $coordinates[$field] = (float)$filters[$field];
+            if (!is_finite($coordinates[$field])) {
+                $errors[$field] = "El límite {$field} debe ser finito.";
+            }
+        }
+
+        $zoom = $filters['zoom'] ?? null;
+        if ($zoom === null || $zoom === '') {
+            $errors['zoom'] = 'El zoom es obligatorio.';
+        } elseif (filter_var($zoom, FILTER_VALIDATE_INT) === false) {
+            $errors['zoom'] = 'El zoom debe ser un número entero.';
+        } else {
+            $zoom = (int)$zoom;
+            if ($zoom < 0 || $zoom > self::MAP_MAX_ZOOM) {
+                $errors['zoom'] = 'El zoom debe estar entre 0 y 19.';
+            }
+        }
+
+        foreach (['north', 'south'] as $field) {
+            if (isset($coordinates[$field]) && ($coordinates[$field] < -90 || $coordinates[$field] > 90)) {
+                $errors[$field] = "El límite {$field} debe estar entre -90 y 90.";
+            }
+        }
+        foreach (['east', 'west'] as $field) {
+            if (isset($coordinates[$field]) && ($coordinates[$field] < -180 || $coordinates[$field] > 180)) {
+                $errors[$field] = "El límite {$field} debe estar entre -180 y 180.";
+            }
+        }
+
+        if (isset($coordinates['north'], $coordinates['south']) && $coordinates['north'] <= $coordinates['south']) {
+            $errors['viewport'] = 'El límite norte debe ser mayor que el límite sur.';
+        }
+        if (isset($coordinates['east'], $coordinates['west']) && $coordinates['east'] <= $coordinates['west']) {
+            $errors['viewport'] = 'El límite este debe ser mayor que el límite oeste.';
+        }
+        if (isset($coordinates['north'], $coordinates['south'], $coordinates['east'], $coordinates['west'])
+            && (($coordinates['north'] - $coordinates['south']) > self::MAP_MAX_LATITUDE_SPAN
+                || ($coordinates['east'] - $coordinates['west']) > self::MAP_MAX_LONGITUDE_SPAN)) {
+            $errors['viewport'] = 'El área solicitada es demasiado grande.';
+        }
+
+        if ($errors) {
+            return [
+                'success' => false,
+                'data' => [],
+                'meta' => ['returned' => 0, 'hasMore' => false, 'limit' => self::MAP_LIMIT],
+                'message' => 'Los límites del mapa no son válidos.',
+                'errors' => $errors,
+                'statusCode' => 400
+            ];
+        }
+
+        if ($zoom < self::MAP_MIN_ZOOM) {
+            return [
+                'success' => true,
+                'data' => [],
+                'meta' => ['returned' => 0, 'hasMore' => false, 'limit' => self::MAP_LIMIT],
+                'message' => 'Acercá el mapa para ver los contenedores.',
+                'errors' => [],
+                'statusCode' => 200
+            ];
+        }
+
+        try {
+            $stmt = $this->contenedor->readForMap(
+                $coordinates['south'],
+                $coordinates['north'],
+                $coordinates['west'],
+                $coordinates['east'],
+                self::MAP_LIMIT + 1
+            );
+            if (!$stmt) {
+                throw new PDOException('No hay conexión disponible.');
+            }
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $exception) {
+            return [
+                'success' => false,
+                'data' => [],
+                'meta' => ['returned' => 0, 'hasMore' => false, 'limit' => self::MAP_LIMIT],
+                'message' => 'No se pudieron cargar los contenedores del mapa.',
+                'errors' => [],
+                'statusCode' => 500
+            ];
+        }
+
+        $hasMore = count($rows) > self::MAP_LIMIT;
+        $publicFields = array_flip(['id_contenedor', 'codigo', 'direccion', 'latitud', 'longitud', 'estado']);
+        $rows = array_map(
+            static fn(array $row): array => array_intersect_key($row, $publicFields),
+            array_slice($rows, 0, self::MAP_LIMIT)
+        );
+
+        return [
+            'success' => true,
+            'data' => $rows,
+            'meta' => ['returned' => count($rows), 'hasMore' => $hasMore, 'limit' => self::MAP_LIMIT],
+            'message' => $hasMore
+                ? 'Hay más contenedores en esta zona. Acercá el mapa para ver un área menor.'
+                : (empty($rows) ? 'No hay contenedores visibles en esta zona.' : 'Contenedores del mapa cargados correctamente.'),
+            'errors' => [],
+            'statusCode' => 200
+        ];
     }
 
     public function create($data) {

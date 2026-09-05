@@ -9,16 +9,22 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        $filters = [
-            'id' => isset($_GET['id']) ? $_GET['id'] : null,
-            'page' => isset($_GET['page']) ? $_GET['page'] : 1,
-            'limit' => isset($_GET['limit']) ? $_GET['limit'] : 20,
-            'min_lat' => $_GET['min_lat'] ?? null,
-            'min_lon' => $_GET['min_lon'] ?? null,
-            'max_lat' => $_GET['max_lat'] ?? null,
-            'max_lon' => $_GET['max_lon'] ?? null,
-        ];
-        $response = $controller->getAll($filters);
+        if (($_GET['view'] ?? null) === 'map') {
+            $response = $controller->getMap([
+                'north' => $_GET['north'] ?? null,
+                'south' => $_GET['south'] ?? null,
+                'east' => $_GET['east'] ?? null,
+                'west' => $_GET['west'] ?? null,
+                'zoom' => $_GET['zoom'] ?? null,
+            ]);
+        } else {
+            requirePermission('contenedor.consultar');
+            $response = $controller->getAll([
+                'id' => $_GET['id'] ?? null,
+                'page' => $_GET['page'] ?? 1,
+                'limit' => $_GET['limit'] ?? 20,
+            ]);
+        }
         http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));
         echo json_encode($response);
         break;

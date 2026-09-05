@@ -49,6 +49,26 @@ class Contenedor {
         return $stmt;
     }
 
+    public function readForMap(float $south, float $north, float $west, float $east, int $limit) {
+        if (!$this->conn) return null;
+
+        $query = "SELECT id_contenedor, codigo, direccion, latitud, longitud, estado
+                  FROM " . $this->table_name . "
+                  WHERE activo = 1
+                    AND latitud BETWEEN :south AND :north
+                    AND longitud BETWEEN :west AND :east
+                  ORDER BY id_contenedor ASC
+                  LIMIT :limit";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':south', $south);
+        $stmt->bindValue(':north', $north);
+        $stmt->bindValue(':west', $west);
+        $stmt->bindValue(':east', $east);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt;
+    }
+
     public function findByCodigo($codigo) {
         if (!$this->conn) return null;
 
