@@ -548,9 +548,11 @@ truckForm?.addEventListener('submit', async event => {
   event.preventDefault();
   truckFormMessage.textContent = 'Guardando vehículo...';
   const payload = Object.fromEntries(new FormData(truckForm).entries());
-  const idVehiculo = payload.id_vehiculo;
-  const method = idVehiculo ? 'PUT' : 'POST';
+  const idVehiculo = Number(payload.id_vehiculo);
+  const isVehicleUpdate = Number.isInteger(idVehiculo) && idVehiculo > 0;
+  const method = isVehicleUpdate ? 'PUT' : 'POST';
   delete payload.id_vehiculo;
+  if (isVehicleUpdate) payload.id_vehiculo = idVehiculo;
   payload.capacidad_carga = Number(payload.capacidad_carga);
   payload.id_tipo_residuo = Number(payload.id_tipo_residuo);
 
@@ -565,7 +567,7 @@ truckForm?.addEventListener('submit', async event => {
     truckForm.reset();
     truckForm.hidden = true;
     truckFormMessage.textContent = '';
-    showToast(idVehiculo ? 'Vehículo actualizado.' : 'Vehículo registrado.', 'La lista se actualizó correctamente.');
+    showToast(isVehicleUpdate ? 'Vehículo actualizado.' : 'Vehículo registrado.', 'La lista se actualizó correctamente.');
     await cargarCamionesAdmin();
   } catch (error) {
     truckFormMessage.textContent = error.message;

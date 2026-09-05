@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../exceptions/PersistenceException.php';
+
 class Vehiculo {
     private $conn;
     private string $table_name = "vehiculo";
@@ -17,14 +19,40 @@ class Vehiculo {
     }
 
     public function read() {
-        if (!$this->conn) return null;
+        if (!$this->conn) throw new PersistenceException('No hay conexión disponible.');
         $stmt = $this->conn->prepare("SELECT * FROM " . $this->table_name . " WHERE activo = 1");
         $stmt->execute();
         return $stmt;
     }
 
+    public function findById($id) {
+        if (!$this->conn) {
+            throw new PersistenceException('No hay conexión disponible.');
+        }
+
+        $stmt = $this->conn->prepare(
+            "SELECT * FROM " . $this->table_name . " WHERE id_vehiculo = :id_vehiculo LIMIT 1"
+        );
+        $stmt->bindValue(':id_vehiculo', (int) $id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    public function findByMatricula($matricula) {
+        if (!$this->conn) {
+            throw new PersistenceException('No hay conexión disponible.');
+        }
+
+        $stmt = $this->conn->prepare(
+            "SELECT * FROM " . $this->table_name . " WHERE matricula = :matricula LIMIT 1"
+        );
+        $stmt->bindValue(':matricula', trim((string) $matricula));
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
     public function create() {
-        if (!$this->conn) return false;
+        if (!$this->conn) throw new PersistenceException('No hay conexión disponible.');
         if (empty($this->matricula) || empty($this->marca) || empty($this->modelo) ||
             !isset($this->capacidad_carga) || empty($this->estado) || empty($this->id_tipo_residuo)) {
             return false;
@@ -43,7 +71,7 @@ class Vehiculo {
     }
 
     public function update() {
-        if (!$this->conn) return false;
+        if (!$this->conn) throw new PersistenceException('No hay conexión disponible.');
         $query = "UPDATE " . $this->table_name . "
                   SET matricula=:matricula, marca=:marca, modelo=:modelo,
                       capacidad_carga=:capacidad_carga, estado=:estado, id_tipo_residuo=:id_tipo_residuo
@@ -60,7 +88,7 @@ class Vehiculo {
     }
 
     public function delete() {
-        if (!$this->conn) return false;
+        if (!$this->conn) throw new PersistenceException('No hay conexión disponible.');
         $query = "UPDATE " . $this->table_name . "
               SET activo = 0
               WHERE id_vehiculo = :id_vehiculo

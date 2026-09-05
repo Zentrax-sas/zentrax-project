@@ -11,7 +11,7 @@ switch ($method) {
     case "GET":
         requirePermission('vehiculo.consultar', ['LOGISTICA', 'OPERACIONES', 'MANTENIMIENTO']);
         $response = $controller->getAll();
-        http_response_code(200);
+        http_response_code($response['statusCode']);
         echo json_encode($response);
         break;
 
@@ -24,7 +24,7 @@ switch ($method) {
             break;
         }
         $response = $controller->create($data ?? []);
-        http_response_code($response['success'] ? 201 : 400);
+        http_response_code($response['statusCode']);
         echo json_encode($response);
         break;
 
@@ -37,7 +37,7 @@ switch ($method) {
             break;
         }
         $response = $controller->update($data ?? []);
-        http_response_code($response['success'] ? 200 : 400);
+        http_response_code($response['statusCode']);
         echo json_encode($response);
         break;
 
@@ -50,7 +50,7 @@ switch ($method) {
             break;
         }
         $response = $controller->delete($data['id_vehiculo']);
-        http_response_code($response['success'] ? 200 : 400);
+        http_response_code($response['statusCode']);
         echo json_encode($response);
         break;
 
