@@ -8,6 +8,25 @@ class SolicitudController {
         $this->solicitud = new Solicitud($db);
     }
 
+    private function generateTrackingNumber(array $attempted): string {
+        $base = hexdec(substr(bin2hex(random_bytes(3)), 0, 5));
+        for ($offset = 0; $offset <= count($attempted); $offset++) {
+            $code = strtoupper(str_pad(dechex(($base + $offset) % 0x100000), 5, '0', STR_PAD_LEFT));
+            $trackingNumber = 'REF-' . date('Y') . '-' . $code;
+            if (!isset($attempted[$trackingNumber])) {
+                return $trackingNumber;
+            }
+        }
+        throw new RuntimeException('No se pudo generar un tracking único en memoria.');
+    }
+
+    private function isTrackingDuplicate(PDOException $exception): bool {
+        $errorInfo = $exception->errorInfo ?? null;
+        return is_array($errorInfo)
+            && (string)($errorInfo[0] ?? '') === '23000'
+            && (int)($errorInfo[1] ?? 0) === 1062;
+    }
+
     public function getAll() {
         $stmt = $this->solicitud->read();
         if (!$stmt) {
@@ -27,7 +46,6 @@ class SolicitudController {
         $this->solicitud->descripcion     = $data['descripcion'] ?? null;
         $this->solicitud->direccion       = $data['direccion'] ?? null;
         $this->solicitud->estado          = $data['estado'] ?? 'Pendiente';
-        $this->solicitud->ci              = $data['ci'] ?? '12345678';
         $this->solicitud->id_tipo_residuo = $data['id_tipo_residuo'] ?? $this->inferTipoResiduoId($data['tipo_solicitud'] ?? null, $data['descripcion'] ?? null);
         $this->solicitud->email           = $data['email'] ?? null;
         $this->solicitud->telefono        = $data['telefono'] ?? null;
@@ -36,33 +54,54 @@ class SolicitudController {
         $estados = ['Pendiente', 'Programada', 'Finalizada', 'Cancelada'];
         $errors = [];
         if (empty($this->solicitud->descripcion)) $errors['descripcion'] = "La descripcion es obligatoria.";
+        elseif (mb_strlen($this->solicitud->descripcion) > 1000) $errors['descripcion'] = "La descripcion no puede superar los 1000 caracteres.";
         if (empty($this->solicitud->direccion)) $errors['direccion'] = "La direccion es obligatoria.";
-        if (!in_array($this->solicitud->estado, $estados)) $errors['estado'] = "El estado debe ser Pendiente, Programada, Finalizada o Cancelada.";
-        if (empty($this->solicitud->ci)) $errors['ci'] = "La CI del vecino es obligatoria.";
+        elseif (mb_strlen($this->solicitud->direccion) > 150) $errors['direccion'] = "La direccion no puede superar los 150 caracteres.";
+        if (!in_array($this->solicitud->estado, $estados, true)) $errors['estado'] = "El estado debe ser Pendiente, Programada, Finalizada o Cancelada.";
         if (empty($this->solicitud->id_tipo_residuo)) $errors['id_tipo_residuo'] = "El tipo de residuo es obligatorio.";
         if (empty($this->solicitud->email)) $errors['email'] = "El email es obligatorio.";
         elseif (!filter_var($this->solicitud->email, FILTER_VALIDATE_EMAIL)) $errors['email'] = "El email debe tener un formato valido.";
+        elseif (mb_strlen($this->solicitud->email) > 100) $errors['email'] = "El email no puede superar los 100 caracteres.";
         if (empty($this->solicitud->telefono)) $errors['telefono'] = "El telefono es obligatorio.";
+        elseif (mb_strlen($this->solicitud->telefono) > 20) $errors['telefono'] = "El telefono no puede superar los 20 caracteres.";
         if (empty($this->solicitud->tipo_solicitud)) $errors['tipo_solicitud'] = "El tipo de solicitud es obligatorio.";
+        elseif (!in_array($this->solicitud->tipo_solicitud, ['Gran volumen', 'Reciclables'], true)) $errors['tipo_solicitud'] = "El tipo de solicitud no es válido.";
 
         if ($errors) {
-            return ["success" => false, "data" => null, "message" => "Datos incompletos o invalidos.", "errors" => $errors];
+            return ["success" => false, "data" => null, "message" => "Datos incompletos o invalidos.", "errors" => $errors, "statusCode" => 400];
         }
 
-        $year = date('Y');
-        $randomCode = strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
-        $this->solicitud->tracking_number = "REF-{$year}-{$randomCode}";
+        $attemptedTrackingNumbers = [];
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $this->solicitud->tracking_number = $this->generateTrackingNumber($attemptedTrackingNumbers);
+            $attemptedTrackingNumbers[$this->solicitud->tracking_number] = true;
 
-        if ($this->solicitud->create()) {
-            return [
-                "success" => true,
-                "data" => ["tracking_number" => $this->solicitud->tracking_number],
-                "message" => "Solicitud de retiro registrada con exito en Zemyna.",
-                "tracking_number" => $this->solicitud->tracking_number,
-                "errors" => []
-            ];
+            try {
+                $created = $this->solicitud->create();
+            } catch (PDOException $exception) {
+                if ($this->isTrackingDuplicate($exception) && $attempt < 3) {
+                    continue;
+                }
+                return ["success" => false, "data" => null, "message" => "Error al registrar la solicitud.", "errors" => [], "statusCode" => 500];
+            } catch (PersistenceException $exception) {
+                return ["success" => false, "data" => null, "message" => "Error al registrar la solicitud.", "errors" => [], "statusCode" => 500];
+            }
+
+            if ($created) {
+                return [
+                    "success" => true,
+                    "data" => ["tracking_number" => $this->solicitud->tracking_number],
+                    "message" => "Solicitud de retiro registrada con exito en Zemyna.",
+                    "tracking_number" => $this->solicitud->tracking_number,
+                    "errors" => [],
+                    "statusCode" => 201
+                ];
+            }
+
+            return ["success" => false, "data" => null, "message" => "Error al registrar la solicitud.", "errors" => [], "statusCode" => 500];
         }
-        return ["success" => false, "data" => null, "message" => "Error al registrar la solicitud.", "errors" => []];
+
+        return ["success" => false, "data" => null, "message" => "Error al registrar la solicitud.", "errors" => [], "statusCode" => 500];
     }
 
     private function inferTipoResiduoId($tipoSolicitud, $descripcion) {
@@ -86,7 +125,6 @@ class SolicitudController {
         $this->solicitud->descripcion     = $data['descripcion'] ?? null;
         $this->solicitud->direccion       = $data['direccion'] ?? null;
         $this->solicitud->estado          = $data['estado'] ?? null;
-        $this->solicitud->ci              = $data['ci'] ?? null;
         $this->solicitud->id_tipo_residuo = $data['id_tipo_residuo'] ?? null;
         $this->solicitud->email           = $data['email'] ?? null;
         $this->solicitud->telefono        = $data['telefono'] ?? null;

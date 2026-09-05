@@ -1,15 +1,47 @@
 <?php
 require_once __DIR__ . '/../models/Incidencia.php';
+require_once __DIR__ . '/../models/Solicitud.php';
 
 class IncidenciaController {
     private $incidencia;
+    private $solicitud;
 
     public function __construct($db) {
         $this->incidencia = new Incidencia($db);
+        $this->solicitud = new Solicitud($db);
     }
 
     private function normalizeString($value) {
         return is_string($value) ? trim($value) : $value;
+    }
+
+    private function generateTrackingNumber(array $attempted): string {
+        $base = hexdec(substr(bin2hex(random_bytes(3)), 0, 5));
+        for ($offset = 0; $offset <= count($attempted); $offset++) {
+            $code = strtoupper(str_pad(dechex(($base + $offset) % 0x100000), 5, '0', STR_PAD_LEFT));
+            $trackingNumber = 'INC-' . date('Y') . '-' . $code;
+            if (!isset($attempted[$trackingNumber])) {
+                return $trackingNumber;
+            }
+        }
+        throw new RuntimeException('No se pudo generar un tracking único en memoria.');
+    }
+
+    private function isTrackingDuplicate(PDOException $exception): bool {
+        $errorInfo = $exception->errorInfo ?? null;
+        return is_array($errorInfo)
+            && (string)($errorInfo[0] ?? '') === '23000'
+            && (int)($errorInfo[1] ?? 0) === 1062;
+    }
+
+    private function persistenceError(): array {
+        return [
+            'success' => false,
+            'data' => null,
+            'message' => 'No se pudo registrar la incidencia.',
+            'errors' => ['Ocurrió un error al guardar la incidencia.'],
+            'statusCode' => 500
+        ];
     }
 
     private function validateIncidenciaPayload($data, $isUpdate = false) {
@@ -139,10 +171,69 @@ class IncidenciaController {
     }
 
     public function getPublicByTracking($trackingNumber) {
-        $response = $this->getAll([
-            'tracking_number' => $trackingNumber,
-            'limit' => 1
-        ]);
+        $trackingNumber = strtoupper(trim((string)$trackingNumber));
+
+        if (!preg_match('/^(INC|REF)-\d{4}-[A-F0-9]{5}$/', $trackingNumber)) {
+            return [
+                'success' => false,
+                'data' => null,
+                'message' => 'El número de seguimiento no tiene un formato válido.',
+                'errors' => ['tracking_number' => 'Usá el formato INC-AAAA-XXXXX o REF-AAAA-XXXXX.'],
+                'statusCode' => 400
+            ];
+        }
+
+        if (str_starts_with($trackingNumber, 'REF-')) {
+            try {
+                $solicitud = $this->solicitud->findPublicByTracking($trackingNumber);
+            } catch (PDOException | PersistenceException $exception) {
+                return [
+                    'success' => false,
+                    'data' => null,
+                    'message' => 'No se pudo consultar el seguimiento.',
+                    'errors' => [],
+                    'statusCode' => 500
+                ];
+            }
+
+            if ($solicitud === null) {
+                return [
+                    'success' => false,
+                    'data' => null,
+                    'message' => 'No se encontró un registro con ese número de seguimiento.',
+                    'errors' => [],
+                    'statusCode' => 404
+                ];
+            }
+
+            return [
+                'success' => true,
+                'data' => [
+                    'tracking_number' => $solicitud['tracking_number'],
+                    'estado' => $solicitud['estado'],
+                    'fecha_reporte' => $solicitud['fecha'],
+                    'tipo_problema' => $solicitud['tipo_solicitud']
+                ],
+                'message' => 'Estado consultado correctamente.',
+                'errors' => [],
+                'statusCode' => 200
+            ];
+        }
+
+        try {
+            $response = $this->getAll([
+                'tracking_number' => $trackingNumber,
+                'limit' => 1
+            ]);
+        } catch (PDOException | PersistenceException $exception) {
+            return [
+                'success' => false,
+                'data' => null,
+                'message' => 'No se pudo consultar la incidencia.',
+                'errors' => [],
+                'statusCode' => 500
+            ];
+        }
 
         if (!$response['success']) {
             return $response;
@@ -177,10 +268,7 @@ class IncidenciaController {
         $data['fecha_reporte'] = $data['fecha_reporte'] ?? date('Y-m-d H:i:s');
         $data['estado'] = $data['estado'] ?? 'Pendiente';
         $data['prioridad'] = $data['prioridad'] ?? 'Media';
-
-        if (!isset($data['id_usuario']) && isset($_SESSION['usuario']['id_usuario'])) {
-            $data['id_usuario'] = $_SESSION['usuario']['id_usuario'];
-        }
+        unset($data['id_usuario']);
 
         $errors = $this->validateIncidenciaPayload($data, false);
 
@@ -195,7 +283,6 @@ class IncidenciaController {
         }
 
         $this->incidencia->descripcion = $this->normalizeString($data['descripcion']);
-        $this->incidencia->tracking_number = 'INC-' . date('Y') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
         $this->incidencia->fecha_reporte = $data['fecha_reporte'];
         $this->incidencia->estado = $this->normalizeString($data['estado']);
         $this->incidencia->prioridad = $this->normalizeString($data['prioridad']);
@@ -212,28 +299,47 @@ class IncidenciaController {
                 : null;
 
         $this->incidencia->id_cuadrilla = !empty($data['id_cuadrilla']) ? (int)$data['id_cuadrilla'] : null;
-        $this->incidencia->id_usuario = !empty($data['id_usuario']) ? (int)$data['id_usuario'] : null;
+        $this->incidencia->id_usuario = null;
 
-        if ($this->incidencia->create()) {
+        $attemptedTrackingNumbers = [];
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $this->incidencia->tracking_number = $this->generateTrackingNumber($attemptedTrackingNumbers);
+            $attemptedTrackingNumbers[$this->incidencia->tracking_number] = true;
+
+            try {
+                $created = $this->incidencia->create();
+            } catch (PDOException $exception) {
+                if ($this->isTrackingDuplicate($exception) && $attempt < 3) {
+                    continue;
+                }
+                return $this->persistenceError();
+            } catch (PersistenceException $exception) {
+                return $this->persistenceError();
+            }
+
+            if ($created) {
+                return [
+                    "success" => true,
+                    "data" => [
+                        "id_incidencia" => $this->incidencia->id_incidencia,
+                        "tracking_number" => $this->incidencia->tracking_number
+                    ],
+                    "message" => "Incidencia registrada correctamente.",
+                    "errors" => [],
+                    "statusCode" => 201
+                ];
+            }
+
             return [
-                "success" => true,
-                "data" => [
-                    "id_incidencia" => $this->incidencia->id_incidencia,
-                    "tracking_number" => $this->incidencia->tracking_number
-                ],
-                "message" => "Incidencia registrada correctamente.",
+                "success" => false,
+                "data" => null,
+                "message" => "Error al registrar la incidencia.",
                 "errors" => [],
-                "statusCode" => 201
+                "statusCode" => 500
             ];
         }
 
-        return [
-            "success" => false,
-            "data" => null,
-            "message" => "Error al registrar la incidencia.",
-            "errors" => [],
-            "statusCode" => 500
-        ];
+        return $this->persistenceError();
     }
 
     public function update($data) {

@@ -243,8 +243,14 @@ function obtenerUbicacionUsuario() {
     );
 }
 
+let enviandoReporte = false;
+
 if (submitReporteButton) {
     submitReporteButton.addEventListener('click', async function () {
+        if (enviandoReporte) {
+            return;
+        }
+
         if (!formReporte.reportValidity()) {
             return;
         }
@@ -269,6 +275,11 @@ if (submitReporteButton) {
         if (reporteMessage) {
             reporteMessage.textContent = 'Enviando incidencia...';
         }
+
+        enviandoReporte = true;
+        submitReporteButton.disabled = true;
+        const textoOriginalBoton = submitReporteButton.textContent;
+        submitReporteButton.textContent = 'Enviando...';
 
         try {
             const tiposProblema = {
@@ -353,6 +364,10 @@ if (submitReporteButton) {
             }
             actualizarEstadoGlobal(error.message || 'No se pudo enviar el reporte.', 'error');
             mostrarToast(error.message || 'No se pudo enviar el reporte.', 'error');
+        } finally {
+            enviandoReporte = false;
+            submitReporteButton.disabled = false;
+            submitReporteButton.textContent = textoOriginalBoton;
         }
     });
 }
@@ -377,10 +392,16 @@ if (trackingForm) {
             }
 
             const incidencia = json.data;
-            trackingResult.innerHTML = `<strong>${incidencia.tracking_number}</strong><br>
-                Estado: ${incidencia.estado}<br>
-                Fecha: ${incidencia.fecha_reporte}<br>
-                Problema: ${incidencia.tipo_problema}`;
+            trackingResult.replaceChildren();
+            const trackingCode = document.createElement('strong');
+            trackingCode.textContent = incidencia.tracking_number || '';
+            const details = document.createElement('p');
+            details.append(
+                document.createTextNode(`Estado: ${incidencia.estado || ''}`), document.createElement('br'),
+                document.createTextNode(`Fecha: ${incidencia.fecha_reporte || ''}`), document.createElement('br'),
+                document.createTextNode(`Problema: ${incidencia.tipo_problema || ''}`)
+            );
+            trackingResult.append(trackingCode, details);
             trackingResult.hidden = false;
             trackingMessage.textContent = '';
         } catch (error) {
@@ -415,7 +436,11 @@ function renderContenedores(contenedores) {
 
         clusterGroup.addLayer(marcador);
 
-        marcador.bindPopup(`<b>Contenedor:</b> ${codigoContenedor}<br>Hacé clic para reportar.`);
+        const popup = document.createElement('p');
+        const popupTitle = document.createElement('strong');
+        popupTitle.textContent = 'Contenedor: ';
+        popup.append(popupTitle, document.createTextNode(String(codigoContenedor)), document.createElement('br'), document.createTextNode('Hacé clic para reportar.'));
+        marcador.bindPopup(popup);
 
         marcador.on('click', async function() {
             const form = document.getElementById('form-reporte');

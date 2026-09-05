@@ -150,8 +150,8 @@
                             <label for="direccion" class="form-label">
                                 <i class="bi bi-geo-alt me-2"></i>Dirección
                             </label>
-                            <input type="text" class="form-control" id="direccion" name="direccion" 
-                                   placeholder="Ej: Calle Principal 123, Apt 4B" required>
+                            <input type="text" class="form-control" id="direccion" name="direccion"
+                                   maxlength="150" placeholder="Ej: Calle Principal 123, Apt 4B" required>
                             <div class="field-error" id="error-direccion"></div>
                         </div>
 
@@ -160,16 +160,16 @@
                                 <label for="email" class="form-label">
                                     <i class="bi bi-envelope me-2"></i>Email
                                 </label>
-                                <input type="email" class="form-control" id="email" name="email" 
-                                       placeholder="tu@email.com" required>
+                                <input type="email" class="form-control" id="email" name="email"
+                                       maxlength="100" placeholder="tu@email.com" required>
                                 <div class="field-error" id="error-email"></div>
                             </div>
                             <div class="col-md-6">
                                 <label for="telefono" class="form-label">
                                     <i class="bi bi-telephone me-2"></i>Teléfono
                                 </label>
-                                <input type="tel" class="form-control" id="telefono" name="telefono" 
-                                       placeholder="+598 99 123 456" required>
+                                <input type="tel" class="form-control" id="telefono" name="telefono"
+                                       maxlength="20" placeholder="+598 99 123 456" required>
                                 <div class="field-error" id="error-telefono"></div>
                             </div>
                         </div>
@@ -180,8 +180,8 @@
                             </label>
                             <select class="form-select" id="tipo_solicitud" name="tipo_solicitud" required>
                                 <option value="">Seleccionar tipo de solicitud...</option>
-                                <option value="Materiales Reciclables">Materiales Reciclables</option>
-                                <option value="Gran Volumen">Gran Volumen</option>
+                                <option value="Reciclables">Materiales Reciclables</option>
+                                <option value="Gran volumen">Gran Volumen</option>
                             </select>
                             <div class="field-error" id="error-tipo_solicitud"></div>
                         </div>
@@ -190,9 +190,22 @@
                             <label for="descripcion" class="form-label">
                                 <i class="bi bi-pencil me-2"></i>Descripción/Detalle
                             </label>
-                            <textarea class="form-control" id="descripcion" name="descripcion" 
-                                      rows="4" placeholder="Describe el tipo y cantidad de residuos..." required></textarea>
+                            <textarea class="form-control" id="descripcion" name="descripcion"
+                                      maxlength="1000" rows="4" placeholder="Describe el tipo y cantidad de residuos..." required></textarea>
                             <div class="field-error" id="error-descripcion"></div>
+                        </div>
+
+                        <div class="mb-4">
+                            <p class="small text-secondary">
+                                Esta es una prueba académica de Zemyna. Los datos ingresados se utilizarán únicamente para evaluar el funcionamiento del prototipo. No ingreses información sensible innecesaria.
+                            </p>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="acepta_prueba" required>
+                                <label class="form-check-label" for="acepta_prueba">
+                                    Acepto el uso de los datos para esta prueba académica.
+                                </label>
+                            </div>
+                            <div class="field-error" id="error-acepta_prueba"></div>
                         </div>
 
                         <div class="mb-4">
@@ -259,6 +272,11 @@
         const btnText = document.getElementById('btnText');
         const alertMessage = document.getElementById('alertMessage');
 
+        if (!document.getElementById('acepta_prueba').checked) {
+            document.getElementById('error-acepta_prueba').textContent = 'Debés aceptar el uso de los datos para continuar.';
+            return;
+        }
+
         // Limpiar errores previos
         document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
         alertMessage.style.display = 'none';
@@ -266,8 +284,8 @@
         // Obtener datos del formulario
         const selectedTipo = document.getElementById('tipo_solicitud').value;
         const tipoResiduoMap = {
-            'Materiales Reciclables': 2,
-            'Gran Volumen': 9
+            'Reciclables': 2,
+            'Gran volumen': 9
         };
 
         const formData = {
@@ -276,7 +294,6 @@
             telefono: document.getElementById('telefono').value.trim(),
             tipo_solicitud: selectedTipo,
             descripcion: document.getElementById('descripcion').value.trim(),
-            ci: '12345678',
             id_tipo_residuo: tipoResiduoMap[selectedTipo] || 1,
             captcha_respuesta: document.getElementById('captcha_respuesta').value
         };
@@ -297,18 +314,28 @@
 
             const data = await response.json();
 
-            if (data.success) {
-                // Éxito
+            if (response.ok && data.success) {
                 alertMessage.className = 'alert-message alert-success';
-                alertMessage.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <i class="bi bi-check-circle" style="font-size: 1.5rem;"></i>
-                        <div>
-                            <strong>¡Solicitud enviada con éxito!</strong><br>
-                            Tu número de seguimiento es: <span class="tracking-number">${data.tracking_number}</span>
-                        </div>
-                    </div>
-                `;
+                alertMessage.replaceChildren();
+                const title = document.createElement('strong');
+                title.textContent = '¡Solicitud enviada con éxito!';
+                const detail = document.createElement('p');
+                detail.textContent = 'Tu número de seguimiento es: ';
+                const tracking = document.createElement('span');
+                tracking.className = 'tracking-number';
+                tracking.textContent = data.tracking_number || data.data?.tracking_number || '';
+                detail.appendChild(tracking);
+                alertMessage.append(title, detail);
+
+                const actions = document.createElement('p');
+                const homeLink = document.createElement('a');
+                homeLink.href = 'landing.html';
+                homeLink.textContent = 'Volver al inicio';
+                const trackingLink = document.createElement('a');
+                trackingLink.href = 'index.html#tracking-title';
+                trackingLink.textContent = 'Consultar seguimiento';
+                actions.append(homeLink, document.createTextNode(' · '), trackingLink);
+                alertMessage.appendChild(actions);
                 alertMessage.style.display = 'block';
                 form.reset();
                 submitBtn.disabled = false;
@@ -316,37 +343,18 @@
                 document.getElementById('captcha_respuesta').value = '';
                 loadSolicitudCaptcha();
             } else {
-                // Error de validación
                 alertMessage.className = 'alert-message alert-error';
-                alertMessage.innerHTML = `
-                    <div style="display: flex; gap: 12px;">
-                        <i class="bi bi-exclamation-circle" style="font-size: 1.5rem; flex-shrink: 0;"></i>
-                        <div>
-                            <strong>${data.message || 'Error al enviar la solicitud'}</strong>
-                        </div>
-                    </div>
-                `;
+                alertMessage.textContent = data.message || messageForStatus(response.status);
                 alertMessage.style.display = 'block';
 
                 // Mostrar errores por campo
                 if (data.errors && typeof data.errors === 'object') {
-                    const extraErrors = [];
                     Object.keys(data.errors).forEach(field => {
                         const errorElement = document.getElementById(`error-${field}`);
                         if (errorElement) {
                             errorElement.textContent = data.errors[field];
-                        } else {
-                            extraErrors.push(`${field}: ${data.errors[field]}`);
                         }
                     });
-
-                    if (extraErrors.length > 0) {
-                        alertMessage.innerHTML += `
-                            <div style="margin-top: 10px; font-size: 0.95rem;">
-                                ${extraErrors.join('<br>')}
-                            </div>
-                        `;
-                    }
                 }
 
                 submitBtn.disabled = false;
@@ -355,21 +363,22 @@
                 loadSolicitudCaptcha();
             }
         } catch (error) {
-            // Error de red o parsing
             alertMessage.className = 'alert-message alert-error';
-            alertMessage.innerHTML = `
-                <div style="display: flex; gap: 12px;">
-                    <i class="bi bi-exclamation-triangle" style="font-size: 1.5rem; flex-shrink: 0;"></i>
-                    <div>
-                        <strong>Error de conexión</strong><br>
-                        No se pudo conectar con el servidor. Intenta nuevamente.
-                    </div>
-                </div>
-            `;
+            alertMessage.textContent = 'No se pudo conectar con el servidor. Intentá nuevamente.';
             alertMessage.style.display = 'block';
             submitBtn.disabled = false;
             btnText.textContent = 'Enviar Solicitud';
         }
+    }
+
+    function messageForStatus(status) {
+        const messages = {
+            400: 'Revisá los datos ingresados.',
+            404: 'No se encontró el recurso solicitado.',
+            409: 'La solicitud entra en conflicto con un registro existente.',
+            500: 'El servidor no pudo procesar la solicitud. Intentá más tarde.'
+        };
+        return messages[status] || 'No se pudo enviar la solicitud.';
     }
 
     loadSolicitudCaptcha();

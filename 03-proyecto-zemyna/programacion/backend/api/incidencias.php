@@ -9,8 +9,6 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
-
         $filters = [
             'id' => $_GET['id'] ?? null,
             'tracking_number' => $_GET['tracking_number'] ?? null,
@@ -18,7 +16,7 @@ switch ($method) {
             'limit' => $_GET['limit'] ?? 20,
         ];
 
-        if (!empty($filters['tracking_number'])) {
+        if (array_key_exists('tracking_number', $_GET)) {
             $response = $controller->getPublicByTracking($filters['tracking_number']);
         } else {
             requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);

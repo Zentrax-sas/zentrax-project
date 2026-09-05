@@ -547,6 +547,7 @@ CREATE TABLE maquinaria (
 
 CREATE TABLE solicitud (
     id_solicitud INT NOT NULL AUTO_INCREMENT,
+    tracking_number VARCHAR(20) NOT NULL,
     fecha DATETIME NOT NULL,
     descripcion TEXT NOT NULL,
     direccion VARCHAR(150) NOT NULL,
@@ -558,7 +559,6 @@ CREATE TABLE solicitud (
         'Cancelada'
     ) NOT NULL,
 
-    ci CHAR(8) NOT NULL,
     id_tipo_residuo INT NOT NULL,
     email VARCHAR(100) NOT NULL,
     telefono VARCHAR(20) NOT NULL,
@@ -569,10 +569,7 @@ CREATE TABLE solicitud (
     ) NOT NULL,
 
     PRIMARY KEY (id_solicitud),
-
-    CONSTRAINT fk_solicitud_vecino
-        FOREIGN KEY (ci)
-        REFERENCES vecino(ci),
+    UNIQUE KEY uk_solicitud_tracking_number (tracking_number),
 
     CONSTRAINT fk_solicitud_tipo_residuo
         FOREIGN KEY (id_tipo_residuo)
@@ -705,4 +702,3 @@ ALTER TABLE maquinaria CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_
 ALTER TABLE solicitud CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE mantenimiento CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE sesion CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-    

@@ -488,26 +488,26 @@ VALUES
 -- =====================================
 
 INSERT INTO solicitud
-(fecha, descripcion, direccion, estado, ci,
+(tracking_number, fecha, descripcion, direccion, estado,
  id_tipo_residuo, email, telefono, tipo_solicitud)
 VALUES
 (
+    'REF-2025-00001',
     '2025-06-05 08:00:00',
     'Retiro de un mueble de gran tamaño.',
     'Dr. Luis Bonavita 1294',
     'Pendiente',
-    '11223344',
     9,
     'martin@gmail.com',
     '092-333333',
     'Gran volumen'
 ),
 (
+    'REF-2025-00002',
     '2025-06-06 09:30:00',
     'Gran cantidad de cartones para retirar.',
     'Paraguay 1450',
     'Programada',
-    '12345678',
     2,
     'carlos@gmail.com',
     '092-111111',
