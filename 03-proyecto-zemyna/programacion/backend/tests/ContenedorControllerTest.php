@@ -14,7 +14,7 @@ class ContenedorControllerTest extends TestCase
     {
         $this->contenedor = $this->getMockBuilder(Contenedor::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['read', 'findByCodigo', 'create', 'update', 'delete'])
+            ->onlyMethods(['read', 'readForMap', 'findByCodigo', 'create', 'update', 'delete'])
             ->getMock();
 
         $controllerClass = new ReflectionClass(ContenedorController::class);
@@ -48,6 +48,29 @@ class ContenedorControllerTest extends TestCase
     private function validUpdateData(array $changes = []): array
     {
         return $this->validData(array_merge(['id_contenedor' => 7], $changes));
+    }
+
+    private function validViewport(array $changes = []): array
+    {
+        return array_merge([
+            'north' => '-34.85',
+            'south' => '-34.95',
+            'east' => '-56.10',
+            'west' => '-56.25',
+            'zoom' => '14',
+        ], $changes);
+    }
+
+    private function publicContainer(int $id): array
+    {
+        return [
+            'id_contenedor' => $id,
+            'codigo' => 'IDM-' . $id,
+            'direccion' => 'Ubicación de prueba',
+            'latitud' => '-34.9000000',
+            'longitud' => '-56.1600000',
+            'estado' => 'Disponible',
+        ];
     }
 
     private function assertResponse(array $result, bool $success, int $statusCode, string $message): void
@@ -166,6 +189,155 @@ class ContenedorControllerTest extends TestCase
 
         $this->assertResponse($result, false, 500, 'No se pudo conectar con la base de datos de contenedores.');
         $this->assertSame([], $result['data']);
+    }
+
+    public function testGetMapConsultaConViewportValidoYLimiteInalterable(): void
+    {
+        $row = $this->publicContainer(1);
+        $this->contenedor->expects($this->once())->method('readForMap')
+            ->with(-34.95, -34.85, -56.25, -56.10, 501)
+            ->willReturn($this->statement([$row]));
+
+        $result = $this->controller->getMap($this->validViewport(['limit' => 11000]));
+
+        $this->assertResponse($result, true, 200, 'Contenedores del mapa cargados correctamente.');
+        $this->assertSame([$row], $result['data']);
+        $this->assertSame(['returned' => 1, 'hasMore' => false, 'limit' => 500], $result['meta']);
+    }
+
+    /** @dataProvider missingViewportFieldProvider */
+    public function testGetMapRechazaLimitesFaltantes(string $field): void
+    {
+        $filters = $this->validViewport();
+        unset($filters[$field]);
+        $this->contenedor->expects($this->never())->method('readForMap');
+
+        $result = $this->controller->getMap($filters);
+
+        $this->assertResponse($result, false, 400, 'Los límites del mapa no son válidos.');
+        $this->assertArrayHasKey($field, $result['errors']);
+    }
+
+    public static function missingViewportFieldProvider(): array
+    {
+        return [['north'], ['south'], ['east'], ['west'], ['zoom']];
+    }
+
+    /** @dataProvider invalidViewportValueProvider */
+    public function testGetMapRechazaValoresInvalidos(array $changes, string $errorKey): void
+    {
+        $this->contenedor->expects($this->never())->method('readForMap');
+
+        $result = $this->controller->getMap($this->validViewport($changes));
+
+        $this->assertResponse($result, false, 400, 'Los límites del mapa no son válidos.');
+        $this->assertArrayHasKey($errorKey, $result['errors']);
+    }
+
+    public static function invalidViewportValueProvider(): array
+    {
+        return [
+            'no numérico' => [['north' => 'norte'], 'north'],
+            'latitud menor' => [['south' => -91], 'south'],
+            'latitud mayor' => [['north' => 91], 'north'],
+            'longitud menor' => [['west' => -181], 'west'],
+            'longitud mayor' => [['east' => 181], 'east'],
+            'norte igual a sur' => [['north' => -34.95], 'viewport'],
+            'norte menor que sur' => [['north' => -35], 'viewport'],
+            'este igual a oeste' => [['east' => -56.25], 'viewport'],
+            'zoom decimal' => [['zoom' => 13.5], 'zoom'],
+            'zoom mayor' => [['zoom' => 20], 'zoom'],
+            'viewport excesivo' => [['north' => -34, 'south' => -35], 'viewport'],
+        ];
+    }
+
+    public function testGetMapEnZoomBajoPideAcercarSinConsultarModelo(): void
+    {
+        $this->contenedor->expects($this->never())->method('readForMap');
+
+        $result = $this->controller->getMap($this->validViewport(['zoom' => 12]));
+
+        $this->assertResponse($result, true, 200, 'Acercá el mapa para ver los contenedores.');
+        $this->assertSame([], $result['data']);
+        $this->assertSame(['returned' => 0, 'hasMore' => false, 'limit' => 500], $result['meta']);
+    }
+
+    public function testGetMapLimita501FilasEInformaHasMore(): void
+    {
+        $rows = array_map(fn(int $id): array => $this->publicContainer($id), range(1, 501));
+        $this->contenedor->expects($this->once())->method('readForMap')
+            ->willReturn($this->statement($rows));
+
+        $result = $this->controller->getMap($this->validViewport());
+
+        $this->assertCount(500, $result['data']);
+        $this->assertSame(['returned' => 500, 'hasMore' => true, 'limit' => 500], $result['meta']);
+        $this->assertSame('Hay más contenedores en esta zona. Acercá el mapa para ver un área menor.', $result['message']);
+    }
+
+    /** @dataProvider mapRowsWithoutOverflowProvider */
+    public function testGetMapNoInformaHasMoreCon500FilasOMenos(int $count): void
+    {
+        $rows = $count === 0 ? [] : array_map(fn(int $id): array => $this->publicContainer($id), range(1, $count));
+        $this->contenedor->expects($this->once())->method('readForMap')
+            ->willReturn($this->statement($rows));
+
+        $result = $this->controller->getMap($this->validViewport());
+
+        $this->assertFalse($result['meta']['hasMore']);
+        $this->assertSame($count, $result['meta']['returned']);
+    }
+
+    public static function mapRowsWithoutOverflowProvider(): array
+    {
+        return ['vacío' => [0], 'uno' => [1], 'límite exacto' => [500]];
+    }
+
+    public function testGetMapExponeSolamenteCamposPublicosMinimos(): void
+    {
+        $row = $this->publicContainer(1) + [
+            'id_ruta' => 7,
+            'id_tipo_residuo' => 2,
+            'activo' => 1,
+            'created_at' => '2026-09-04 10:00:00',
+        ];
+        $this->contenedor->expects($this->once())->method('readForMap')
+            ->willReturn($this->statement([$row]));
+
+        $result = $this->controller->getMap($this->validViewport());
+
+        $this->assertSame(
+            ['id_contenedor', 'codigo', 'direccion', 'latitud', 'longitud', 'estado'],
+            array_keys($result['data'][0])
+        );
+    }
+
+    /** @dataProvider mapFailureProvider */
+    public function testGetMapDevuelve500SeguroAnteFalloDelModelo(mixed $failure): void
+    {
+        $expectation = $this->contenedor->expects($this->once())->method('readForMap');
+        if ($failure instanceof Throwable) {
+            $expectation->willThrowException($failure);
+        } else {
+            $expectation->willReturn($failure);
+        }
+
+        $result = $this->controller->getMap($this->validViewport());
+        $serialized = json_encode($result);
+
+        $this->assertResponse($result, false, 500, 'No se pudieron cargar los contenedores del mapa.');
+        $this->assertStringNotContainsString('SQLSTATE', $serialized);
+        $this->assertStringNotContainsString('password', $serialized);
+        $this->assertStringNotContainsString('/ruta/interna', $serialized);
+    }
+
+    public static function mapFailureProvider(): array
+    {
+        return [
+            'sin conexión' => [null],
+            'fallo falso' => [false],
+            'excepción PDO' => [new PDOException('SQLSTATE password=/ruta/interna')],
+        ];
     }
 
     public function testCreateRegistraContenedorConDatosNormalizados(): void
