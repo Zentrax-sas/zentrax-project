@@ -2,141 +2,162 @@
 -- Fecha de importación: 2026-08-22 02:51:56
 -- Supuestos documentados: capacidad fija 1100L para todos, tipo de residuo Orgánico, dirección placeholder, mapeo MOTIVO -> estado según normativa del proyecto.
 
-START TRANSACTION;
+-- Importacion segura: los IDs 1..131 son identificadores logicos del dataset.
+-- Las rutas reales se resuelven por nombre y zona despues de validar unicidad y colisiones.
+-- Contrato de reejecucion: fallo seguro y atomico si rutas o codigos del dataset ya existen.
+-- Ejecutar en una unica conexion y sin opciones que continuen despues de un error.
 
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_109', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_112', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_108', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_105', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_112', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_107', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_106', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_119', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_111', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_103', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_109', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_116', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_113', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_107', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_113', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_114', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_115', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_109', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_107', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_105', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_108', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_104', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_106', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_110', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_114', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_106', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_112', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_107', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_116', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_105', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_110', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_117', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_108', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_120', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_110', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_118', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_115', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_111', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_114', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_104', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_113', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_107', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_113', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_111', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_202', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_105', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_114', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_106', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_102', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_115', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_110', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_111', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_103', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_101', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_115', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_112', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_108', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_104', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_109', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_106', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_206', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_109', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_111', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_110', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_205', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_102', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_114', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_110', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_116', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_106', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_112', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_113', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_203', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_105', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_116', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_114', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('G_DU_RM_CL_103', 'Zona G');
-INSERT INTO ruta (nombre, zona) VALUES ('B_DU_RM_CL_102', 'Zona B');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_120', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_104', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_104', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_103', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_113', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('F_DU_RM_CL_101', 'Zona F');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_101', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_103', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_112', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('B_DU_RM_CL_103', 'Zona B');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_101', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_109', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_115', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_101', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_109', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_111', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('B_DU_RM_CL_101', 'Zona B');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_105', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_102', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_105', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_102', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_102', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_104', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_108', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('B_DU_RM_CL_03', 'Zona B');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_108', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_122', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('B_DU_RM_CL_05', 'Zona B');
-INSERT INTO ruta (nombre, zona) VALUES ('C_DU_RM_CL_101', 'Zona C');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_112', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_204', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_113', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('B_DU_RM_CL_02', 'Zona B');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_111', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('B_DU_RM_CL_04', 'Zona B');
-INSERT INTO ruta (nombre, zona) VALUES ('B_DU_RM_CL_06', 'Zona B');
-INSERT INTO ruta (nombre, zona) VALUES ('B_DU_RM_CL_01', 'Zona B');
-INSERT INTO ruta (nombre, zona) VALUES ('B_DU_RM_CL_07', 'Zona B');
-INSERT INTO ruta (nombre, zona) VALUES ('E_DU_RM_CL_136', 'Zona E');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_106', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('A_DU_RM_CL_107', 'Zona A');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_103', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_119', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_110', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_115', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('D_DU_RM_CL_108', 'Zona D');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_107', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_121', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_116', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_114', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_117', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_118', 'Zona CH');
-INSERT INTO ruta (nombre, zona) VALUES ('CH_DU_RM_CL_123', 'Zona CH');
+CREATE TEMPORARY TABLE tmp_seed_ruta (
+    seed_ruta_id INT NOT NULL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    zona VARCHAR(100) NOT NULL
+) ENGINE=InnoDB;
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+CREATE TEMPORARY TABLE tmp_seed_contenedor (
+    codigo VARCHAR(20) NOT NULL PRIMARY KEY,
+    capacidad DECIMAL(8,2) NOT NULL,
+    direccion VARCHAR(150) NOT NULL,
+    latitud DECIMAL(15,12) NOT NULL,
+    longitud DECIMAL(15,12) NOT NULL,
+    estado VARCHAR(30) NOT NULL,
+    id_tipo_residuo INT NOT NULL,
+    seed_ruta_id INT NOT NULL,
+    INDEX idx_tmp_seed_contenedor_ruta (seed_ruta_id)
+) ENGINE=InnoDB;
+INSERT INTO tmp_seed_ruta (seed_ruta_id, nombre, zona) VALUES
+(1, 'A_DU_RM_CL_109', 'Zona A'),
+(2, 'A_DU_RM_CL_112', 'Zona A'),
+(3, 'A_DU_RM_CL_108', 'Zona A'),
+(4, 'A_DU_RM_CL_105', 'Zona A'),
+(5, 'G_DU_RM_CL_112', 'Zona G'),
+(6, 'C_DU_RM_CL_107', 'Zona C'),
+(7, 'E_DU_RM_CL_106', 'Zona E'),
+(8, 'D_DU_RM_CL_119', 'Zona D'),
+(9, 'C_DU_RM_CL_111', 'Zona C'),
+(10, 'E_DU_RM_CL_103', 'Zona E'),
+(11, 'G_DU_RM_CL_109', 'Zona G'),
+(12, 'A_DU_RM_CL_116', 'Zona A'),
+(13, 'D_DU_RM_CL_113', 'Zona D'),
+(14, 'F_DU_RM_CL_107', 'Zona F'),
+(15, 'A_DU_RM_CL_113', 'Zona A'),
+(16, 'D_DU_RM_CL_114', 'Zona D'),
+(17, 'D_DU_RM_CL_115', 'Zona D'),
+(18, 'F_DU_RM_CL_109', 'Zona F'),
+(19, 'G_DU_RM_CL_107', 'Zona G'),
+(20, 'F_DU_RM_CL_105', 'Zona F'),
+(21, 'G_DU_RM_CL_108', 'Zona G'),
+(22, 'F_DU_RM_CL_104', 'Zona F'),
+(23, 'F_DU_RM_CL_106', 'Zona F'),
+(24, 'F_DU_RM_CL_110', 'Zona F'),
+(25, 'A_DU_RM_CL_114', 'Zona A'),
+(26, 'G_DU_RM_CL_106', 'Zona G'),
+(27, 'F_DU_RM_CL_112', 'Zona F'),
+(28, 'E_DU_RM_CL_107', 'Zona E'),
+(29, 'D_DU_RM_CL_116', 'Zona D'),
+(30, 'D_DU_RM_CL_105', 'Zona D'),
+(31, 'A_DU_RM_CL_110', 'Zona A'),
+(32, 'D_DU_RM_CL_117', 'Zona D'),
+(33, 'F_DU_RM_CL_108', 'Zona F'),
+(34, 'D_DU_RM_CL_120', 'Zona D'),
+(35, 'G_DU_RM_CL_110', 'Zona G'),
+(36, 'D_DU_RM_CL_118', 'Zona D'),
+(37, 'E_DU_RM_CL_115', 'Zona E'),
+(38, 'F_DU_RM_CL_111', 'Zona F'),
+(39, 'G_DU_RM_CL_114', 'Zona G'),
+(40, 'G_DU_RM_CL_104', 'Zona G'),
+(41, 'G_DU_RM_CL_113', 'Zona G'),
+(42, 'D_DU_RM_CL_107', 'Zona D'),
+(43, 'F_DU_RM_CL_113', 'Zona F'),
+(44, 'A_DU_RM_CL_111', 'Zona A'),
+(45, 'A_DU_RM_CL_202', 'Zona A'),
+(46, 'G_DU_RM_CL_105', 'Zona G'),
+(47, 'F_DU_RM_CL_114', 'Zona F'),
+(48, 'A_DU_RM_CL_106', 'Zona A'),
+(49, 'F_DU_RM_CL_102', 'Zona F'),
+(50, 'G_DU_RM_CL_115', 'Zona G'),
+(51, 'E_DU_RM_CL_110', 'Zona E'),
+(52, 'D_DU_RM_CL_111', 'Zona D'),
+(53, 'F_DU_RM_CL_103', 'Zona F'),
+(54, 'G_DU_RM_CL_101', 'Zona G'),
+(55, 'F_DU_RM_CL_115', 'Zona F'),
+(56, 'D_DU_RM_CL_112', 'Zona D'),
+(57, 'E_DU_RM_CL_108', 'Zona E'),
+(58, 'E_DU_RM_CL_104', 'Zona E'),
+(59, 'E_DU_RM_CL_109', 'Zona E'),
+(60, 'D_DU_RM_CL_106', 'Zona D'),
+(61, 'A_DU_RM_CL_206', 'Zona A'),
+(62, 'D_DU_RM_CL_109', 'Zona D'),
+(63, 'G_DU_RM_CL_111', 'Zona G'),
+(64, 'D_DU_RM_CL_110', 'Zona D'),
+(65, 'A_DU_RM_CL_205', 'Zona A'),
+(66, 'E_DU_RM_CL_102', 'Zona E'),
+(67, 'C_DU_RM_CL_114', 'Zona C'),
+(68, 'C_DU_RM_CL_110', 'Zona C'),
+(69, 'G_DU_RM_CL_116', 'Zona G'),
+(70, 'C_DU_RM_CL_106', 'Zona C'),
+(71, 'C_DU_RM_CL_112', 'Zona C'),
+(72, 'E_DU_RM_CL_113', 'Zona E'),
+(73, 'A_DU_RM_CL_203', 'Zona A'),
+(74, 'C_DU_RM_CL_105', 'Zona C'),
+(75, 'C_DU_RM_CL_116', 'Zona C'),
+(76, 'E_DU_RM_CL_114', 'Zona E'),
+(77, 'G_DU_RM_CL_103', 'Zona G'),
+(78, 'B_DU_RM_CL_102', 'Zona B'),
+(79, 'CH_DU_RM_CL_120', 'Zona CH'),
+(80, 'C_DU_RM_CL_104', 'Zona C'),
+(81, 'D_DU_RM_CL_104', 'Zona D'),
+(82, 'C_DU_RM_CL_103', 'Zona C'),
+(83, 'C_DU_RM_CL_113', 'Zona C'),
+(84, 'F_DU_RM_CL_101', 'Zona F'),
+(85, 'D_DU_RM_CL_101', 'Zona D'),
+(86, 'D_DU_RM_CL_103', 'Zona D'),
+(87, 'E_DU_RM_CL_112', 'Zona E'),
+(88, 'B_DU_RM_CL_103', 'Zona B'),
+(89, 'E_DU_RM_CL_101', 'Zona E'),
+(90, 'C_DU_RM_CL_109', 'Zona C'),
+(91, 'C_DU_RM_CL_115', 'Zona C'),
+(92, 'CH_DU_RM_CL_101', 'Zona CH'),
+(93, 'CH_DU_RM_CL_109', 'Zona CH'),
+(94, 'E_DU_RM_CL_111', 'Zona E'),
+(95, 'B_DU_RM_CL_101', 'Zona B'),
+(96, 'E_DU_RM_CL_105', 'Zona E'),
+(97, 'CH_DU_RM_CL_102', 'Zona CH'),
+(98, 'CH_DU_RM_CL_105', 'Zona CH'),
+(99, 'C_DU_RM_CL_102', 'Zona C'),
+(100, 'D_DU_RM_CL_102', 'Zona D'),
+(101, 'CH_DU_RM_CL_104', 'Zona CH'),
+(102, 'CH_DU_RM_CL_108', 'Zona CH'),
+(103, 'B_DU_RM_CL_03', 'Zona B'),
+(104, 'C_DU_RM_CL_108', 'Zona C'),
+(105, 'CH_DU_RM_CL_122', 'Zona CH'),
+(106, 'B_DU_RM_CL_05', 'Zona B'),
+(107, 'C_DU_RM_CL_101', 'Zona C'),
+(108, 'CH_DU_RM_CL_112', 'Zona CH'),
+(109, 'A_DU_RM_CL_204', 'Zona A'),
+(110, 'CH_DU_RM_CL_113', 'Zona CH'),
+(111, 'B_DU_RM_CL_02', 'Zona B'),
+(112, 'CH_DU_RM_CL_111', 'Zona CH'),
+(113, 'B_DU_RM_CL_04', 'Zona B'),
+(114, 'B_DU_RM_CL_06', 'Zona B'),
+(115, 'B_DU_RM_CL_01', 'Zona B'),
+(116, 'B_DU_RM_CL_07', 'Zona B'),
+(117, 'E_DU_RM_CL_136', 'Zona E'),
+(118, 'CH_DU_RM_CL_106', 'Zona CH'),
+(119, 'A_DU_RM_CL_107', 'Zona A'),
+(120, 'CH_DU_RM_CL_103', 'Zona CH'),
+(121, 'CH_DU_RM_CL_119', 'Zona CH'),
+(122, 'CH_DU_RM_CL_110', 'Zona CH'),
+(123, 'CH_DU_RM_CL_115', 'Zona CH'),
+(124, 'D_DU_RM_CL_108', 'Zona D'),
+(125, 'CH_DU_RM_CL_107', 'Zona CH'),
+(126, 'CH_DU_RM_CL_121', 'Zona CH'),
+(127, 'CH_DU_RM_CL_116', 'Zona CH'),
+(128, 'CH_DU_RM_CL_114', 'Zona CH'),
+(129, 'CH_DU_RM_CL_117', 'Zona CH'),
+(130, 'CH_DU_RM_CL_118', 'Zona CH'),
+(131, 'CH_DU_RM_CL_123', 'Zona CH');
+
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-101941', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 569167.40918992, Y: 6144930.9289077', -34.835566300105, -56.243532633176, 'Disponible', 1, 1),
 ('IDM-102316', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 566459.49252366, Y: 6143405.7183887', -34.849499597871, -56.273025395156, 'Disponible', 1, 2),
 ('IDM-100766', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 571217.6446299, Y: 6143278.0974153', -34.850328119105, -56.220971091194, 'Disponible', 1, 3),
@@ -638,7 +659,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-114490', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577648.76488525, Y: 6140115.7571779', -34.878370922021, -56.150336296859, 'Fuera de Servicio', 1, 85),
 ('IDM-114241', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 578824.89370452, Y: 6140838.9143656', -34.87175988537, -56.13753601678, 'Fuera de Servicio', 1, 86);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-175492', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577874.70460828, Y: 6141556.7552791', -34.865360670362, -56.147998271909, 'Fuera de Servicio', 1, 81),
 ('IDM-124233', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 575676.98076094, Y: 6142937.2056794', -34.853079638282, -56.172165314833, 'Fuera de Servicio', 1, 56),
 ('IDM-124203', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 575522.71085692, Y: 6142660.9918502', -34.855581655011, -56.173827827661, 'Fuera de Servicio', 1, 56),
@@ -1140,7 +1161,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-178992', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 571455.21880182, Y: 6143063.604781', -34.852245488308, -56.21835426021, 'Disponible', 1, 3),
 ('IDM-178600', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 575880.56769032, Y: 6136493.5910499', -34.911164388032, -56.169354079799, 'Disponible', 1, 116);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-179449', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 574636.51954488, Y: 6137760.3952887', -34.899834353801, -56.183084268366, 'Disponible', 1, 103),
 ('IDM-176584', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577520.01448932, Y: 6139188.330068', -34.886743021427, -56.151659067464, 'Disponible', 1, 126),
 ('IDM-175509', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577218.64654849, Y: 6136306.9531892', -34.912746232344, -56.15469061069, 'Disponible', 1, 97),
@@ -1642,7 +1663,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-107008', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 584170.99137875, Y: 6139272.3116126', -34.885456134035, -56.078890507417, 'Disponible', 1, 87),
 ('IDM-138611', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 574775.07391445, Y: 6142877.3116857', -34.853686438555, -56.182025081908, 'Disponible', 1, 83);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-180885', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 579910.29869477, Y: 6143361.6832209', -34.848928282922, -56.125901945374, 'Disponible', 1, 14),
 ('IDM-176979', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 578060.60113581, Y: 6138404.5660989', -34.893768482236, -56.145670580602, 'Disponible', 1, 127),
 ('IDM-172173', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 578145.56124915, Y: 6140372.4033373', -34.876018732017, -56.144924653324, 'Disponible', 1, 100),
@@ -2144,7 +2165,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-100759', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 571173.36674719, Y: 6143100.8232082', -34.851929671339, -56.221440336994, 'Disponible', 1, 3),
 ('IDM-124618', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 578567.50420757, Y: 6147512.215919', -34.81160893839, -56.140977373787, 'Disponible', 1, 8);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-136852', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 574600.75503285, Y: 6138945.5401713', -34.889150911525, -56.18358142134, 'Disponible', 1, 107),
 ('IDM-183966', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576834.12965697, Y: 6136094.2474747', -34.914693317912, -56.158879934308, 'Disponible', 1, 97),
 ('IDM-177222', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576670.26603874, Y: 6136955.2812123', -34.906942119825, -56.160752628663, 'Disponible', 1, 105),
@@ -2646,7 +2667,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-137772', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 573345.10191765, Y: 6146244.5962824', -34.8234285204, -56.197960926433, 'Disponible', 1, 69),
 ('IDM-171912', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 573490.41613959, Y: 6143818.9838649', -34.845289292663, -56.196159475673, 'Disponible', 1, 54);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-140012', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 569494.80043939, Y: 6142244.1186256', -34.859770607163, -56.239729519747, 'Disponible', 1, 4),
 ('IDM-114454', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 578866.55921921, Y: 6141544.5269062', -34.865394416972, -56.137146646664, 'Disponible', 1, 60),
 ('IDM-179170', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 581688.99737393, Y: 6138277.4942396', -34.894628659697, -56.10595160077, 'Disponible', 1, 57),
@@ -3148,7 +3169,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-102055', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 566510.54009, Y: 6145596.3555026', -34.829743391406, -56.272640826171, 'Disponible', 1, 12),
 ('IDM-138395', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 574589.07568703, Y: 6141286.0450884', -34.868048128613, -56.183917846346, 'Disponible', 1, 9);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-175820', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577306.3834435, Y: 6135078.9629181', -34.9238118165, -56.153616586014, 'Disponible', 1, 93),
 ('IDM-126005', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 572389.99161261, Y: 6146692.9983776', -34.8194537471, -56.208442984554, 'Disponible', 1, 69),
 ('IDM-124823', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 578512.62396568, Y: 6146475.1685895', -34.820963916719, -56.141480350252, 'Disponible', 1, 36),
@@ -3650,7 +3671,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-107923', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 586144.50772125, Y: 6140993.78619', -34.869769088046, -56.057473465427, 'Disponible', 1, 37),
 ('IDM-124824', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 578528.50546908, Y: 6146789.0138132', -34.818132844889, -56.141336072707, 'Disponible', 1, 36);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-125008', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576996.16302892, Y: 6145837.3110114', -34.826831174595, -56.158002409711, 'Disponible', 1, 29),
 ('IDM-134358', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576486.21499265, Y: 6140655.1172339', -34.873595926278, -56.163105460097, 'Disponible', 1, 74),
 ('IDM-142630', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 579335.08249914, Y: 6145146.4789718', -34.832880474409, -56.13236219488, 'Disponible', 1, 18),
@@ -4152,7 +4173,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-118030', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 572892.16852985, Y: 6143632.9195943', -34.84701006346, -56.202686381731, 'Disponible', 1, 54),
 ('IDM-129613', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 569289.747025, Y: 6148765.8684142', -34.800978626207, -56.242511356499, 'Disponible', 1, 5);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-124585', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 578122.43996742, Y: 6147733.9503943', -34.809643874148, -56.145863661671, 'Disponible', 1, 34),
 ('IDM-183021', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 574282.04138023, Y: 6140830.5175943', -34.872177992537, -56.187236401923, 'Disponible', 1, 104),
 ('IDM-126096', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 571621.32052633, Y: 6147708.4623206', -34.810351826596, -56.216934050613, 'Disponible', 1, 50),
@@ -4654,7 +4675,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-184120', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 580369.35230524, Y: 6139363.7780517', -34.884939503521, -56.120497371343, 'Disponible', 1, 7),
 ('IDM-179931', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 578838.4901756, Y: 6142970.0405882', -34.852543270951, -56.13758788082, 'Disponible', 1, 22);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-181853', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 574237.22401111, Y: 6140314.2813658', -34.876836026425, -56.187680943303, 'Disponible', 1, 104),
 ('IDM-138798', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 572951.48046358, Y: 6141346.7320548', -34.867619850997, -56.20183857235, 'Disponible', 1, 91),
 ('IDM-183568', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577180.10812353, Y: 6135775.1808667', -34.917543935979, -56.155063314583, 'Disponible', 1, 120),
@@ -5156,7 +5177,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-180825', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 571284.96265631, Y: 6142521.2989075', -34.857147317499, -56.220170389495, 'Disponible', 1, 48),
 ('IDM-106945', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 584282.35098306, Y: 6139610.243047', -34.88239995571, -56.077706048626, 'Disponible', 1, 87);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-125043', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576733.95468961, Y: 6145924.2000894', -34.82606752933, -56.160877483696, 'Disponible', 1, 29),
 ('IDM-175888', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577031.54474665, Y: 6137277.3480241', -34.904010800442, -56.156828068368, 'Disponible', 1, 98),
 ('IDM-141627', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 583312.20656557, Y: 6147932.2217042', -34.807444669793, -56.089148194823, 'Disponible', 1, 55),
@@ -5658,7 +5679,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-115752', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577237.00041887, Y: 6142535.3661771', -34.856585545375, -56.155064755801, 'Disponible', 1, 62),
 ('IDM-173472', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 571590.55705571, Y: 6143309.6872783', -34.850017083887, -56.216894947263, 'Disponible', 1, 3);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-138884', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 573856.20929455, Y: 6142714.6133429', -34.855220635739, -56.192061435756, 'Disponible', 1, 67),
 ('IDM-184166', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 574277.63107934, Y: 6137152.7034239', -34.905340050431, -56.186958038586, 'Disponible', 1, 103),
 ('IDM-100585', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 570701.10031162, Y: 6142077.2699189', -34.861191837509, -56.226519617592, 'Disponible', 1, 48),
@@ -6160,7 +6181,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-116766', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 573350.94982926, Y: 6145976.2682291', -34.825847563541, -56.197873526384, 'Disponible', 1, 46),
 ('IDM-144172', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 575578.86946475, Y: 6138706.2948314', -34.891235748704, -56.172856457914, 'Disponible', 1, 78);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-141538', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 579272.46090859, Y: 6146370.7655193', -34.821846377466, -56.133162663281, 'Disponible', 1, 38),
 ('IDM-166732', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577646.95261656, Y: 6143078.7069407', -34.85165518488, -56.1506308686, 'Disponible', 1, 64),
 ('IDM-184209', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 572799.26528366, Y: 6145162.8394643', -34.833221729712, -56.203835339267, 'Disponible', 1, 40),
@@ -6662,7 +6683,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-176942', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577681.19063008, Y: 6138667.9751543', -34.891422538498, -56.14984707793, 'Disponible', 1, 127),
 ('IDM-124283', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 575627.41662708, Y: 6143873.2258743', -34.84464349199, -56.172791918679, 'Disponible', 1, 56);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-129272', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 569025.59417761, Y: 6148015.0747811', -34.807766432135, -56.245337198791, 'Disponible', 1, 63),
 ('IDM-142545', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 580911.54583374, Y: 6143693.9670606', -34.845853017053, -56.114983042732, 'Disponible', 1, 33),
 ('IDM-179958', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 568470.65566455, Y: 6140321.3248009', -34.877177703462, -56.25077551804, 'Disponible', 1, 61),
@@ -7164,7 +7185,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-183715', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 575387.71941939, Y: 6137360.126912', -34.903387898216, -56.17482684618, 'Disponible', 1, 114),
 ('IDM-179374', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 574672.0519368, Y: 6137359.0457695', -34.9034505747, -56.182659537828, 'Disponible', 1, 113);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-114305', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577876.66159819, Y: 6141079.9420802', -34.869659772629, -56.1479325139, 'Disponible', 1, 100),
 ('IDM-132018', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 570088.47105039, Y: 6150072.8906098', -34.789138629857, -56.233889263902, 'Disponible', 1, 39),
 ('IDM-176376', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 580564.45169016, Y: 6139998.0906325', -34.879204730992, -56.118423650585, 'Disponible', 1, 117),
@@ -7666,7 +7687,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-114381', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577339.00635425, Y: 6141490.0569599', -34.866002987406, -56.153852442742, 'Disponible', 1, 30),
 ('IDM-134193', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577507.34013454, Y: 6140265.4154595', -34.877032312715, -56.151897533284, 'Disponible', 1, 80);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-163112', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 571259.13518609, Y: 6142344.4813294', -34.858743460361, -56.220437867055, 'Disponible', 1, 48),
 ('IDM-142645', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 579868.45485882, Y: 6145121.0668706', -34.833067865547, -56.126527216227, 'Disponible', 1, 43),
 ('IDM-180608', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576220.60457042, Y: 6137908.1020845', -34.898384776011, -56.165761134412, 'Disponible', 1, 114),
@@ -8168,7 +8189,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-141859', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 580994.45848966, Y: 6142612.7614324', -34.855595194666, -56.113971729245, 'Disponible', 1, 23),
 ('IDM-177092', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577970.46357742, Y: 6138922.1407894', -34.889108647294, -56.146705243901, 'Disponible', 1, 129);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-175491', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577152.74797331, Y: 6144798.9100433', -34.836182274108, -56.156194710714, 'Disponible', 1, 16),
 ('IDM-141270', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 581405.73209894, Y: 6146018.0659045', -34.824858110955, -56.109803776662, 'Disponible', 1, 43),
 ('IDM-124430', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576842.00780614, Y: 6144318.4129316', -34.840538301934, -56.159548858607, 'Disponible', 1, 16),
@@ -8670,7 +8691,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-141594', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 582510.06793984, Y: 6147185.6981892', -34.814241096718, -56.097843642105, 'Disponible', 1, 55),
 ('IDM-183983', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 584787.12468173, Y: 6138788.8254729', -34.889764178577, -56.072099740644, 'Disponible', 1, 72);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-184366', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 578479.934578, Y: 6145756.3253429', -34.827448023839, -56.14177053124, 'Disponible', 1, 29),
 ('IDM-184611', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 572844.22213834, Y: 6144670.4741079', -34.837658076908, -56.203300944374, 'Disponible', 1, 77),
 ('IDM-180731', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576273.1638878, Y: 6140728.287976', -34.872952192051, -56.165443064153, 'Disponible', 1, 74),
@@ -9172,7 +9193,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-114370', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577749.68102693, Y: 6141475.4620014', -34.8661032386, -56.149358432099, 'Disponible', 1, 30),
 ('IDM-183991', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 570776.75532462, Y: 6143999.5339037', -34.843853833019, -56.22585438225, 'Disponible', 1, 1);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-181693', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576484.356939, Y: 6146169.2268065', -34.823876981591, -56.163629032572, 'Disponible', 1, 32),
 ('IDM-178606', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 575786.50178201, Y: 6136567.2893374', -34.910506911425, -56.170390385474, 'Disponible', 1, 116),
 ('IDM-183462', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 574940.2253549, Y: 6142068.5838795', -34.860966353576, -56.180146282139, 'Disponible', 1, 83),
@@ -9674,7 +9695,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-102172', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 568635.2384276, Y: 6141623.9095333', -34.865421373806, -56.249081545584, 'Disponible', 1, 15),
 ('IDM-181960', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 573031.49069237, Y: 6141569.7350085', -34.865603337867, -56.200982707366, 'Disponible', 1, 91);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-134097', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 575605.09968079, Y: 6139338.4500114', -34.885533863947, -56.172626559864, 'Disponible', 1, 82),
 ('IDM-134492', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 575146.82595797, Y: 6140186.3167403', -34.877922942004, -56.177717303397, 'Disponible', 1, 70),
 ('IDM-105269', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 580265.31117966, Y: 6139426.4505672', -34.884382644698, -56.121641814747, 'Disponible', 1, 7),
@@ -10176,7 +10197,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-126078', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 571631.26872413, Y: 6147215.4548707', -34.814796513321, -56.216783227318, 'Disponible', 1, 50),
 ('IDM-182346', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 566692.14914771, Y: 6143040.8213373', -34.852774611556, -56.270451594794, 'Disponible', 1, 15);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-120992', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 582167.30208277, Y: 6139530.0733661', -34.883296175846, -56.100840399372, 'Disponible', 1, 28),
 ('IDM-139124', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 574551.39843394, Y: 6138580.5461522', -34.89244557461, -56.184088986723, 'Disponible', 1, 95),
 ('IDM-180327', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 580356.40270671, Y: 6139326.197943', -34.885279371417, -56.120635457535, 'Disponible', 1, 7),
@@ -10678,7 +10699,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-142256', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 582775.5763185, Y: 6140789.3279279', -34.871892704972, -56.094309323044, 'Disponible', 1, 84),
 ('IDM-124468', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577126.77948887, Y: 6144070.7505337', -34.842749839626, -56.156411713089, 'Disponible', 1, 16);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-177443', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 581667.35697023, Y: 6139526.0653833', -34.883372651752, -56.106310332667, 'Disponible', 1, 7),
 ('IDM-184370', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 575106.92697407, Y: 6140104.6575638', -34.878662189477, -56.17814652305, 'Disponible', 1, 70),
 ('IDM-181935', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576828.04931285, Y: 6136741.2654303', -34.908859877455, -56.159005990551, 'Disponible', 1, 98),
@@ -11180,7 +11201,7 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-179793', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576259.50767606, Y: 6137258.0997845', -34.904242682386, -56.165276076452, 'Disponible', 1, 114),
 ('IDM-182942', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576151.82402511, Y: 6142777.402581', -34.854485069832, -56.166956938607, 'Disponible', 1, 52);
 
-INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta) VALUES
+INSERT INTO tmp_seed_contenedor (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, seed_ruta_id) VALUES
 ('IDM-176931', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 576549.5119, Y: 6138983.7635235', -34.888661171963, -56.162260036107, 'Disponible', 1, 121),
 ('IDM-176941', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 577643.3421874, Y: 6138759.6167027', -34.890599138528, -56.150269763804, 'Disponible', 1, 127),
 ('IDM-177291', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 574919.87040848, Y: 6139041.9952124', -34.888257703751, -56.180098030684, 'Disponible', 1, 99),
@@ -11393,4 +11414,178 @@ INSERT INTO contenedor (codigo, capacidad, direccion, latitud, longitud, estado,
 ('IDM-179336', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 578499.85317059, Y: 6139301.3857059', -34.885648347896, -56.140947866149, 'Disponible', 1, 89),
 ('IDM-184174', 1100, 'Ubicación importada IdM (sin dirección catastral) — X: 575997.15164178, Y: 6136586.6684704', -34.910316415132, -56.168086449586, 'Disponible', 1, 116);
 
+
+CREATE TEMPORARY TABLE tmp_seed_existing_ruta (
+    id_ruta INT NOT NULL PRIMARY KEY
+) ENGINE=InnoDB AS
+SELECT id_ruta FROM ruta;
+
+CREATE TEMPORARY TABLE tmp_seed_existing_contenedor
+ENGINE=InnoDB AS
+SELECT c.*
+FROM contenedor c
+WHERE NOT EXISTS (
+    SELECT 1 FROM tmp_seed_contenedor s WHERE s.codigo = c.codigo
+);
+
+CREATE TEMPORARY TABLE tmp_seed_preflight (
+    route_count_ok TINYINT NOT NULL,
+    route_ids_ok TINYINT NOT NULL,
+    route_names_ok TINYINT NOT NULL,
+    route_usage_ok TINYINT NOT NULL,
+    container_count_ok TINYINT NOT NULL,
+    container_codes_ok TINYINT NOT NULL,
+    route_collisions_ok TINYINT NOT NULL,
+    code_collisions_ok TINYINT NOT NULL,
+    waste_type_ok TINYINT NOT NULL,
+    states_ok TINYINT NOT NULL,
+    coordinates_ok TINYINT NOT NULL,
+    schema_ok TINYINT NOT NULL,
+    CONSTRAINT chk_seed_route_count CHECK (route_count_ok = 1),
+    CONSTRAINT chk_seed_route_ids CHECK (route_ids_ok = 1),
+    CONSTRAINT chk_seed_route_names CHECK (route_names_ok = 1),
+    CONSTRAINT chk_seed_route_usage CHECK (route_usage_ok = 1),
+    CONSTRAINT chk_seed_container_count CHECK (container_count_ok = 1),
+    CONSTRAINT chk_seed_container_codes CHECK (container_codes_ok = 1),
+    CONSTRAINT chk_seed_route_collisions CHECK (route_collisions_ok = 1),
+    CONSTRAINT chk_seed_code_collisions CHECK (code_collisions_ok = 1),
+    CONSTRAINT chk_seed_waste_type CHECK (waste_type_ok = 1),
+    CONSTRAINT chk_seed_states CHECK (states_ok = 1),
+    CONSTRAINT chk_seed_coordinates CHECK (coordinates_ok = 1),
+    CONSTRAINT chk_seed_schema CHECK (schema_ok = 1)
+) ENGINE=InnoDB;
+
+-- Esta unica insercion aborta antes de START TRANSACTION si falla una precondicion.
+INSERT INTO tmp_seed_preflight
+SELECT
+    (SELECT COUNT(*) = 131 FROM tmp_seed_ruta),
+    (SELECT COUNT(*) = 131 AND COUNT(DISTINCT seed_ruta_id) = 131
+        AND MIN(seed_ruta_id) = 1 AND MAX(seed_ruta_id) = 131 FROM tmp_seed_ruta),
+    (SELECT COUNT(DISTINCT nombre) = 131 FROM tmp_seed_ruta),
+    (SELECT COUNT(DISTINCT seed_ruta_id) = 131 FROM tmp_seed_contenedor),
+    (SELECT COUNT(*) = 11211 FROM tmp_seed_contenedor),
+    (SELECT COUNT(DISTINCT codigo) = 11211 FROM tmp_seed_contenedor),
+    (SELECT COUNT(*) = 0 FROM tmp_seed_ruta s JOIN ruta r ON r.nombre = s.nombre),
+    (SELECT COUNT(*) = 0 FROM tmp_seed_contenedor s JOIN contenedor c ON c.codigo = s.codigo),
+    (SELECT COUNT(*) = 1 FROM tipo_residuo WHERE id_tipo_residuo = 1),
+    (SELECT COUNT(*) = 0
+        FROM (SELECT DISTINCT estado FROM tmp_seed_contenedor) s
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM information_schema.COLUMNS c
+            WHERE c.TABLE_SCHEMA = DATABASE()
+              AND c.TABLE_NAME = 'contenedor'
+              AND c.COLUMN_NAME = 'estado'
+              AND LOCATE(CONCAT('''', s.estado, ''''), c.COLUMN_TYPE) > 0
+        )),
+    (SELECT COUNT(*) = 0 FROM tmp_seed_contenedor
+        WHERE latitud NOT BETWEEN -90 AND 90 OR longitud NOT BETWEEN -180 AND 180),
+    (
+        (SELECT COUNT(*) = 10 FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'contenedor'
+           AND COLUMN_NAME IN ('id_contenedor', 'codigo', 'capacidad', 'direccion', 'latitud',
+                               'longitud', 'estado', 'activo', 'id_tipo_residuo', 'id_ruta'))
+    );
+
+CREATE TEMPORARY TABLE tmp_seed_ruta_map (
+    seed_ruta_id INT NOT NULL PRIMARY KEY,
+    id_ruta INT NOT NULL UNIQUE
+) ENGINE=InnoDB;
+
+START TRANSACTION;
+
+INSERT INTO ruta (nombre, zona)
+SELECT nombre, zona
+FROM tmp_seed_ruta
+ORDER BY seed_ruta_id;
+
+INSERT INTO tmp_seed_ruta_map (seed_ruta_id, id_ruta)
+SELECT s.seed_ruta_id, r.id_ruta
+FROM tmp_seed_ruta s
+JOIN ruta r ON r.nombre = s.nombre AND r.zona = s.zona;
+
+INSERT INTO contenedor
+    (codigo, capacidad, direccion, latitud, longitud, estado, id_tipo_residuo, id_ruta)
+SELECT
+    c.codigo,
+    c.capacidad,
+    c.direccion,
+    c.latitud,
+    c.longitud,
+    c.estado,
+    c.id_tipo_residuo,
+    m.id_ruta
+FROM tmp_seed_contenedor c
+JOIN tmp_seed_ruta_map m ON m.seed_ruta_id = c.seed_ruta_id;
+
+CREATE TEMPORARY TABLE tmp_seed_postflight (
+    route_map_ok TINYINT NOT NULL,
+    route_match_ok TINYINT NOT NULL,
+    container_count_ok TINYINT NOT NULL,
+    semantic_match_ok TINYINT NOT NULL,
+    demo_routes_unused_ok TINYINT NOT NULL,
+    new_routes_used_ok TINYINT NOT NULL,
+    foreign_keys_ok TINYINT NOT NULL,
+    existing_containers_ok TINYINT NOT NULL,
+    CONSTRAINT chk_seed_route_map CHECK (route_map_ok = 1),
+    CONSTRAINT chk_seed_route_match CHECK (route_match_ok = 1),
+    CONSTRAINT chk_seed_insert_count CHECK (container_count_ok = 1),
+    CONSTRAINT chk_seed_semantic_match CHECK (semantic_match_ok = 1),
+    CONSTRAINT chk_seed_demo_routes CHECK (demo_routes_unused_ok = 1),
+    CONSTRAINT chk_seed_new_routes_used CHECK (new_routes_used_ok = 1),
+    CONSTRAINT chk_seed_foreign_keys CHECK (foreign_keys_ok = 1),
+    CONSTRAINT chk_seed_existing_rows CHECK (existing_containers_ok = 1)
+) ENGINE=InnoDB;
+
+-- Un fallo aqui impide alcanzar COMMIT. El cliente debe abortar y cerrar la conexion,
+-- lo que ejecuta el rollback de la transaccion no confirmada.
+INSERT INTO tmp_seed_postflight
+SELECT
+    (SELECT COUNT(*) = 131 AND COUNT(DISTINCT seed_ruta_id) = 131
+        AND COUNT(DISTINCT id_ruta) = 131 FROM tmp_seed_ruta_map),
+    (SELECT COUNT(*) = 131
+        FROM tmp_seed_ruta_map m
+        JOIN tmp_seed_ruta s ON s.seed_ruta_id = m.seed_ruta_id
+        JOIN ruta r ON r.id_ruta = m.id_ruta AND r.nombre = s.nombre AND r.zona = s.zona),
+    (SELECT COUNT(*) = 11211
+        FROM contenedor c JOIN tmp_seed_contenedor s ON s.codigo = c.codigo),
+    (SELECT COUNT(*) = 0
+        FROM contenedor c
+        JOIN tmp_seed_contenedor s ON s.codigo = c.codigo
+        JOIN tmp_seed_ruta_map m ON m.seed_ruta_id = s.seed_ruta_id
+        WHERE c.id_ruta <> m.id_ruta),
+    (SELECT COUNT(*) = 0
+        FROM contenedor c
+        JOIN tmp_seed_contenedor s ON s.codigo = c.codigo
+        JOIN tmp_seed_existing_ruta er ON er.id_ruta = c.id_ruta),
+    (SELECT COUNT(*) = 0
+        FROM tmp_seed_ruta_map m
+        LEFT JOIN contenedor c ON c.id_ruta = m.id_ruta
+        LEFT JOIN tmp_seed_contenedor s ON s.codigo = c.codigo
+        WHERE s.codigo IS NULL),
+    (SELECT COUNT(*) = 0
+        FROM contenedor c
+        JOIN tmp_seed_contenedor s ON s.codigo = c.codigo
+        LEFT JOIN ruta r ON r.id_ruta = c.id_ruta
+        LEFT JOIN tipo_residuo t ON t.id_tipo_residuo = c.id_tipo_residuo
+        WHERE r.id_ruta IS NULL OR t.id_tipo_residuo IS NULL),
+    (
+        (SELECT COUNT(*) FROM tmp_seed_existing_contenedor) =
+        (SELECT COUNT(*) FROM contenedor c
+         JOIN tmp_seed_existing_contenedor e ON e.id_contenedor = c.id_contenedor
+         WHERE c.codigo = e.codigo
+           AND c.capacidad = e.capacidad
+           AND c.direccion = e.direccion
+           AND c.latitud = e.latitud
+           AND c.longitud = e.longitud
+           AND c.estado = e.estado
+           AND c.activo = e.activo
+           AND c.id_tipo_residuo = e.id_tipo_residuo
+           AND c.id_ruta = e.id_ruta)
+    );
+
 COMMIT;
+
+SELECT 'seed_import_ok' AS result,
+       (SELECT COUNT(*) FROM tmp_seed_ruta_map) AS mapped_routes,
+       (SELECT COUNT(*) FROM contenedor c JOIN tmp_seed_contenedor s ON s.codigo = c.codigo) AS imported_containers;
