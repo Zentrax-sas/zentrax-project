@@ -11,7 +11,9 @@
   <div class="app" id="app">
     <aside class="sidebar" aria-label="Navegación principal">
       <div class="brand">
-        <img src="assets/logo_sin_fondo2.png" alt="Zemyna" style="height: 45px; width: auto;">
+        <a href="landing.html" aria-label="Ir al inicio">
+          <img src="assets/logo_sin_fondo2.png" alt="Zemyna" style="height: 45px; width: auto;">
+        </a>
       </div>
 
       <div class="menu-caption">Operaciones</div>
@@ -174,19 +176,18 @@
             </form>
           <div class="toolbar">
             <label class="search-box"><input type="search" id="containerSearch" placeholder="Buscar por código, ubicación o zona…" aria-label="Buscar contenedores"></label>
-            <select class="filter-select" id="containerFilter" aria-label="Filtrar contenedores por estado"><option value="todos">Todos los estados</option><option value="operativo">Operativo</option><option value="atencion">Requiere atención</option><option value="mantenimiento">Mantenimiento</option></select>
+            <select class="filter-select" id="containerFilter" aria-label="Filtrar contenedores por estado"><option value="">Todos los estados</option><option value="Disponible">Disponible</option><option value="Lleno">Lleno</option><option value="Dañado">Dañado</option><option value="Fuera de Servicio">Fuera de servicio</option></select>
+            <label class="page-size-label">Filas <select class="filter-select" id="containerPageSize" aria-label="Cantidad de contenedores por página"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></label>
           </div>
-          <p class="result-count" id="containerCount">Cargando contenedores...</p>
+          <p class="result-count" id="containerCount" role="status">Cargando contenedores...</p>
           <article class="card data-panel">
             <div class="table-wrap"><table><thead><tr><th>Contenedor</th><th>Ubicación</th><th>Zona</th><th>Capacidad</th><th>Coordenadas</th><th>Estado</th><th></th></tr></thead>
-              <tbody id="containerRows">
-                <tr data-search="cnt-ch-001 avenida brasil pocitos" data-status="operativo"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-001</div><div class="asset-detail">Carga lateral</div></div></div></td><td>Av. Brasil 2231</td><td>CH · Pocitos</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>42%</span></div><div class="capacity-bar"><span style="--capacity:42%"></span></div></div></td><td>Hoy · 14:32</td><td><span class="state">Operativo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
-                <tr data-search="cnt-ch-014 avenida rivera buceo" data-status="atencion"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-014</div><div class="asset-detail">Carga lateral</div></div></div></td><td>Av. Rivera 2841</td><td>CH · Buceo</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>91%</span></div><div class="capacity-bar"><span class="high" style="--capacity:91%"></span></div></div></td><td>Ayer · 21:10</td><td><span class="priority high">Requiere atención</span></td><td><button class="table-action">Ver detalle</button></td></tr>
-                <tr data-search="cnt-ch-027 21 de setiembre punta carretas" data-status="operativo"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-027</div><div class="asset-detail">Carga trasera</div></div></div></td><td>21 de Setiembre 2480</td><td>CH · Punta Carretas</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>63%</span></div><div class="capacity-bar"><span class="medium" style="--capacity:63%"></span></div></div></td><td>Hoy · 09:44</td><td><span class="state">Operativo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
-                <tr data-search="cnt-ch-039 avenida italia parque batlle" data-status="mantenimiento"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-039</div><div class="asset-detail">Carga lateral</div></div></div></td><td>Av. Italia 2700</td><td>CH · Parque Batlle</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>18%</span></div><div class="capacity-bar"><span style="--capacity:18%"></span></div></div></td><td>Hoy · 16:08</td><td><span class="state pause">Mantenimiento</span></td><td><button class="table-action">Ver detalle</button></td></tr>
-                <tr data-search="cnt-ch-052 comercio buceo" data-status="operativo"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-052</div><div class="asset-detail">Carga trasera</div></div></div></td><td>Comercio 1942</td><td>CH · Buceo</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>55%</span></div><div class="capacity-bar"><span class="medium" style="--capacity:55%"></span></div></div></td><td>Hoy · 11:23</td><td><span class="state">Operativo</span></td><td><button class="table-action">Ver detalle</button></td></tr>
-                <tr data-search="cnt-ch-061 ellauri pocitos" data-status="atencion"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">CNT-CH-061</div><div class="asset-detail">Carga lateral</div></div></div></td><td>José Ellauri 1067</td><td>CH · Pocitos</td><td><div class="capacity"><div class="capacity-label"><span>Nivel</span><span>78%</span></div><div class="capacity-bar"><span class="high" style="--capacity:78%"></span></div></div></td><td>Ayer · 23:51</td><td><span class="priority medium">Requiere atención</span></td><td><button class="table-action">Ver detalle</button></td></tr>
-              </tbody></table></div><div class="empty-state" id="containerEmpty">No se encontraron contenedores con esos criterios.</div>
+              <tbody id="containerRows"></tbody></table></div><div class="empty-state" id="containerEmpty">No se encontraron contenedores con esos criterios.</div>
+            <nav class="pagination" aria-label="Paginación de contenedores">
+              <button class="table-action" id="containerPrevious" type="button">Anterior</button>
+              <span id="containerPageInfo">Página 1 de 1</span>
+              <button class="table-action" id="containerNext" type="button">Siguiente</button>
+            </nav>
           </article>
         </section>
 

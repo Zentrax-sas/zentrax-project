@@ -58,7 +58,6 @@ function enableTableFilter(searchId, filterId, rowsId, countId, emptyId, itemNam
   filter.addEventListener('change', update);
 }
 
-enableTableFilter('containerSearch', 'containerFilter', 'containerRows', 'containerCount', 'containerEmpty', 'contenedor');
 enableTableFilter('truckSearch', 'truckFilter', 'truckRows', 'truckCount', 'truckEmpty', 'camión');
 
 function escapeHtml(value) {
@@ -105,19 +104,41 @@ async function cargarUsuariosAdmin() {
   }
 }
 
+const containerListState = { page: 1, limit: 25, search: '', estado: '', totalPages: 0 };
+let containerListController = null;
+let containerListRequest = 0;
+let containerSearchTimer = null;
+
 async function cargarContenedoresAdmin() {
   const rows = document.getElementById('containerRows');
   const count = document.getElementById('containerCount');
   const empty = document.getElementById('containerEmpty');
-  if (!rows || rows.dataset.loading === 'true') return;
+  if (!rows) return;
 
+  containerListController?.abort();
+  const requestController = new AbortController();
+  containerListController = requestController;
+  const requestId = ++containerListRequest;
   rows.dataset.loading = 'true';
+  count.textContent = 'Cargando contenedores...';
+
   try {
-    const response = await fetch(buildApiUrl('/backend/api/contenedores.php?limit=100&page=1'));
+    const params = new URLSearchParams({ page: String(containerListState.page), limit: String(containerListState.limit) });
+    if (containerListState.search) params.set('search', containerListState.search);
+    if (containerListState.estado) params.set('estado', containerListState.estado);
+    const response = await fetch(buildApiUrl(`/backend/api/contenedores.php?${params}`), { signal: requestController.signal });
     const json = await response.json();
+    if (requestId !== containerListRequest) return;
     if (!response.ok || !json.success) throw new Error(json.message || 'No se pudieron cargar contenedores.');
 
     const contenedores = Array.isArray(json.data) ? json.data : [];
+    const meta = json.meta || {};
+    containerListState.totalPages = Number(meta.totalPages) || 0;
+    if (contenedores.length === 0 && containerListState.page > 1 && containerListState.page > containerListState.totalPages) {
+      containerListState.page = Math.max(1, containerListState.totalPages);
+      return cargarContenedoresAdmin();
+    }
+
     window.containerRecords = Object.fromEntries(contenedores.map(contenedor => [String(contenedor.id_contenedor), contenedor]));
     rows.innerHTML = contenedores.map(contenedor => {
       const estado = String(contenedor.estado || 'Desconocido');
@@ -126,22 +147,58 @@ async function cargarContenedoresAdmin() {
         : estadoNormalizado === 'fuera de servicio' ? 'mantenimiento' : 'atencion';
       const codigo = contenedor.codigo || `CTN-${contenedor.id_contenedor}`;
       const direccion = contenedor.direccion || 'Sin dirección';
-      const busqueda = `${codigo} ${direccion} ${estado}`.toLocaleLowerCase('es');
       const claseEstado = estadoFiltro === 'operativo' ? 'state' : 'priority medium';
-      return `<tr data-search="${escapeHtml(busqueda)}" data-status="${estadoFiltro}"><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">${escapeHtml(codigo)}</div><div class="asset-detail">ID ${escapeHtml(contenedor.id_contenedor)}</div></div></div></td><td>${escapeHtml(direccion)}</td><td>Sin zona</td><td>${escapeHtml(contenedor.capacidad)} L</td><td>${escapeHtml(contenedor.latitud)}, ${escapeHtml(contenedor.longitud)}</td><td><span class="${claseEstado}">${escapeHtml(estado)}</span></td><td><button class="table-action" type="button" data-action="edit-container" data-id="${escapeHtml(contenedor.id_contenedor)}">Editar</button> <button class="table-action" type="button" data-action="delete-container" data-id="${escapeHtml(contenedor.id_contenedor)}">Dar de baja</button></td></tr>`;
+      const ruta = contenedor.ruta_nombre || `Ruta #${contenedor.id_ruta}`;
+      return `<tr><td><div class="asset-cell"><span class="asset-icon">□</span><div><div class="asset-code">${escapeHtml(codigo)}</div><div class="asset-detail">ID ${escapeHtml(contenedor.id_contenedor)}</div></div></div></td><td>${escapeHtml(direccion)}</td><td>${escapeHtml(ruta)}</td><td>${escapeHtml(contenedor.capacidad)} L</td><td>${escapeHtml(contenedor.latitud)}, ${escapeHtml(contenedor.longitud)}</td><td><span class="${claseEstado}">${escapeHtml(estado)}</span></td><td><button class="table-action" type="button" data-action="edit-container" data-id="${escapeHtml(contenedor.id_contenedor)}">Editar</button> <button class="table-action" type="button" data-action="delete-container" data-id="${escapeHtml(contenedor.id_contenedor)}">Dar de baja</button></td></tr>`;
     }).join('');
-    count.textContent = `${contenedores.length} ${contenedores.length === 1 ? 'contenedor mostrado' : 'contenedores mostrados'}`;
-    empty.hidden = contenedores.length !== 0;
-    document.getElementById('containerSearch')?.dispatchEvent(new Event('input'));
+
+    const total = Number(meta.total) || 0;
+    const first = total === 0 ? 0 : ((Number(meta.page) - 1) * Number(meta.limit)) + 1;
+    const last = total === 0 ? 0 : first + Number(meta.returned) - 1;
+    count.textContent = `Mostrando ${first.toLocaleString('es-UY')}–${last.toLocaleString('es-UY')} de ${total.toLocaleString('es-UY')}`;
+    empty.style.display = contenedores.length ? 'none' : 'block';
+    document.getElementById('containerPageInfo').textContent = `Página ${containerListState.page} de ${Math.max(1, containerListState.totalPages)}`;
+    document.getElementById('containerPrevious').disabled = containerListState.page <= 1;
+    document.getElementById('containerNext').disabled = containerListState.totalPages === 0 || containerListState.page >= containerListState.totalPages;
   } catch (error) {
+    if (error.name === 'AbortError' || requestId !== containerListRequest) return;
     rows.innerHTML = '';
     count.textContent = error.message;
-    empty.hidden = false;
+    empty.style.display = 'block';
   } finally {
-    rows.dataset.loading = 'false';
+    if (requestId === containerListRequest) rows.dataset.loading = 'false';
+    if (containerListController === requestController) containerListController = null;
   }
 }
 
+document.getElementById('containerSearch')?.addEventListener('input', event => {
+  clearTimeout(containerSearchTimer);
+  containerSearchTimer = setTimeout(() => {
+    containerListState.search = event.target.value.trim();
+    containerListState.page = 1;
+    cargarContenedoresAdmin();
+  }, 300);
+});
+document.getElementById('containerFilter')?.addEventListener('change', event => {
+  containerListState.estado = event.target.value;
+  containerListState.page = 1;
+  cargarContenedoresAdmin();
+});
+document.getElementById('containerPageSize')?.addEventListener('change', event => {
+  containerListState.limit = Number(event.target.value);
+  containerListState.page = 1;
+  cargarContenedoresAdmin();
+});
+document.getElementById('containerPrevious')?.addEventListener('click', () => {
+  if (containerListState.page <= 1) return;
+  containerListState.page--;
+  cargarContenedoresAdmin();
+});
+document.getElementById('containerNext')?.addEventListener('click', () => {
+  if (containerListState.page >= containerListState.totalPages) return;
+  containerListState.page++;
+  cargarContenedoresAdmin();
+});
 async function cargarCamionesAdmin() {
   const rows = document.getElementById('truckRows');
   const count = document.getElementById('truckCount');
@@ -390,6 +447,7 @@ containerForm?.addEventListener('submit', async event => {
   const idContenedor = payload.id_contenedor;
   const method = idContenedor ? 'PUT' : 'POST';
   delete payload.id_contenedor;
+  if (method === 'PUT') payload.id_contenedor = Number(idContenedor);
   payload.capacidad = Number(payload.capacidad);
   payload.latitud = Number(payload.latitud);
   payload.longitud = Number(payload.longitud);

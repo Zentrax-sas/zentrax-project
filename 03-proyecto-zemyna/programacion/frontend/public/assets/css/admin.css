@@ -295,6 +295,10 @@ h1 { margin: 5px 0 0; font-size: clamp(22px, 3vw, 29px); line-height: 1.1; lette
 .search-box input:focus, .filter-select:focus { border-color: rgba(199,125,255,.45); box-shadow: 0 0 0 3px rgba(157,78,221,.08); }
 .filter-select { width: 155px; padding: 0 10px; }
 .result-count { margin: 0 0 10px; color: var(--muted); font-size: 9px; }
+.page-size-label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; }
+.page-size-label .filter-select { width: 76px; }
+.pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 16px; color: var(--muted); font-size: 10px; }
+.pagination button:disabled { cursor: not-allowed; opacity: .45; }
 
 .data-panel { padding: 19px; }
 .asset-cell { display: flex; align-items: center; gap: 10px; }
@@ -353,6 +357,7 @@ td strong { color: var(--text); font-size: 10px; }
   .toolbar { flex-wrap: wrap; }
   .search-box { flex-basis: 100%; }
   .filter-select { flex: 1; }
+  .pagination { justify-content: center; }
 }
 
 @media (max-width: 760px) {
