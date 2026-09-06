@@ -13,3 +13,4 @@ Thumbs.db
 
 /03-proyecto-zemyna/programacion/backend/uploads/incidencias/*
 !/03-proyecto-zemyna/programacion/backend/uploads/incidencias/.gitkeep
+!/03-proyecto-zemyna/programacion/backend/uploads/incidencias/.htaccess

@@ -479,8 +479,8 @@ VALUES
 INSERT INTO foto
 (fecha, url, id_incidencia)
 VALUES
-('2025-06-01', '/uploads/incidencias/inc1_foto1.jpg', 1),
-('2025-06-02', '/uploads/incidencias/inc2_foto1.jpg', 2);
+('2025-06-01', 'inc1_foto1.jpg', 1),
+('2025-06-02', 'inc2_foto1.jpg', 2);
 
 
 -- =====================================

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/Foto.php';
+require_once __DIR__ . '/../helpers/FotoStorage.php';
 
 class FotoController {
     private $foto;
@@ -24,7 +25,7 @@ class FotoController {
 
     public function create($data) {
         $this->foto->fecha         = $data['fecha']         ?? date('Y-m-d H:i:s');
-        $this->foto->url           = $data['url']           ?? null;
+        $this->foto->url           = FotoStorage::extractSafeFileName((string)($data['url'] ?? ''));
         $this->foto->id_incidencia = $data['id_incidencia'] ?? null;
 
         $errors = [];
@@ -43,11 +44,12 @@ class FotoController {
     public function update($data) {
         $this->foto->id_foto       = $data['id_foto']       ?? null;
         $this->foto->fecha         = $data['fecha']         ?? null;
-        $this->foto->url           = $data['url']           ?? null;
+        $this->foto->url           = FotoStorage::extractSafeFileName((string)($data['url'] ?? ''));
         $this->foto->id_incidencia = $data['id_incidencia'] ?? null;
 
         $errors = [];
         if (empty($this->foto->id_foto)) $errors[] = "El id_foto es obligatorio para actualizar.";
+        if (empty($this->foto->url)) $errors[] = "El nombre de archivo no es válido.";
         if ($errors) {
             return ["success" => false, "data" => null, "message" => "No se pudo actualizar la foto.", "errors" => $errors];
         }

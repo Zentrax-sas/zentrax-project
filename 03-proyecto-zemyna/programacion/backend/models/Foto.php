@@ -19,6 +19,17 @@ class Foto {
         return $stmt;
     }
 
+    public function findById($id) {
+        if (!$this->conn) return null;
+        $stmt = $this->conn->prepare(
+            "SELECT id_foto, fecha, url, id_incidencia
+             FROM " . $this->table_name . " WHERE id_foto = :id_foto LIMIT 1"
+        );
+        $stmt->bindValue(':id_foto', (int)$id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
     public function create() {
         if (!$this->conn) return false;
         if (empty($this->fecha) || empty($this->url) || empty($this->id_incidencia)) return false;
@@ -28,7 +39,9 @@ class Foto {
         $stmt->bindParam(":fecha",         $this->fecha);
         $stmt->bindParam(":url",           $this->url);
         $stmt->bindParam(":id_incidencia", $this->id_incidencia);
-        return $stmt->execute();
+        $created = $stmt->execute();
+        if ($created) $this->id_foto = (int)$this->conn->lastInsertId();
+        return $created;
     }
 
     public function update() {
