@@ -14,7 +14,7 @@ class ContenedorControllerTest extends TestCase
     {
         $this->contenedor = $this->getMockBuilder(Contenedor::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['read', 'readForMap', 'findByCodigo', 'create', 'update', 'delete'])
+            ->onlyMethods(['read', 'readAdmin', 'countAdmin', 'readForMap', 'findByCodigo', 'create', 'update', 'delete'])
             ->getMock();
 
         $controllerClass = new ReflectionClass(ContenedorController::class);
@@ -88,109 +88,145 @@ class ContenedorControllerTest extends TestCase
         $this->assertSame($errors, $result['errors']);
     }
 
-    public function testGetAllListaContenedores(): void
+    public function testGetAllUsaPaginacionPredeterminadaYMetadata(): void
     {
         $rows = [['id_contenedor' => 1, 'codigo' => 'CTN-001']];
-        $this->contenedor->expects($this->once())->method('read')->with(null, 1, 20, [])
+        $this->contenedor->expects($this->once())->method('readAdmin')->with([], 1, 25)
             ->willReturn($this->statement($rows));
-
+        $this->contenedor->expects($this->once())->method('countAdmin')->with([])->willReturn(11214);
         $result = $this->controller->getAll();
-
-        $this->assertResponse($result, true, 200, 'Contenedores cargados correctamente.');
+        $this->assertSame(true, $result['success']);
+        $this->assertSame(200, $result['statusCode']);
         $this->assertSame($rows, $result['data']);
+        $this->assertSame(['page' => 1, 'limit' => 25, 'total' => 11214, 'totalPages' => 449, 'returned' => 1], $result['meta']);
+        $this->assertSame([], $result['errors']);
     }
 
-    public function testGetAllConsultaPorId(): void
+    /** @dataProvider validAdminLimitsProvider */
+    public function testGetAllAceptaLimitesAdministrativos(int $limit): void
     {
-        $rows = [['id_contenedor' => 9, 'codigo' => 'CTN-009']];
-        $this->contenedor->expects($this->once())->method('read')->with(9, 1, 20, [])
-            ->willReturn($this->statement($rows));
-
-        $result = $this->controller->getAll(['id' => '9']);
-
-        $this->assertResponse($result, true, 200, 'Contenedores cargados correctamente.');
-        $this->assertSame($rows, $result['data']);
-    }
-
-    public function testGetAllDevuelveNotFoundParaIdSinResultados(): void
-    {
-        $this->contenedor->expects($this->once())->method('read')->with(99, 1, 20, [])
+        $this->contenedor->expects($this->once())->method('readAdmin')->with([], 2, $limit)
             ->willReturn($this->statement([]));
-
-        $result = $this->controller->getAll(['id' => 99]);
-
-        $this->assertResponse($result, false, 404, 'Contenedor no encontrado.');
-        $this->assertSame([], $result['data']);
+        $this->contenedor->expects($this->once())->method('countAdmin')->willReturn(125);
+        $result = $this->controller->getAll(['page' => '2', 'limit' => (string) $limit]);
+        $this->assertSame($limit, $result['meta']['limit']);
+        $this->assertSame((int) ceil(125 / $limit), $result['meta']['totalPages']);
     }
 
-    public function testGetAllAplicaPaginacion(): void
+    public static function validAdminLimitsProvider(): array
     {
-        $this->contenedor->expects($this->once())->method('read')->with(null, 4, 75, [])
-            ->willReturn($this->statement([]));
-
-        $result = $this->controller->getAll(['page' => '4', 'limit' => '75']);
-
-        $this->assertResponse($result, true, 200, 'Contenedores cargados correctamente.');
-        $this->assertSame([], $result['data']);
+        return [[25], [50], [100]];
     }
 
-    /** @dataProvider paginationLimitsProvider */
-    public function testGetAllNormalizaLimitesMinimosYMaximos(array $filters, int $page, int $limit): void
+    /** @dataProvider invalidPaginationProvider */
+    public function testGetAllRechazaPaginacionInvalida(array $filters, string $error): void
     {
-        $this->contenedor->expects($this->once())->method('read')->with(null, $page, $limit, [])
-            ->willReturn($this->statement([]));
-
+        $this->contenedor->expects($this->never())->method('readAdmin');
+        $this->contenedor->expects($this->never())->method('countAdmin');
         $result = $this->controller->getAll($filters);
-
-        $this->assertResponse($result, true, 200, 'Contenedores cargados correctamente.');
+        $this->assertFalse($result['success']);
+        $this->assertSame(400, $result['statusCode']);
+        $this->assertArrayHasKey($error, $result['errors']);
     }
 
-    public static function paginationLimitsProvider(): array
+    public static function invalidPaginationProvider(): array
     {
         return [
-            'mínimos' => [['page' => -10, 'limit' => 0], 1, 1],
-            'máximo' => [['page' => 2, 'limit' => 5000], 2, 2000],
+            'page zero' => [['page' => 0], 'page'],
+            'page negative' => [['page' => -1], 'page'],
+            'page decimal' => [['page' => '1.5'], 'page'],
+            'page text' => [['page' => 'dos'], 'page'],
+            'limit zero' => [['limit' => 0], 'limit'],
+            'limit above maximum' => [['limit' => 101], 'limit'],
         ];
     }
 
-    public function testGetAllEnviaFiltroGeograficoCompleto(): void
+    public function testGetAllCombinaBusquedaEstadoTipoYRuta(): void
     {
-        $bbox = ['min_lat' => -35.1, 'min_lon' => -56.3, 'max_lat' => -34.7, 'max_lon' => -56.0];
-        $this->contenedor->expects($this->once())->method('read')->with(null, 1, 20, $bbox)
+        $filters = ['search' => 'IDM-10%_=', 'estado' => 'Disponible', 'id_tipo_residuo' => '1', 'id_ruta' => '7'];
+        $normalized = ['search' => 'IDM-10%_=', 'estado' => 'Disponible', 'id_tipo_residuo' => 1, 'id_ruta' => 7];
+        $this->contenedor->expects($this->once())->method('readAdmin')->with($normalized, 1, 25)
             ->willReturn($this->statement([]));
-
-        $result = $this->controller->getAll([
-            'min_lat' => '-35.1', 'min_lon' => '-56.3',
-            'max_lat' => '-34.7', 'max_lon' => '-56.0',
-        ]);
-
-        $this->assertResponse($result, true, 200, 'Contenedores cargados correctamente.');
+        $this->contenedor->expects($this->once())->method('countAdmin')->with($normalized)->willReturn(0);
+        $result = $this->controller->getAll($filters);
+        $this->assertSame(['page' => 1, 'limit' => 25, 'total' => 0, 'totalPages' => 0, 'returned' => 0], $result['meta']);
     }
 
-    public function testGetAllDescartaFiltroGeograficoIncompletoOInvalido(): void
+    /** @dataProvider invalidAdminFilterProvider */
+    public function testGetAllRechazaFiltrosInvalidos(array $filters, string $field): void
     {
-        $this->contenedor->expects($this->once())->method('read')->with(0, 1, 1, [])
+        $this->contenedor->expects($this->never())->method('readAdmin');
+        $result = $this->controller->getAll($filters);
+        $this->assertSame(400, $result['statusCode']);
+        $this->assertArrayHasKey($field, $result['errors']);
+    }
+
+    public static function invalidAdminFilterProvider(): array
+    {
+        return [
+            'state' => [['estado' => 'Operativo'], 'estado'],
+            'type' => [['id_tipo_residuo' => '1.5'], 'id_tipo_residuo'],
+            'route' => [['id_ruta' => '-2'], 'id_ruta'],
+            'search array' => [['search' => ['IDM']], 'search'],
+        ];
+    }
+
+    public function testGetAllPermitePaginaPosteriorAlTotal(): void
+    {
+        $this->contenedor->expects($this->once())->method('readAdmin')->with([], 999, 25)
             ->willReturn($this->statement([]));
-
-        $result = $this->controller->getAll([
-            'id' => 'incorrecto', 'page' => 'incorrecta', 'limit' => 'incorrecto',
-            'min_lat' => '-35', 'min_lon' => '-56', 'max_lat' => 'incorrecta', 'max_lon' => '-55',
-        ]);
-
-        $this->assertResponse($result, false, 404, 'Contenedor no encontrado.');
+        $this->contenedor->expects($this->once())->method('countAdmin')->willReturn(30);
+        $result = $this->controller->getAll(['page' => 999]);
         $this->assertSame([], $result['data']);
+        $this->assertSame(2, $result['meta']['totalPages']);
+        $this->assertSame(0, $result['meta']['returned']);
     }
 
-    public function testGetAllDevuelveErrorCuandoFallaElModelo(): void
+    /** @dataProvider adminFailureProvider */
+    public function testGetAllDevuelve500SeguroAnteFalloDeDatos(mixed $failure): void
     {
-        $this->contenedor->expects($this->once())->method('read')->with(null, 1, 20, [])->willReturn(false);
-
+        $expectation = $this->contenedor->expects($this->once())->method('readAdmin');
+        $failure instanceof Throwable ? $expectation->willThrowException($failure) : $expectation->willReturn($failure);
+        $this->contenedor->expects($this->never())->method('countAdmin');
         $result = $this->controller->getAll();
-
-        $this->assertResponse($result, false, 500, 'No se pudo conectar con la base de datos de contenedores.');
-        $this->assertSame([], $result['data']);
+        $this->assertFalse($result['success']);
+        $this->assertSame(500, $result['statusCode']);
+        $this->assertStringNotContainsString('SQLSTATE', json_encode($result));
     }
 
+    public static function adminFailureProvider(): array
+    {
+        return ['null' => [null], 'false' => [false], 'pdo' => [new PDOException('SQLSTATE secret')]];
+    }
+
+    /** @dataProvider adminCountFailureProvider */
+    public function testGetAllDevuelve500SeguroAnteFalloDelConteo(mixed $failure): void
+    {
+        $this->contenedor->expects($this->once())->method('readAdmin')->willReturn($this->statement([]));
+        $expectation = $this->contenedor->expects($this->once())->method('countAdmin');
+        $failure instanceof Throwable ? $expectation->willThrowException($failure) : $expectation->willReturn($failure);
+        $result = $this->controller->getAll();
+        $this->assertFalse($result['success']);
+        $this->assertSame(500, $result['statusCode']);
+        $this->assertStringNotContainsString('SQLSTATE', json_encode($result));
+    }
+
+    public static function adminCountFailureProvider(): array
+    {
+        return ['null' => [null], 'pdo' => [new PDOException('SQLSTATE count secret')]];
+    }
+
+    public function testAdminSearchEscapaComodinesDeLike(): void
+    {
+        $model = (new ReflectionClass(Contenedor::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod(Contenedor::class, 'buildAdminWhere');
+        [$where, $params] = $method->invoke($model, ['search' => '100%_=']);
+
+        $this->assertStringContainsString("ESCAPE '='", $where);
+        $this->assertSame('%100=%=_==%', $params[':search_codigo'][0]);
+        $this->assertSame($params[':search_codigo'], $params[':search_direccion']);
+        $this->assertSame($params[':search_codigo'], $params[':search_ruta']);
+    }
     public function testGetMapConsultaConViewportValidoYLimiteInalterable(): void
     {
         $row = $this->publicContainer(1);

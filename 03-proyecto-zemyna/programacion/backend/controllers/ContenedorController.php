@@ -58,36 +58,68 @@ class ContenedorController {
     }
 
     public function getAll($filters = []) {
-        $id = isset($filters['id']) ? (int) $filters['id'] : null;
-        $page = isset($filters['page']) ? max(1, (int) $filters['page']) : 1;
-        $limit = isset($filters['limit']) ? max(1, min(2000, (int) $filters['limit'])) : 20;
+        $errors = [];
+        $positiveInteger = static function ($value): ?int {
+            if (is_int($value)) return $value > 0 ? $value : null;
+            if (!is_string($value) || !preg_match('/^[1-9][0-9]*$/', $value)) return null;
+            return (int) $value;
+        };
 
-        $bbox = [];
-        foreach (['min_lat', 'min_lon', 'max_lat', 'max_lon'] as $coordinate) {
-            if (isset($filters[$coordinate]) && is_numeric($filters[$coordinate])) {
-                $bbox[$coordinate] = (float) $filters[$coordinate];
+        $page = $positiveInteger($filters['page'] ?? 1);
+        $limit = $positiveInteger($filters['limit'] ?? 25);
+        if ($page === null) $errors['page'] = 'La página debe ser un entero positivo.';
+        if ($limit === null || $limit > 100) $errors['limit'] = 'El límite debe ser un entero entre 1 y 100.';
+
+        $adminFilters = [];
+        if (array_key_exists('id', $filters) && $filters['id'] !== null && $filters['id'] !== '') {
+            $id = $positiveInteger($filters['id']);
+            if ($id === null) $errors['id'] = 'El ID debe ser un entero positivo.';
+            else $adminFilters['id'] = $id;
+        }
+        if (array_key_exists('search', $filters) && $filters['search'] !== null && $filters['search'] !== '') {
+            if (!is_string($filters['search'])) $errors['search'] = 'La búsqueda debe ser texto.';
+            else $adminFilters['search'] = trim($filters['search']);
+        }
+        if (array_key_exists('estado', $filters) && $filters['estado'] !== null && $filters['estado'] !== '') {
+            if (!is_string($filters['estado']) || !in_array($filters['estado'], ['Disponible', 'Lleno', 'Dañado', 'Fuera de Servicio'], true)) {
+                $errors['estado'] = 'El estado no es válido.';
+            } else $adminFilters['estado'] = $filters['estado'];
+        }
+        foreach (['id_tipo_residuo', 'id_ruta'] as $field) {
+            if (array_key_exists($field, $filters) && $filters[$field] !== null && $filters[$field] !== '') {
+                $value = $positiveInteger($filters[$field]);
+                if ($value === null) $errors[$field] = "{$field} debe ser un entero positivo.";
+                else $adminFilters[$field] = $value;
             }
         }
-        if (count($bbox) !== 4) {
-            $bbox = [];
-        }
 
-        $stmt = $this->contenedor->read($id, $page, $limit, $bbox);
-        if (!$stmt) {
+        if ($errors) {
             return [
                 "success" => false,
                 "data" => [],
-                "message" => "No se pudo conectar con la base de datos de contenedores.",
-                "statusCode" => 500
+                "meta" => null,
+                "message" => "Los parámetros del listado no son válidos.",
+                "errors" => $errors,
+                "statusCode" => 400
             ];
         }
 
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        if ($id !== null && empty($rows)) {
-            return ["success" => false, "data" => [], "message" => "Contenedor no encontrado.", "statusCode" => 404];
+        try {
+            $stmt = $this->contenedor->readAdmin($adminFilters, $page, $limit);
+            if (!$stmt) throw new PDOException('Fallo al consultar datos.');
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $total = $this->contenedor->countAdmin($adminFilters);
+            if ($total === null) throw new PDOException('Fallo al contar datos.');
+        } catch (PDOException $exception) {
+            return ["success" => false, "data" => [], "meta" => null,
+                "message" => "No se pudieron obtener los contenedores.", "errors" => [], "statusCode" => 500];
         }
 
-        return ["success" => true, "data" => $rows, "message" => "Contenedores cargados correctamente.", "statusCode" => 200];
+        $totalPages = $total === 0 ? 0 : (int) ceil($total / $limit);
+        return ["success" => true, "data" => $rows,
+            "meta" => ["page" => $page, "limit" => $limit, "total" => $total,
+                "totalPages" => $totalPages, "returned" => count($rows)],
+            "message" => "Contenedores obtenidos correctamente.", "errors" => [], "statusCode" => 200];
     }
 
     public function getMap(array $filters): array {

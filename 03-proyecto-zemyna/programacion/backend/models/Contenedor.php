@@ -49,6 +49,77 @@ class Contenedor {
         return $stmt;
     }
 
+    private function buildAdminWhere(array $filters): array {
+        $conditions = ['c.activo = 1'];
+        $params = [];
+
+        if (isset($filters['id'])) {
+            $conditions[] = 'c.id_contenedor = :id_contenedor';
+            $params[':id_contenedor'] = [$filters['id'], PDO::PARAM_INT];
+        }
+        if (($filters['search'] ?? '') !== '') {
+            $escaped = str_replace(['=', '%', '_'], ['==', '=%', '=_'], $filters['search']);
+            $conditions[] = "(c.codigo LIKE :search_codigo ESCAPE '=' OR c.direccion LIKE :search_direccion ESCAPE '=' OR r.nombre LIKE :search_ruta ESCAPE '=')";
+            foreach ([':search_codigo', ':search_direccion', ':search_ruta'] as $parameter) {
+                $params[$parameter] = ['%' . $escaped . '%', PDO::PARAM_STR];
+            }
+        }
+        if (isset($filters['estado'])) {
+            $conditions[] = 'c.estado = :estado';
+            $params[':estado'] = [$filters['estado'], PDO::PARAM_STR];
+        }
+        if (isset($filters['id_tipo_residuo'])) {
+            $conditions[] = 'c.id_tipo_residuo = :id_tipo_residuo';
+            $params[':id_tipo_residuo'] = [$filters['id_tipo_residuo'], PDO::PARAM_INT];
+        }
+        if (isset($filters['id_ruta'])) {
+            $conditions[] = 'c.id_ruta = :id_ruta';
+            $params[':id_ruta'] = [$filters['id_ruta'], PDO::PARAM_INT];
+        }
+
+        return [' WHERE ' . implode(' AND ', $conditions), $params];
+    }
+
+    public function readAdmin(array $filters, int $page, int $limit) {
+        if (!$this->conn) return null;
+
+        [$where, $params] = $this->buildAdminWhere($filters);
+        $offset = ($page - 1) * $limit;
+        $query = "SELECT c.id_contenedor, c.codigo, c.capacidad, c.direccion,
+                         c.latitud, c.longitud, c.estado,
+                         c.id_tipo_residuo, c.id_ruta, r.nombre AS ruta_nombre
+                  FROM {$this->table_name} c
+                  INNER JOIN ruta r ON r.id_ruta = c.id_ruta
+                  {$where}
+                  ORDER BY c.id_contenedor ASC
+                  LIMIT :limit OFFSET :offset";
+        $stmt = $this->conn->prepare($query);
+        foreach ($params as $name => [$value, $type]) {
+            $stmt->bindValue($name, $value, $type);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt;
+    }
+
+    public function countAdmin(array $filters): ?int {
+        if (!$this->conn) return null;
+
+        [$where, $params] = $this->buildAdminWhere($filters);
+        $query = "SELECT COUNT(*)
+                  FROM {$this->table_name} c
+                  INNER JOIN ruta r ON r.id_ruta = c.id_ruta
+                  {$where}";
+        $stmt = $this->conn->prepare($query);
+        foreach ($params as $name => [$value, $type]) {
+            $stmt->bindValue($name, $value, $type);
+        }
+        $stmt->execute();
+        $count = $stmt->fetchColumn();
+        return $count === false ? null : (int) $count;
+    }
+
     public function readForMap(float $south, float $north, float $west, float $east, int $limit) {
         if (!$this->conn) return null;
 

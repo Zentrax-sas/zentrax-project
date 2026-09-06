@@ -22,7 +22,11 @@ switch ($method) {
             $response = $controller->getAll([
                 'id' => $_GET['id'] ?? null,
                 'page' => $_GET['page'] ?? 1,
-                'limit' => $_GET['limit'] ?? 20,
+                'limit' => $_GET['limit'] ?? 25,
+                'search' => $_GET['search'] ?? null,
+                'estado' => $_GET['estado'] ?? null,
+                'id_tipo_residuo' => $_GET['id_tipo_residuo'] ?? null,
+                'id_ruta' => $_GET['id_ruta'] ?? null,
             ]);
         }
         http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));
