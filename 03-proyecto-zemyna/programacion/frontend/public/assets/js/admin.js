@@ -504,6 +504,9 @@ function setupCreateForm(formId, messageId, endpoint, successTitle, reload) {
     const recordId = payload[idField.name];
     const method = recordId ? 'PUT' : 'POST';
     delete payload[idField.name];
+    if (formId === 'machineForm' && method === 'PUT') {
+      payload.id_maquinaria = Number(recordId);
+    }
     if (formId === 'centerForm' && method === 'PUT') payload.id_centro = Number(recordId);
     if (payload.id_centro) payload.id_centro = Number(payload.id_centro);
 
