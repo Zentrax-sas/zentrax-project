@@ -10,3 +10,6 @@ vendor/
 
 .DS_Store
 Thumbs.db
+
+/03-proyecto-zemyna/programacion/backend/uploads/incidencias/*
+!/03-proyecto-zemyna/programacion/backend/uploads/incidencias/.gitkeep
