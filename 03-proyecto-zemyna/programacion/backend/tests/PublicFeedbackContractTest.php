@@ -89,4 +89,35 @@ class PublicFeedbackContractTest extends TestCase
             strpos($source, '$controller->getPublicByTracking(')
         );
     }
+
+    public function testFrontendConservaTrackingCuandoFallaLaFoto(): void
+    {
+        $source = file_get_contents(__DIR__ . '/../../frontend/public/mapa.js');
+        $trackingPosition = strpos($source, 'const trackingNumber = json?.data?.tracking_number');
+        $photoTryPosition = strpos($source, 'try {', strpos($source, "formData.append('foto'"));
+        $confirmationPosition = strpos($source, 'mostrarConfirmacionReporte(trackingNumber', $trackingPosition);
+
+        $this->assertNotFalse($trackingPosition);
+        $this->assertNotFalse($photoTryPosition);
+        $this->assertNotFalse($confirmationPosition);
+        $this->assertLessThan($photoTryPosition, $trackingPosition);
+        $this->assertLessThan($confirmationPosition, $photoTryPosition);
+        $this->assertStringContainsString('La incidencia fue registrada, pero no se pudo adjuntar la fotografía.', $source);
+    }
+
+    public function testFrontendDetectaRespuestaVaciaYJsonInvalidoSinParseoDirectoEnElEnvio(): void
+    {
+        $source = file_get_contents(__DIR__ . '/../../frontend/public/mapa.js');
+        $flowStart = strpos($source, "submitReporteButton.addEventListener('click'");
+        $flowEnd = strpos($source, 'const trackingForm', $flowStart);
+        $flow = substr($source, $flowStart, $flowEnd - $flowStart);
+
+        $this->assertStringContainsString('const body = await response.text()', $source);
+        $this->assertStringContainsString("body.trim() === ''", $source);
+        $this->assertStringContainsString("includes('application/json')", $source);
+        $this->assertStringContainsString('JSON.parse(body)', $source);
+        $this->assertStringNotContainsString('response.json()', $flow);
+        $this->assertStringNotContainsString('fotoResponse.json()', $flow);
+        $this->assertStringNotContainsString('Unexpected end of JSON input', $source);
+    }
 }

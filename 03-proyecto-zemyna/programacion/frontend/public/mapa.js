@@ -91,6 +91,24 @@ let toastTimerId = null;
 
 let ultimoReporte = null;
 
+async function leerRespuestaJson(response, contexto) {
+    const contentType = response.headers.get('Content-Type') || '';
+    const body = await response.text();
+
+    if (body.trim() === '') {
+        throw new Error(`${contexto}: el servidor respondió sin contenido.`);
+    }
+    if (!contentType.toLowerCase().includes('application/json')) {
+        throw new Error(`${contexto}: el servidor devolvió una respuesta no válida.`);
+    }
+
+    try {
+        return JSON.parse(body);
+    } catch (error) {
+        throw new Error(`${contexto}: el servidor devolvió JSON inválido.`);
+    }
+}
+
 function mostrarConfirmacionReporte(trackingNumber, datos = {}) {
     ultimoReporte = { trackingNumber, ...datos };
     if (trackingCodeConfirmacion) trackingCodeConfirmacion.textContent = trackingNumber;
@@ -307,7 +325,7 @@ if (submitReporteButton) {
                 })
             });
 
-            const json = await response.json();
+            const json = await leerRespuestaJson(response, 'No se pudo registrar la incidencia');
             if (!response.ok || !json.success) {
                 throw new Error(json.message || 'Error al enviar el reporte.');
             }
@@ -319,24 +337,26 @@ if (submitReporteButton) {
                 mensajeFinal = `Incidencia enviada. Tu número de seguimiento es ${trackingNumber}.`;
             }
 
+            let fotoFallida = false;
             if (fotoSeleccionada && idIncidencia) {
                 const formData = new FormData();
                 formData.append('id_incidencia', String(idIncidencia));
                 formData.append('foto', fotoSeleccionada);
 
-                const fotoResponse = await fetch(buildApiUrl('/backend/api/foto.php'), {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    body: formData
-                });
-
-                const fotoJson = await fotoResponse.json();
-                if (!fotoResponse.ok || !fotoJson.success) {
-                    mensajeFinal = 'Incidencia registrada, pero la foto no pudo guardarse.';
-                    actualizarEstadoGlobal(mensajeFinal, 'error');
-                    mostrarToast(mensajeFinal, 'error');
-                } else {
+                try {
+                    const fotoResponse = await fetch(buildApiUrl('/backend/api/foto.php'), {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: formData
+                    });
+                    const fotoJson = await leerRespuestaJson(fotoResponse, 'No se pudo adjuntar la fotografía');
+                    if (!fotoResponse.ok || !fotoJson.success) {
+                        throw new Error(fotoJson.message || 'No se pudo adjuntar la fotografía.');
+                    }
                     mensajeFinal = 'Incidencia enviada correctamente con foto adjunta.';
+                } catch (fotoError) {
+                    fotoFallida = true;
+                    mensajeFinal = 'La incidencia fue registrada, pero no se pudo adjuntar la fotografía.';
                 }
             }
 
@@ -350,11 +370,8 @@ if (submitReporteButton) {
                     tipoProblema
                 });
             }
-            actualizarEstadoGlobal(
-                'Ultimo envio exitoso.',
-                'exito'
-            );
-            mostrarToast('Exito: reporte enviado.', 'exito');
+            actualizarEstadoGlobal(mensajeFinal, fotoFallida ? 'error' : 'exito');
+            mostrarToast(mensajeFinal, fotoFallida ? 'error' : 'exito');
 
             formReporte.reset();
             if (fotoInput) {

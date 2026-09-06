@@ -80,11 +80,50 @@ class FotoStorageTest extends TestCase
         $this->assertNull(FotoStorage::extensionForMime('image/svg+xml'));
     }
 
+    public function testExtensionDebeCoincidirConMime(): void
+    {
+        $this->assertTrue(FotoStorage::extensionMatchesMime('foto.jpg', 'image/jpeg'));
+        $this->assertTrue(FotoStorage::extensionMatchesMime('foto.JPEG', 'image/jpeg'));
+        $this->assertTrue(FotoStorage::extensionMatchesMime('foto.png', 'image/png'));
+        $this->assertFalse(FotoStorage::extensionMatchesMime('foto.txt', 'image/jpeg'));
+        $this->assertFalse(FotoStorage::extensionMatchesMime('foto.jpg', 'image/png'));
+    }
+
     public function testValidaTamanoMaximo(): void
     {
         $this->assertTrue(FotoStorage::isAllowedSize(FotoStorage::MAX_FILE_SIZE));
         $this->assertFalse(FotoStorage::isAllowedSize(FotoStorage::MAX_FILE_SIZE + 1));
         $this->assertFalse(FotoStorage::isAllowedSize(0));
+    }
+
+    /** @dataProvider uploadErrorProvider */
+    public function testTraduceErroresDeCargaSinDetallesInternos(int $error, int $status, string $message): void
+    {
+        $result = FotoStorage::uploadErrorDetails($error);
+        $this->assertSame($status, $result['statusCode']);
+        $this->assertSame($message, $result['message']);
+        $this->assertStringNotContainsString('tmp', strtolower(json_encode($result)));
+    }
+
+    public static function uploadErrorProvider(): array
+    {
+        return [
+            'ini size' => [UPLOAD_ERR_INI_SIZE, 413, 'La foto debe pesar como máximo 5 MB.'],
+            'form size' => [UPLOAD_ERR_FORM_SIZE, 413, 'La foto debe pesar como máximo 5 MB.'],
+            'parcial' => [UPLOAD_ERR_PARTIAL, 400, 'La foto se recibió de forma incompleta. Intentá adjuntarla nuevamente.'],
+            'ausente' => [UPLOAD_ERR_NO_FILE, 400, 'No se adjuntó ninguna foto.'],
+            'escritura' => [UPLOAD_ERR_CANT_WRITE, 500, 'No se pudo guardar la imagen en el servidor.'],
+            'desconocido' => [99, 400, 'La foto no pudo subirse correctamente.'],
+        ];
+    }
+
+    public function testEndpointContemplaPersistenciaFallidaYRespuestaJson(): void
+    {
+        $source = file_get_contents(__DIR__ . '/../api/foto.php');
+        $this->assertStringContainsString("header('Content-Type: application/json; charset=utf-8')", $source);
+        $this->assertStringContainsString('FotoStorage::uploadErrorDetails', $source);
+        $this->assertStringContainsString("sendFotoJson(500, false", $source);
+        $this->assertStringContainsString('@unlink($targetPath)', $source);
     }
 
     public function testUrlDeDescargaEsIndependienteDelDominio(): void

@@ -3,6 +3,13 @@ require_once __DIR__ . '/../config/bootstrap.php';
 require_once __DIR__ . '/../models/Foto.php';
 require_once __DIR__ . '/../helpers/FotoStorage.php';
 
+header('Content-Type: application/json; charset=utf-8');
+
+function sendFotoJson(int $statusCode, bool $success, string $message, $data = null, array $errors = []): void {
+    http_response_code($statusCode);
+    echo json_encode(compact('success', 'data', 'message', 'errors', 'statusCode'));
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
 
@@ -52,49 +59,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Método no permitido.'
-    ]);
+    sendFotoJson(405, false, 'Método no permitido.');
     exit;
 }
 
-if (!isset($_POST['id_incidencia']) || !is_numeric($_POST['id_incidencia'])) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Falta el id_incidencia de la incidencia.'
-    ]);
+$contentLength = filter_input(INPUT_SERVER, 'CONTENT_LENGTH', FILTER_VALIDATE_INT);
+if (is_int($contentLength) && $contentLength > FotoStorage::MAX_FILE_SIZE + 65536) {
+    sendFotoJson(413, false, 'La foto debe pesar como máximo 5 MB.');
     exit;
 }
 
-if (!isset($_FILES['foto']) || $_FILES['foto']['error'] === UPLOAD_ERR_NO_FILE) {
-    http_response_code(200);
-    echo json_encode([
-        'success' => true,
-        'message' => 'No se adjuntó ninguna foto.',
-        'data' => ['id_incidencia' => (int)$_POST['id_incidencia']]
-    ]);
+$idIncidencia = $_POST['id_incidencia'] ?? null;
+if (!is_string($idIncidencia) || preg_match('/^[1-9][0-9]*$/', $idIncidencia) !== 1) {
+    sendFotoJson(400, false, 'Falta el id_incidencia de la incidencia.');
+    exit;
+}
+
+if (!isset($_FILES['foto']) || !is_array($_FILES['foto'])) {
+    sendFotoJson(400, false, 'No se adjuntó ninguna foto.');
     exit;
 }
 
 $file = $_FILES['foto'];
 if ($file['error'] !== UPLOAD_ERR_OK) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'La foto no pudo subirse correctamente.'
-    ]);
+    $uploadError = FotoStorage::uploadErrorDetails((int)$file['error']);
+    sendFotoJson($uploadError['statusCode'], false, $uploadError['message']);
     exit;
 }
 
 if (!FotoStorage::isAllowedSize((int)$file['size'])) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'La foto debe pesar como máximo 5 MB.'
-    ]);
+    sendFotoJson(413, false, 'La foto debe pesar como máximo 5 MB.');
     exit;
 }
 
@@ -103,40 +97,32 @@ $mime = finfo_file($finfo, $file['tmp_name']);
 finfo_close($finfo);
 
 $extension = is_string($mime) ? FotoStorage::extensionForMime($mime) : null;
-if ($extension === null) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Solo se permiten imágenes JPG, PNG o WEBP.'
-    ]);
+if ($extension === null || !is_string($file['name'] ?? null) || !FotoStorage::extensionMatchesMime($file['name'], $mime)) {
+    sendFotoJson(400, false, 'Solo se permiten imágenes JPG, PNG o WEBP.');
     exit;
 }
 
 $uploadDir = __DIR__ . '/../uploads/incidencias/';
-if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => 'No se pudo crear la carpeta de uploads.'
-    ]);
+if (!is_dir($uploadDir) && !@mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
+    sendFotoJson(500, false, 'No se pudo preparar el almacenamiento de la imagen.');
     exit;
 }
 
-$fileName = 'incidencia_' . (int)$_POST['id_incidencia'] . '_' . bin2hex(random_bytes(16)) . '.' . $extension;
+try {
+    $fileName = 'incidencia_' . (int)$idIncidencia . '_' . bin2hex(random_bytes(16)) . '.' . $extension;
+} catch (Throwable $exception) {
+    sendFotoJson(500, false, 'No se pudo preparar el almacenamiento de la imagen.');
+    exit;
+}
 $uploadRoot = realpath($uploadDir);
 if ($uploadRoot === false || !FotoStorage::isSafeFileName($fileName)) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'No se pudo preparar el almacenamiento de la imagen.']);
+    sendFotoJson(500, false, 'No se pudo preparar el almacenamiento de la imagen.');
     exit;
 }
 $targetPath = $uploadRoot . DIRECTORY_SEPARATOR . basename($fileName);
 
-if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => 'No se pudo guardar la imagen en el servidor.'
-    ]);
+if (!@move_uploaded_file($file['tmp_name'], $targetPath)) {
+    sendFotoJson(500, false, 'No se pudo guardar la imagen en el servidor.');
     exit;
 }
 
@@ -144,19 +130,15 @@ $database = new Database();
 $db = $database->getConnection();
 
 if (!$db) {
-    unlink($targetPath);
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => 'No se pudo conectar a la base de datos.'
-    ]);
+    @unlink($targetPath);
+    sendFotoJson(500, false, 'No se pudo guardar la fotografía.');
     exit;
 }
 
 $foto = new Foto($db);
 $foto->fecha = date('Y-m-d');
 $foto->url = $fileName;
-$foto->id_incidencia = (int)$_POST['id_incidencia'];
+$foto->id_incidencia = (int)$idIncidencia;
 
 try {
     $created = $foto->create();
@@ -165,22 +147,13 @@ try {
 }
 
 if ($created) {
-    http_response_code(201);
-    echo json_encode([
-        'success' => true,
-        'message' => 'Foto adjuntada correctamente.',
-        'data' => [
-            'id_incidencia' => (int)$_POST['id_incidencia'],
-            'id_foto' => (int)$foto->id_foto,
-            'url' => FotoStorage::downloadUrl((int)$foto->id_foto)
-        ]
+    sendFotoJson(201, true, 'Foto adjuntada correctamente.', [
+        'id_incidencia' => (int)$idIncidencia,
+        'id_foto' => (int)$foto->id_foto,
+        'url' => FotoStorage::downloadUrl((int)$foto->id_foto)
     ]);
     exit;
 }
 
-unlink($targetPath);
-http_response_code(500);
-echo json_encode([
-    'success' => false,
-    'message' => 'La foto se subió al servidor, pero no se pudo guardar en la base de datos.'
-]);
+@unlink($targetPath);
+sendFotoJson(500, false, 'La foto se subió al servidor, pero no se pudo guardar en la base de datos.');
