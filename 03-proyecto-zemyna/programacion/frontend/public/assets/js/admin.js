@@ -504,6 +504,7 @@ function setupCreateForm(formId, messageId, endpoint, successTitle, reload) {
     const recordId = payload[idField.name];
     const method = recordId ? 'PUT' : 'POST';
     delete payload[idField.name];
+    if (formId === 'centerForm' && method === 'PUT') payload.id_centro = Number(recordId);
     if (payload.id_centro) payload.id_centro = Number(payload.id_centro);
 
     try {
@@ -632,7 +633,7 @@ truckForm?.addEventListener('submit', async event => {
   }
 });
 
-document.querySelectorAll('.table-action, .demo-action').forEach(button => {
+document.querySelectorAll('.demo-action, .table-action:not(#containerPrevious):not(#containerNext)').forEach(button => {
   button.addEventListener('click', () => showToast('Función demostrativa.', 'Se conectará al módulo correspondiente cuando las API estén habilitadas.'));
 });
 

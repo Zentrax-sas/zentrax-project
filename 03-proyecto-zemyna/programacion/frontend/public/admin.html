@@ -11,7 +11,7 @@
   <div class="app" id="app">
     <aside class="sidebar" aria-label="Navegación principal">
       <div class="brand">
-        <a href="landing.html" aria-label="Ir al inicio">
+        <a href="admin.html" aria-label="Ir al panel administrativo">
           <img src="assets/logo_sin_fondo2.png" alt="Zemyna" style="height: 45px; width: auto;">
         </a>
       </div>
@@ -229,7 +229,7 @@
           <div class="view-heading"><div><h2>Centros y destinos</h2><p>Consulta de centros de acopio, bases y destinos operativos.</p></div><button class="primary-button" id="newCenterButton" type="button">＋ Registrar centro</button></div>
           <form class="resource-form" id="centerForm" hidden>
             <input name="id_centro" type="hidden">
-            <div class="form-grid"><label>Nombre<input name="nombre" maxlength="100" required></label><label>Dirección<input name="direccion" maxlength="150" required></label><label>Teléfono<input name="telefono" maxlength="20" required></label></div>
+            <div class="form-grid"><label>Nombre<input name="nombre" maxlength="100" required></label><label>Dirección<input name="direccion" maxlength="150" required></label><label>Teléfono<input name="telefono" maxlength="20"></label></div>
             <div class="form-actions"><button class="primary-button" type="submit">Guardar centro</button><button class="link-button" id="cancelCenterButton" type="button">Cancelar</button></div>
             <p class="form-message" id="centerFormMessage" role="status"></p>
           </form>
