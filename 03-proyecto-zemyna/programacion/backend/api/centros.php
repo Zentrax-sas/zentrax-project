@@ -9,14 +9,14 @@ $method = $_SERVER["REQUEST_METHOD"];
 
 switch ($method) {
     case "GET":
-        requirePermission('centro.consultar', ['PUNTOS_Y_DESTINOS', 'OPERACIONES', 'LOGISTICA']);
+        requirePermission('lugar.consultar', ['PUNTOS_Y_DESTINOS', 'OPERACIONES', 'LOGISTICA']);
         $response = $controller->getAll();
-        http_response_code(200);
+        http_response_code($response['statusCode']);
         echo json_encode($response);
         break;
 
     case "POST":
-        requirePermission('centro.crear', ['PUNTOS_Y_DESTINOS', 'OPERACIONES']);
+        requirePermission('lugar.crear', ['PUNTOS_Y_DESTINOS', 'OPERACIONES']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -24,12 +24,12 @@ switch ($method) {
             break;
         }
         $response = $controller->create($data ?? []);
-        http_response_code($response['success'] ? 201 : 400);
+        http_response_code($response['statusCode']);
         echo json_encode($response);
         break;
 
     case "PUT":
-        requirePermission('centro.modificar', ['PUNTOS_Y_DESTINOS', 'OPERACIONES']);
+        requirePermission('lugar.modificar', ['PUNTOS_Y_DESTINOS', 'OPERACIONES']);
         $data = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
@@ -37,12 +37,12 @@ switch ($method) {
             break;
         }
         $response = $controller->update($data ?? []);
-        http_response_code($response['success'] ? 200 : 400);
+        http_response_code($response['statusCode']);
         echo json_encode($response);
         break;
 
     case "DELETE":
-        requirePermission('centro.baja', ['PUNTOS_Y_DESTINOS', 'OPERACIONES']);
+        requirePermission('lugar.baja', ['PUNTOS_Y_DESTINOS', 'OPERACIONES']);
         $data = json_decode(file_get_contents("php://input"), true) ?? [];
         if (!isset($data['id_centro'])) {
             http_response_code(400);
@@ -50,7 +50,7 @@ switch ($method) {
             break;
         }
         $response = $controller->delete($data['id_centro']);
-        http_response_code($response['success'] ? 200 : 400);
+        http_response_code($response['statusCode']);
         echo json_encode($response);
         break;
 
