@@ -19,6 +19,9 @@ class UsuarioControllerTest extends TestCase
                 'getRolesVigentes', 'getHistorialRoles', 'findRoleById',
                 'findSectorByName', 'getRolesDisponibles', 'getSectoresDisponibles',
                 'beginTransaction', 'commit', 'rollBack', 'assignRole',
+                'getAsignacionVigente', 'finalizarAsignacion',
+                'actualizarVigenciaAsignacion',
+                'actualizarAsignacion',
             ])
             ->getMock();
 
@@ -324,6 +327,212 @@ class UsuarioControllerTest extends TestCase
 
         $this->assertResponse($result, true, 200, 'Roles y sectores cargados correctamente.');
         $this->assertSame(['roles' => $roles, 'sectores' => $sectores], $result['data']);
+    }
+
+    private function validAssignment(array $changes = []): array
+    {
+        return array_merge([
+            'id_usuario_rol' => 12, 'id_rol' => 4, 'sector' => 'OPERACIONES',
+            'fecha_desde' => '2026-01-01', 'fecha_hasta' => null,
+        ], $changes);
+    }
+
+    private function validUpdateWithAssignment(array $changes = []): array
+    {
+        return array_merge($this->validUpdateData(), [
+            'id_rol' => 4, 'sector' => 'OPERACIONES',
+            'fecha_desde' => '2026-01-01', 'fecha_hasta' => '',
+        ], $changes);
+    }
+
+    public function testUpdateConAsignacionIdenticaNoLaDuplica(): void
+    {
+        $this->expectExistingUser();
+        $this->usuario->method('findByEmail')->willReturn(['id_usuario' => 7]);
+        $this->usuario->expects($this->once())->method('getAsignacionVigente')->with(7)->willReturn($this->validAssignment());
+        $this->usuario->method('findRoleById')->willReturn(['id_rol' => 4]);
+        $this->usuario->method('findSectorByName')->willReturn(['nombre' => 'OPERACIONES']);
+        $this->usuario->expects($this->once())->method('update')->willReturn(true);
+        $this->usuario->expects($this->never())->method('assignRole');
+        $this->usuario->expects($this->never())->method('finalizarAsignacion');
+
+        $result = $this->controller->update($this->validUpdateWithAssignment());
+
+        $this->assertResponse($result, true, 200, 'Usuario actualizado con éxito.');
+    }
+
+    /** @dataProvider changedAssignmentProvider */
+    public function testUpdateCambiaAsignacionEnUnaTransaccion(array $changes): void
+    {
+        $this->expectExistingUser();
+        $this->usuario->method('findByEmail')->willReturn(['id_usuario' => 7]);
+        $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment());
+        $this->usuario->method('findRoleById')->willReturn(['id_rol' => $changes['id_rol'] ?? 4]);
+        $this->usuario->method('findSectorByName')->willReturn(['nombre' => $changes['sector'] ?? 'OPERACIONES']);
+        $this->usuario->expects($this->once())->method('beginTransaction')->willReturn(true);
+        $this->usuario->expects($this->once())->method('update')->willReturn(true);
+        $this->usuario->expects($this->once())->method('finalizarAsignacion')->with(12, '2026-01-31')->willReturn(true);
+        $this->usuario->expects($this->once())->method('assignRole')->willReturn(true);
+        $this->usuario->expects($this->once())->method('commit')->willReturn(true);
+
+        $result = $this->controller->update($this->validUpdateWithAssignment(array_merge(['fecha_desde' => '2026-02-01'], $changes)));
+
+        $this->assertResponse($result, true, 200, 'Usuario actualizado con éxito.');
+    }
+
+    public static function changedAssignmentProvider(): array
+    {
+        return [
+            'rol' => [['id_rol' => 5]],
+            'sector' => [['sector' => 'INSPECCION']],
+            'rol y sector' => [['id_rol' => 5, 'sector' => 'INSPECCION']],
+        ];
+    }
+
+    public function testUpdateModificaSoloFechaHastaSinDuplicarAsignacion(): void
+    {
+        $this->expectExistingUser();
+        $this->usuario->method('findByEmail')->willReturn(false);
+        $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment());
+        $this->usuario->method('findRoleById')->willReturn(['id_rol' => 4]);
+        $this->usuario->method('findSectorByName')->willReturn(['nombre' => 'OPERACIONES']);
+        $this->usuario->method('beginTransaction')->willReturn(true);
+        $this->usuario->method('update')->willReturn(true);
+        $this->usuario->expects($this->once())->method('actualizarVigenciaAsignacion')->with(12, '2026-12-31')->willReturn(true);
+        $this->usuario->expects($this->never())->method('finalizarAsignacion');
+        $this->usuario->expects($this->never())->method('assignRole');
+        $this->usuario->expects($this->once())->method('commit')->willReturn(true);
+        $result = $this->controller->update($this->validUpdateWithAssignment(['fecha_hasta' => '2026-12-31']));
+        $this->assertResponse($result, true, 200, 'Usuario actualizado con éxito.');
+    }
+
+    public function testUpdateRechazaUsuarioSinAsignacionVigente(): void
+    {
+        $this->expectExistingUser();
+        $this->usuario->method('findByEmail')->willReturn(false);
+        $this->usuario->expects($this->once())->method('getAsignacionVigente')->willReturn(null);
+        $result = $this->controller->update($this->validUpdateWithAssignment());
+        $this->assertResponse($result, false, 404, 'El usuario no posee una asignación vigente.');
+    }
+
+    /** @dataProvider assignmentLookupFailureProvider */
+    public function testUpdateRechazaRolOSectorInexistente(string $missing, string $message): void
+    {
+        $this->expectExistingUser();
+        $this->usuario->method('findByEmail')->willReturn(false);
+        $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment());
+        $this->usuario->method('findRoleById')->willReturn($missing === 'rol' ? null : ['id_rol' => 4]);
+        $this->usuario->method('findSectorByName')->willReturn($missing === 'sector' ? null : ['nombre' => 'OPERACIONES']);
+        $result = $this->controller->update($this->validUpdateWithAssignment());
+        $this->assertResponse($result, false, 404, $message);
+    }
+
+    public static function assignmentLookupFailureProvider(): array
+    {
+        return [['rol', 'El rol seleccionado no existe.'], ['sector', 'El sector seleccionado no existe.']];
+    }
+
+    /** @dataProvider assignmentWriteFailureProvider */
+    public function testUpdateRevierteAnteFalloDeAsignacion(string $failure): void
+    {
+        $this->expectExistingUser();
+        $this->usuario->method('findByEmail')->willReturn(false);
+        $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment());
+        $this->usuario->method('findRoleById')->willReturn(['id_rol' => 5]);
+        $this->usuario->method('findSectorByName')->willReturn(['nombre' => 'INSPECCION']);
+        $this->usuario->method('beginTransaction')->willReturn(true);
+        $this->usuario->method('update')->willReturn(true);
+        $this->usuario->method('finalizarAsignacion')->willReturn($failure !== 'cierre');
+        $this->usuario->method('assignRole')->willReturn($failure !== 'creación');
+        $this->usuario->expects($this->once())->method('rollBack')->willReturn(true);
+
+        $result = $this->controller->update($this->validUpdateWithAssignment(['id_rol' => 5, 'sector' => 'INSPECCION', 'fecha_desde' => '2026-02-01']));
+
+        $this->assertResponse($result, false, 500, 'No se pudo actualizar el usuario.');
+    }
+
+    public static function assignmentWriteFailureProvider(): array
+    {
+        return [['cierre'], ['creación']];
+    }
+
+    /** @dataProvider invalidUpdateAssignmentProvider */
+    public function testUpdateRechazaAsignacionInvalida(array $changes, string $error): void
+    {
+        $this->usuario->expects($this->never())->method('read');
+        $result = $this->controller->update($this->validUpdateWithAssignment($changes));
+        $this->assertResponse($result, false, 400, 'No se pudo actualizar el usuario.');
+        $this->assertContains($error, $result['errors']);
+    }
+
+    public static function invalidUpdateAssignmentProvider(): array
+    {
+        return [
+            'rol inválido' => [['id_rol' => 0], 'El rol es obligatorio.'],
+            'fecha inicial inválida' => [['fecha_desde' => 'mañana'], 'La fecha_desde no es válida.'],
+            'rango inválido' => [['fecha_hasta' => '2025-12-31'], 'La fecha_hasta no puede ser anterior a fecha_desde.'],
+        ];
+    }
+
+    public function testUpdateRechazaReemplazoSinIntervaloTemporalDisponible(): void
+    {
+        $this->expectExistingUser();
+        $this->usuario->method('findByEmail')->willReturn(false);
+        $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment());
+        $this->usuario->method('findRoleById')->willReturn(['id_rol' => 5]);
+        $this->usuario->method('findSectorByName')->willReturn(['nombre' => 'OPERACIONES']);
+        $result = $this->controller->update($this->validUpdateWithAssignment(['id_rol' => 5]));
+        $this->assertResponse($result, false, 409, 'La nueva asignación debe comenzar después de la asignación vigente.');
+    }
+
+    /** @dataProvider sameDayAssignmentProvider */
+    public function testUpdateReutilizaAsignacionQueComenzoHoy(array $changes): void
+    {
+        $today = (new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d');
+        $this->expectExistingUser();
+        $this->usuario->method('findByEmail')->willReturn(false);
+        $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment(['fecha_desde' => $today]));
+        $this->usuario->method('findRoleById')->willReturn(['id_rol' => $changes['id_rol'] ?? 4]);
+        $this->usuario->method('findSectorByName')->willReturn(['nombre' => $changes['sector'] ?? 'OPERACIONES']);
+        $this->usuario->method('beginTransaction')->willReturn(true);
+        $this->usuario->method('update')->willReturn(true);
+        $this->usuario->expects($this->once())->method('actualizarAsignacion')
+            ->with(12, $changes['id_rol'] ?? 4, $changes['sector'] ?? 'OPERACIONES', $today, null)->willReturn(true);
+        $this->usuario->expects($this->never())->method('finalizarAsignacion');
+        $this->usuario->expects($this->never())->method('assignRole');
+        $this->usuario->expects($this->once())->method('commit')->willReturn(true);
+
+        $result = $this->controller->update($this->validUpdateWithAssignment(array_merge(['fecha_desde' => $today], $changes)));
+
+        $this->assertResponse($result, true, 200, 'Usuario actualizado con éxito.');
+    }
+
+    public static function sameDayAssignmentProvider(): array
+    {
+        return [
+            'rol' => [['id_rol' => 5]],
+            'sector' => [['sector' => 'INSPECCION']],
+            'rol y sector' => [['id_rol' => 5, 'sector' => 'INSPECCION']],
+        ];
+    }
+
+    public function testUpdateRevierteSiFallaReutilizacionDelMismoDia(): void
+    {
+        $today = (new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d');
+        $this->expectExistingUser();
+        $this->usuario->method('findByEmail')->willReturn(false);
+        $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment(['fecha_desde' => $today]));
+        $this->usuario->method('findRoleById')->willReturn(['id_rol' => 5]);
+        $this->usuario->method('findSectorByName')->willReturn(['nombre' => 'OPERACIONES']);
+        $this->usuario->method('beginTransaction')->willReturn(true);
+        $this->usuario->method('update')->willReturn(true);
+        $this->usuario->expects($this->once())->method('actualizarAsignacion')->willReturn(false);
+        $this->usuario->expects($this->never())->method('assignRole');
+        $this->usuario->expects($this->once())->method('rollBack')->willReturn(true);
+
+        $result = $this->controller->update($this->validUpdateWithAssignment(['id_rol' => 5, 'fecha_desde' => $today]));
+
+        $this->assertResponse($result, false, 500, 'No se pudo actualizar el usuario.');
     }
 
     public function testUpdateSinNuevaContrasenaConservaElHashActual(): void

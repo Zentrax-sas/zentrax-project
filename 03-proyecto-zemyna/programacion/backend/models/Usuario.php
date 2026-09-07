@@ -156,6 +156,53 @@ class Usuario {
         return $stmt->rowCount() === 1;
     }
 
+    public function getAsignacionVigente(int $idUsuario): ?array {
+        if (!$this->conn) return null;
+        $stmt = $this->conn->prepare(
+            'SELECT id_usuario_rol, id_usuario, id_rol, sector, fecha_desde, fecha_hasta
+             FROM usuario_rol
+             WHERE id_usuario = :id_usuario AND fecha_desde <= CURDATE()
+               AND (fecha_hasta IS NULL OR fecha_hasta >= CURDATE())
+             ORDER BY fecha_desde DESC, id_usuario_rol DESC LIMIT 1'
+        );
+        $stmt->bindValue(':id_usuario', $idUsuario, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    public function finalizarAsignacion(int $idAsignacion, string $fechaHasta): bool {
+        if (!$this->conn) return false;
+        $stmt = $this->conn->prepare(
+            'UPDATE usuario_rol SET fecha_hasta = :fecha_hasta
+             WHERE id_usuario_rol = :id AND fecha_desde <= :fecha_hasta'
+        );
+        $stmt->execute([':fecha_hasta' => $fechaHasta, ':id' => $idAsignacion]);
+        return $stmt->rowCount() === 1;
+    }
+
+    public function actualizarVigenciaAsignacion(int $idAsignacion, ?string $fechaHasta): bool {
+        if (!$this->conn) return false;
+        $stmt = $this->conn->prepare(
+            'UPDATE usuario_rol SET fecha_hasta = :fecha_hasta WHERE id_usuario_rol = :id'
+        );
+        $stmt->bindValue(':fecha_hasta', $fechaHasta);
+        $stmt->bindValue(':id', $idAsignacion, PDO::PARAM_INT);
+        return $stmt->execute();
+    }
+
+    public function actualizarAsignacion(int $idAsignacion, int $idRol, string $sector, string $fechaDesde, ?string $fechaHasta): bool {
+        if (!$this->conn) return false;
+        $stmt = $this->conn->prepare(
+            'UPDATE usuario_rol
+             SET id_rol = :id_rol, sector = :sector, fecha_desde = :fecha_desde, fecha_hasta = :fecha_hasta
+             WHERE id_usuario_rol = :id'
+        );
+        return $stmt->execute([
+            ':id_rol' => $idRol, ':sector' => $sector, ':fecha_desde' => $fechaDesde,
+            ':fecha_hasta' => $fechaHasta, ':id' => $idAsignacion,
+        ]);
+    }
+
     public function update() {
         if (!$this->conn) return false;
 

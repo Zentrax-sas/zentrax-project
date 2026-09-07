@@ -69,6 +69,11 @@ switch ($method) {
             break;
         }
 
+        $assignmentFields = ['id_rol', 'sector', 'fecha_desde', 'fecha_hasta'];
+        if (array_intersect($assignmentFields, array_keys($data ?? []))) {
+            requirePermission('usuario.asignar_rol', ['TI']);
+        }
+
         $response = $controller->update($data ?? []);
 
         http_response_code(

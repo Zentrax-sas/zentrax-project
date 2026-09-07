@@ -2,6 +2,30 @@ const app = document.getElementById('app');
 const menuButton = document.getElementById('menuButton');
 const toast = document.getElementById('toast');
 
+const montevideoDateFormatter = new Intl.DateTimeFormat('es-UY', {
+  timeZone: 'America/Montevideo',
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric'
+});
+const montevideoTimeFormatter = new Intl.DateTimeFormat('es-UY', {
+  timeZone: 'America/Montevideo',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false
+});
+
+function updatePanelDateTime() {
+  const now = new Date();
+  document.getElementById('currentDate').textContent = montevideoDateFormatter.format(now);
+  document.getElementById('localTime').textContent = montevideoTimeFormatter.format(now);
+}
+
+updatePanelDateTime();
+const panelClockInterval = window.setInterval(updatePanelDateTime, 60000);
+window.addEventListener('beforeunload', () => window.clearInterval(panelClockInterval), { once: true });
+
 function loginUrl() {
   return buildFrontendUrl('login.html');
 }
@@ -415,6 +439,7 @@ document.addEventListener('click', async event => {
     const user = window.userRecords?.[button.dataset.id];
     if (!user) return;
     openView('usuarios');
+    await cargarOpcionesRol();
     userForm.hidden = false;
     userForm.querySelector('[name="contrasena"]').required = false;
     userForm.querySelector('[name="id_usuario"]').value = user.id_usuario;
@@ -424,7 +449,22 @@ document.addEventListener('click', async event => {
     userForm.querySelector('[name="contrasena"]').value = '';
     userForm.querySelector('[name="telefono"]').value = user.telefono || '';
     userForm.querySelector('[name="id_centro"]').value = user.id_centro || '';
-    setRoleFieldsEnabled(false);
+    const assignment = Array.isArray(user.roles) ? user.roles[0] : null;
+    if (!assignment) {
+      userFormMessage.textContent = 'El usuario no posee una asignación vigente para editar.';
+      return;
+    }
+    setRoleFieldsEnabled(true);
+    userForm.querySelector('[name="id_rol"]').value = String(assignment.id_rol || '');
+    userForm.querySelector('[name="sector"]').value = assignment.sector || '';
+    userForm.querySelector('[name="fecha_desde"]').value = assignment.fecha_desde || '';
+    userForm.querySelector('[name="fecha_hasta"]').value = assignment.fecha_hasta || '';
+    userForm.dataset.originalAssignment = JSON.stringify({
+      id_rol: Number(assignment.id_rol),
+      sector: String(assignment.sector || '').trim().toUpperCase(),
+      fecha_desde: assignment.fecha_desde || '',
+      fecha_hasta: assignment.fecha_hasta || ''
+    });
     userForm.querySelector('button[type="submit"]').textContent = 'Actualizar usuario';
     userForm.querySelector('[name="nombre"]').focus();
     return;
@@ -654,6 +694,7 @@ newUserButton?.addEventListener('click', async () => {
   userForm.reset();
   userForm.querySelector('[name="id_usuario"]').value = '';
   userForm.querySelector('[name="fecha_desde"]').value = localIsoDate();
+  delete userForm.dataset.originalAssignment;
   setRoleFieldsEnabled(true);
   userForm.querySelector('[name="contrasena"]').required = true;
   userForm.querySelector('button[type="submit"]').textContent = 'Guardar usuario';
@@ -680,7 +721,22 @@ userForm?.addEventListener('submit', async event => {
   if (isUpdate) payload.id_usuario = idUsuario;
   if (isUpdate && payload.contrasena === '') delete payload.contrasena;
   payload.id_centro = Number(payload.id_centro);
-  if (!isUpdate) payload.id_rol = Number(payload.id_rol);
+  payload.id_rol = Number(payload.id_rol);
+  if (isUpdate) {
+    const original = JSON.parse(userForm.dataset.originalAssignment || '{}');
+    const current = {
+      id_rol: payload.id_rol,
+      sector: String(payload.sector || '').trim().toUpperCase(),
+      fecha_desde: payload.fecha_desde || '',
+      fecha_hasta: payload.fecha_hasta || ''
+    };
+    if (JSON.stringify(original) === JSON.stringify(current)) {
+      delete payload.id_rol;
+      delete payload.sector;
+      delete payload.fecha_desde;
+      delete payload.fecha_hasta;
+    }
+  }
 
   try {
     const response = await fetch(buildApiUrl('/backend/api/usuarios.php'), {

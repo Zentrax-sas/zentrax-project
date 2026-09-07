@@ -60,13 +60,27 @@ class AdminSessionContractTest extends TestCase
         $this->assertStringContainsString("requirePermission('usuario.asignar_rol', ['TI'])", $rolesApi);
         $this->assertStringContainsString("requirePermission('usuario.crear', ['TI'])", $usuariosApi);
         $this->assertStringContainsString("requirePermission('usuario.asignar_rol', ['TI'])", $usuariosApi);
+        $this->assertStringContainsString("requirePermission('usuario.modificar', ['TI'])", $usuariosApi);
+        $this->assertStringContainsString('array_intersect($assignmentFields, array_keys($data ?? []))', $usuariosApi);
     }
 
     public function testPostIncluyeRolYPutNoAlteraAsignaciones(): void
     {
-        $this->assertStringContainsString('if (!isUpdate) payload.id_rol = Number(payload.id_rol)', $this->adminJs);
+        $this->assertStringContainsString('payload.id_rol = Number(payload.id_rol)', $this->adminJs);
         $this->assertStringContainsString('field.disabled = !enabled', $this->adminJs);
-        $this->assertStringContainsString('setRoleFieldsEnabled(false)', $this->adminJs);
+        $this->assertStringContainsString('setRoleFieldsEnabled(true)', $this->adminJs);
         $this->assertStringContainsString('if (isUpdate) payload.id_usuario = idUsuario', $this->adminJs);
+        $this->assertStringContainsString('userForm.dataset.originalAssignment', $this->adminJs);
+    }
+
+    public function testFechaYHoraDelPanelSonDinamicasYDeMontevideo(): void
+    {
+        $this->assertStringNotContainsString('20 de julio de 2026', $this->adminHtml);
+        $this->assertStringNotContainsString('Última sincronización: 19:42', $this->adminHtml);
+        $this->assertStringContainsString("new Intl.DateTimeFormat('es-UY'", $this->adminJs);
+        $this->assertStringContainsString("timeZone: 'America/Montevideo'", $this->adminJs);
+        $this->assertStringContainsString("getElementById('currentDate').textContent", $this->adminJs);
+        $this->assertStringContainsString("getElementById('localTime').textContent", $this->adminJs);
+        $this->assertStringContainsString('window.clearInterval(panelClockInterval)', $this->adminJs);
     }
 }

@@ -92,13 +92,17 @@ class UsuarioController {
         return $date !== false && $date->format('Y-m-d') === $value;
     }
 
+    private function today(): string {
+        return (new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d');
+    }
+
     private function validateRolePayload(array $data): array {
         $errors = [];
         if ($this->normalizePositiveId($data['id_rol'] ?? null) === null) $errors[] = 'El rol es obligatorio.';
         $sector = $this->normalizeString($data['sector'] ?? null);
         if (!is_string($sector) || $sector === '') $errors[] = 'El sector es obligatorio.';
         elseif (mb_strlen($sector) > 100) $errors[] = 'El sector no puede superar los 100 caracteres.';
-        $desde = $data['fecha_desde'] ?? date('Y-m-d');
+        $desde = $data['fecha_desde'] ?? $this->today();
         $hasta = $data['fecha_hasta'] ?? null;
         if (!$this->validDate($desde)) $errors[] = 'La fecha_desde no es válida.';
         if ($hasta !== null && $hasta !== '' && !$this->validDate($hasta)) $errors[] = 'La fecha_hasta no es válida.';
@@ -192,7 +196,7 @@ class UsuarioController {
 
         $idRol = $this->normalizePositiveId($data['id_rol'] ?? null);
         $sector = strtoupper($this->normalizeString($data['sector'] ?? ''));
-        $fechaDesde = $data['fecha_desde'] ?? date('Y-m-d');
+        $fechaDesde = $data['fecha_desde'] ?? $this->today();
         $fechaHasta = ($data['fecha_hasta'] ?? null) ?: null;
 
         try {
@@ -239,6 +243,8 @@ class UsuarioController {
     public function update($data) {
         $data = $data ?? [];
         $errors = $this->validateUsuarioPayload($data, true);
+        $hasAssignment = count(array_intersect(['id_rol', 'sector', 'fecha_desde', 'fecha_hasta'], array_keys($data))) > 0;
+        if ($hasAssignment) $errors = array_merge($errors, $this->validateRolePayload($data));
 
         $id = $this->normalizePositiveId($data['id_usuario'] ?? null);
         if ($id === null) $errors[] = 'El id_usuario debe ser un número entero positivo.';
@@ -295,6 +301,47 @@ class UsuarioController {
             ];
         }
 
+
+        $currentAssignment = null;
+        $assignmentChanged = false;
+        $idRol = null;
+        $sector = null;
+        $fechaDesde = null;
+        $fechaHasta = null;
+        $replaceAssignment = false;
+        $reuseSameDayAssignment = false;
+        if ($hasAssignment) {
+            $idRol = $this->normalizePositiveId($data['id_rol'] ?? null);
+            $sector = strtoupper($this->normalizeString($data['sector'] ?? ''));
+            $fechaDesde = $data['fecha_desde'];
+            $fechaHasta = ($data['fecha_hasta'] ?? null) ?: null;
+            try {
+                $currentAssignment = $this->usuario->getAsignacionVigente($id);
+                if (!$currentAssignment) {
+                    return ['success' => false, 'data' => null, 'message' => 'El usuario no posee una asignación vigente.', 'errors' => [], 'statusCode' => 404];
+                }
+                if (!$this->usuario->findRoleById($idRol)) {
+                    return ['success' => false, 'data' => null, 'message' => 'El rol seleccionado no existe.', 'errors' => [], 'statusCode' => 404];
+                }
+                if (!$this->usuario->findSectorByName($sector)) {
+                    return ['success' => false, 'data' => null, 'message' => 'El sector seleccionado no existe.', 'errors' => [], 'statusCode' => 404];
+                }
+            } catch (PDOException | RuntimeException $exception) {
+                return ['success' => false, 'data' => null, 'message' => 'No se pudo validar la asignación del usuario.', 'errors' => [], 'statusCode' => 500];
+            }
+            $assignmentChanged = (int)$currentAssignment['id_rol'] !== $idRol
+                || strtoupper(trim((string)$currentAssignment['sector'])) !== $sector
+                || $currentAssignment['fecha_desde'] !== $fechaDesde
+                || ($currentAssignment['fecha_hasta'] ?: null) !== $fechaHasta;
+            $replaceAssignment = (int)$currentAssignment['id_rol'] !== $idRol
+                || strtoupper(trim((string)$currentAssignment['sector'])) !== $sector
+                || $currentAssignment['fecha_desde'] !== $fechaDesde;
+            $reuseSameDayAssignment = $replaceAssignment && $currentAssignment['fecha_desde'] === $this->today();
+            if ($replaceAssignment && !$reuseSameDayAssignment && $fechaDesde <= $currentAssignment['fecha_desde']) {
+                return ['success' => false, 'data' => null, 'message' => 'La nueva asignación debe comenzar después de la asignación vigente.', 'errors' => [], 'statusCode' => 409];
+            }
+        }
+
         $this->usuario->id_usuario = $id;
         $this->usuario->nombre = $this->normalizeString($data['nombre'] ?? null);
         $this->usuario->apellido = $this->normalizeString($data['apellido'] ?? null);
@@ -309,9 +356,28 @@ class UsuarioController {
             : null;
 
         try {
+            if ($assignmentChanged && !$this->usuario->beginTransaction()) throw new RuntimeException('transaction');
             $updated = $this->usuario->update();
+            if (!$updated) throw new RuntimeException('update');
+            if ($assignmentChanged) {
+                if ($reuseSameDayAssignment) {
+                    if (!$this->usuario->actualizarAsignacion((int)$currentAssignment['id_usuario_rol'], $idRol, $sector, $fechaDesde, $fechaHasta)) {
+                        throw new RuntimeException('same-day');
+                    }
+                } elseif ($replaceAssignment) {
+                    $fechaCierre = (new DateTimeImmutable($fechaDesde))->modify('-1 day')->format('Y-m-d');
+                    if (!$this->usuario->finalizarAsignacion((int)$currentAssignment['id_usuario_rol'], $fechaCierre)) throw new RuntimeException('close');
+                    if (!$this->usuario->assignRole($id, $idRol, $sector, $fechaDesde, $fechaHasta)) throw new RuntimeException('assign');
+                } elseif (!$this->usuario->actualizarVigenciaAsignacion((int)$currentAssignment['id_usuario_rol'], $fechaHasta)) {
+                    throw new RuntimeException('dates');
+                }
+                if (!$this->usuario->commit()) throw new RuntimeException('commit');
+            }
         } catch (PDOException | RuntimeException $exception) {
             $updated = false;
+            if ($assignmentChanged) {
+                try { $this->usuario->rollBack(); } catch (Throwable $ignored) {}
+            }
         }
 
         if ($updated) {
