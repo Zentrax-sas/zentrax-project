@@ -12,10 +12,11 @@
     <aside class="sidebar" aria-label="Navegación principal">
       <div class="brand">
         <a href="admin.html" aria-label="Ir al panel administrativo">
-          <img src="assets/logo_sin_fondo2.png" alt="Zemyna" style="height: 45px; width: auto;">
+          <img class="sidebar-logo" src="assets/logo_sin_fondo2.png" alt="Zemyna">
         </a>
       </div>
 
+      <div class="sidebar-navigation">
       <div class="menu-caption">Operaciones</div>
       <nav class="nav">
         <a class="nav-link active" href="#resumen" data-view="resumen"><span class="nav-icon">⌂</span>Resumen operativo</a>
@@ -27,12 +28,13 @@
         <a class="nav-link" href="#maquinaria" data-view="maquinaria"><span class="nav-icon">⚙</span>Maquinaria</a>
       </nav>
 
-      <div class="menu-caption" style="margin-top:22px">Administración</div>
+      <div class="menu-caption administration-caption">Administración</div>
       <nav class="nav">
         <a class="nav-link" href="#reportes"><span class="nav-icon">⌗</span>Reportes</a>
         <a class="nav-link" href="#usuarios" data-view="usuarios"><span class="nav-icon">♙</span>Usuarios y roles</a>
         <a class="nav-link" href="#configuracion"><span class="nav-icon">⚙</span>Configuración</a>
       </nav>
+      </div>
 
       <div class="sidebar-bottom">
         <div class="system-status">
@@ -40,11 +42,15 @@
           Última sincronización: 19:42
         </div>
         <div class="profile">
-          <div class="avatar">FB</div>
-          <div>
-            <div class="profile-name">Facundo Bustamante</div>
-            <div class="profile-role">Coordinador · Programación</div>
+          <div class="profile-identity">
+            <div class="avatar" id="profileAvatar" aria-hidden="true"></div>
+            <div class="profile-details">
+              <div class="profile-name" id="profileName">Cargando sesión…</div>
+              <div class="profile-role" id="profileRole"></div>
+            </div>
           </div>
+          <button class="logout-button" id="logoutButton" type="button"><span class="logout-icon" aria-hidden="true">↪</span><span>Cerrar sesión</span></button>
+          <div class="profile-message" id="sessionMessage" role="status"></div>
         </div>
       </div>
     </aside>
@@ -66,7 +72,7 @@
         <section class="view active" id="view-resumen">
         <section class="welcome">
           <div>
-            <h2>Buenas tardes, Facundo</h2>
+            <h2 id="welcomeGreeting">Cargando sesión…</h2>
             <p>Visualizá el estado general de la operación y las incidencias que requieren atención.</p>
           </div>
           <button class="primary-button" id="refreshButton">↻ Actualizar información</button>
@@ -260,6 +266,12 @@
               <label>Contraseña<input name="contrasena" type="password" minlength="6" maxlength="72"></label>
               <label>Teléfono<input name="telefono" maxlength="20" required></label>
               <label>ID centro<input name="id_centro" type="number" min="1" step="1" required></label>
+              <div class="form-grid role-assignment-fields" id="userRoleFields">
+                <label>Rol<select name="id_rol" required><option value="">Seleccioná un rol</option></select></label>
+                <label>Sector<select name="sector" required><option value="">Seleccioná un sector</option></select></label>
+                <label>Fecha desde<input name="fecha_desde" type="date" required></label>
+                <label>Fecha hasta<input name="fecha_hasta" type="date"></label>
+              </div>
             </div>
             <div class="form-actions"><button class="primary-button" type="submit">Guardar usuario</button><button class="link-button" id="cancelUserButton" type="button">Cancelar</button></div>
             <p class="form-message" id="userFormMessage" role="status"></p>

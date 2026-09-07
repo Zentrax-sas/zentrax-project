@@ -27,6 +27,7 @@ html { color-scheme: dark; }
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   font-family: Inter, "Segoe UI", sans-serif;
   color: var(--text);
   background:
@@ -47,7 +48,7 @@ button { color: inherit; }
 .sidebar {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100dvh;
   padding: 28px 18px 22px;
   background: linear-gradient(180deg, rgba(18, 14, 27, .98), rgba(10, 8, 15, .98));
   border-right: 1px solid var(--line);
@@ -59,9 +60,34 @@ button { color: inherit; }
 .brand {
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   gap: 12px;
   padding: 0 10px 28px;
 }
+
+.brand a { display: inline-block; max-width: 100%; }
+
+.sidebar-logo {
+  display: block;
+  width: 180px;
+  max-width: 100%;
+  max-height: 64px;
+  height: auto;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.sidebar-navigation {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(199, 125, 255, .3) transparent;
+}
+
+.administration-caption { margin-top: 22px; }
 
 .brand-mark {
   width: 42px;
@@ -117,10 +143,15 @@ button { color: inherit; }
 .nav-icon { width: 22px; text-align: center; color: var(--violet-light); font-size: 16px; }
 .nav-badge { margin-left: auto; min-width: 21px; padding: 3px 6px; border-radius: 20px; background: rgba(255,101,132,.16); color: #ff8ca3; font-size: 10px; text-align: center; }
 
-.sidebar-bottom { margin-top: auto; }
+.sidebar-bottom {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 10px;
+  background: linear-gradient(180deg, rgba(10, 8, 15, 0), rgba(10, 8, 15, .98) 12px);
+}
 
 .system-status {
-  margin: 18px 5px;
+  margin: 8px 5px 10px;
   padding: 13px;
   border: 1px solid rgba(143, 227, 136, .16);
   border-radius: 13px;
@@ -134,11 +165,16 @@ button { color: inherit; }
 
 .profile {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
-  padding: 12px 8px 0;
-  border-top: 1px solid var(--line);
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(32, 25, 46, .94), rgba(18, 14, 27, .98));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .24);
 }
+
+.profile-identity { display: flex; align-items: center; gap: 10px; width: 100%; }
 
 .avatar {
   width: 38px;
@@ -154,6 +190,37 @@ button { color: inherit; }
 
 .profile-name { font-size: 11px; font-weight: 700; }
 .profile-role { margin-top: 3px; color: var(--muted); font-size: 9px; }
+.profile-details { min-width: 0; flex: 1; }
+.logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 101, 132, .3);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(90, 24, 154, .24), rgba(255, 101, 132, .08));
+  color: #f4dce4;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  transition: border-color .2s ease, background .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.logout-icon { color: var(--red); font-size: 16px; line-height: 1; }
+.logout-button:hover:not(:disabled) {
+  border-color: rgba(255, 101, 132, .6);
+  background: linear-gradient(135deg, rgba(90, 24, 154, .38), rgba(255, 101, 132, .14));
+  box-shadow: 0 0 18px rgba(255, 101, 132, .1);
+  transform: translateY(-1px);
+}
+.logout-button:focus-visible { outline: 2px solid var(--violet-light); outline-offset: 2px; }
+.logout-button:disabled { cursor: wait; opacity: .5; transform: none; }
+.profile-message { width: 100%; color: var(--amber); font-size: 9px; }
+.role-assignment-fields { display: contents; }
+.role-assignment-fields[hidden] { display: none; }
 
 .main { min-width: 0; padding: 0 34px 38px; }
 
