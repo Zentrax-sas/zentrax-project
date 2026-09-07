@@ -68,27 +68,50 @@ El código principal de Zemyna se encuentra en:
 ### Pasos básicos
 
 1. Clonar el repositorio dentro de `htdocs`, `www` o la carpeta pública del servidor.
-2. Crear la base ejecutando:
+2. Crear una base vacía con codificación UTF-8. El nombre usado por la
+   configuración de desarrollo es `gestion_residuosfinal`:
 
-   ```text
-   03-proyecto-zemyna/programacion/base-datos/database/sql/schema.sql
+   ```sql
+   CREATE DATABASE gestion_residuosfinal
+     CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    ```
 
-3. Para cargar información de prueba, ejecutar después:
+3. Desde `03-proyecto-zemyna/programacion/base-datos/database/sql/`, ejecutar la
+   instalación mínima. El instalador elimina y recrea todas las tablas de la base
+   seleccionada, por lo que no debe usarse sobre datos que deban conservarse:
 
-   ```text
-   03-proyecto-zemyna/programacion/base-datos/database/sql/init.sql
+   ```bash
+   mysql --abort-source-on-error -u USUARIO -p \
+     --database=gestion_residuosfinal < 00_INICIALIZAR.sql
    ```
 
-4. Copiar el archivo `.env.example` con el nombre `.env`.
-5. Completar en `.env` el nombre de la base, el usuario y la contraseña de MySQL.
-6. Abrir en el navegador:
+   `00_INICIALIZAR.sql` ejecuta solamente `schema.sql` e `init.sql`. Las
+   migraciones se reservan para actualizar instalaciones antiguas y no se aplican
+   después del esquema final.
+
+4. Opcionalmente, cargar una sola vez los 11.211 contenedores abiertos de la
+   Intendencia. Sumados a los tres registros demo, quedan 11.214 contenedores:
+
+   ```bash
+   mysql --abort-source-on-error -u USUARIO -p \
+     --database=gestion_residuosfinal < seed_contenedores_idm.sql
+   ```
+
+   Una segunda ejecución del seed se detiene ante las colisiones; para reinstalar,
+   se debe volver a ejecutar primero la instalación mínima, aceptando que elimina
+   los datos de la base seleccionada.
+
+5. Copiar el archivo `.env.example` con el nombre `.env`.
+6. Completar en `.env` el nombre de la base, el usuario y la contraseña de MySQL.
+7. Abrir en el navegador:
 
    ```text
    03-proyecto-zemyna/programacion/frontend/public/landing.html
    ```
 
-Las migraciones de la carpeta SQL se utilizan solamente para actualizar instalaciones anteriores. Para una instalación desde cero se debe comenzar con `schema.sql`.
+Las migraciones de la carpeta SQL se utilizan solamente para actualizar
+instalaciones anteriores. Para una instalación desde cero se debe usar
+`00_INICIALIZAR.sql`; no se deben agregar migraciones al final de ese flujo.
 
 ## APIs
 

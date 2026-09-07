@@ -3,18 +3,30 @@
 -- Este archivo debe usarse como base para una instalación nueva.
 
 -- Schema oficial Zemyna — DER v0.9 (ZTX-DOC-ISW-001 / ZTX-DOC-ISW-003)
--- MySQL 8 compatible — 22 tablas
-DROP DATABASE IF EXISTS gestion_residuosfinal;
+-- MySQL 8 compatible — 26 tablas
+-- ADVERTENCIA: este archivo elimina y recrea las 26 tablas de la base
+-- seleccionada. No crea, elimina ni selecciona una base por nombre. El operador
+-- debe elegir el destino expresamente mediante la opcion --database del cliente.
+-- No ejecutar sobre una base que contenga datos que deban conservarse.
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-CREATE DATABASE gestion_residuosfinal
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_unicode_ci;
+-- Impide ejecutar el instalador sin base seleccionada o sobre una base interna.
+CREATE TEMPORARY TABLE zemyna_install_guard (
+    destino_valido TINYINT NOT NULL,
+    CONSTRAINT chk_zemyna_install_guard CHECK (destino_valido = 1)
+);
+INSERT INTO zemyna_install_guard
+SELECT DATABASE() IS NOT NULL
+   AND DATABASE() NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys');
+DROP TEMPORARY TABLE zemyna_install_guard;
 
-USE gestion_residuosfinal;
-
-ALTER DATABASE gestion_residuosfinal
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_unicode_ci;
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS
+    sesion, mantenimiento, solicitud, maquinaria, vertedero, acopio, foto,
+    denuncia, incidencia, participa, recorrido, usa, cuadrilla, vehiculo,
+    geocodificacion_cache, contenedor, usuario_rol, rol_permiso, permiso,
+    sector, rol, usuario, ruta, tipo_residuo, centro, vecino;
+SET FOREIGN_KEY_CHECKS = 1;
 
 
 -- =====================================

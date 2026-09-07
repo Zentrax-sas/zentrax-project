@@ -2,7 +2,8 @@
 -- Datos iniciales para entorno de desarrollo/demo de Zemyna.
 -- Ejecutar únicamente después de schema.sql.
 
-USE gestion_residuosfinal;
+-- La base debe estar seleccionada expresamente por el cliente. Este archivo no
+-- crea ni cambia de base y se ejecuta una sola vez tras schema.sql.
 
 
 -- =====================================
@@ -112,7 +113,23 @@ INSERT INTO permiso (nombre, descripcion) VALUES
 ('incidencia.crear', 'Crear incidencias'),
 ('incidencia.consultar', 'Consultar incidencias'),
 ('incidencia.modificar', 'Modificar incidencias'),
-('incidencia.adjuntar_evidencia', 'Adjuntar evidencia a incidencias')
+('incidencia.adjuntar_evidencia', 'Adjuntar evidencia a incidencias'),
+('ruta.consultar', 'Consultar rutas de recoleccion'),
+('ruta.crear', 'Crear rutas de recoleccion'),
+('ruta.modificar', 'Modificar rutas de recoleccion'),
+('ruta.baja', 'Dar de baja rutas de recoleccion'),
+('cuadrilla.consultar', 'Consultar cuadrillas'),
+('cuadrilla.crear', 'Crear cuadrillas'),
+('cuadrilla.modificar', 'Modificar cuadrillas'),
+('cuadrilla.baja', 'Dar de baja cuadrillas'),
+('mantenimiento.consultar', 'Consultar mantenimientos'),
+('mantenimiento.crear', 'Crear mantenimientos'),
+('mantenimiento.modificar', 'Modificar mantenimientos'),
+('mantenimiento.baja', 'Dar de baja mantenimientos'),
+('recorrido.consultar', 'Consultar recorridos'),
+('recorrido.crear', 'Crear recorridos'),
+('recorrido.modificar', 'Modificar recorridos'),
+('recorrido.baja', 'Dar de baja recorridos')
 ON DUPLICATE KEY UPDATE descripcion = VALUES(descripcion);
 
 -- =====================================
@@ -150,7 +167,11 @@ JOIN permiso p ON p.nombre IN (
     'vehiculo.consultar', 'vehiculo.crear', 'vehiculo.modificar', 'vehiculo.baja', 'vehiculo.cambiar_estado',
     'vehiculo.asignar', 'lugar.consultar', 'lugar.crear', 'lugar.modificar', 'lugar.baja', 'lugar.cambiar_estado',
     'maquinaria.consultar', 'maquinaria.crear', 'maquinaria.modificar', 'maquinaria.baja', 'maquinaria.cambiar_estado',
-    'incidencia.crear', 'incidencia.consultar', 'incidencia.modificar', 'incidencia.adjuntar_evidencia'
+    'incidencia.crear', 'incidencia.consultar', 'incidencia.modificar', 'incidencia.adjuntar_evidencia',
+    'ruta.consultar', 'ruta.crear', 'ruta.modificar', 'ruta.baja',
+    'cuadrilla.consultar', 'cuadrilla.crear', 'cuadrilla.modificar', 'cuadrilla.baja',
+    'mantenimiento.consultar', 'mantenimiento.crear', 'mantenimiento.modificar', 'mantenimiento.baja',
+    'recorrido.consultar', 'recorrido.crear', 'recorrido.modificar', 'recorrido.baja'
 )
 WHERE r.nombre = 'RESPONSABLE_SECTORIAL'
 ON DUPLICATE KEY UPDATE id_permiso = VALUES(id_permiso);
@@ -160,7 +181,11 @@ SELECT r.id_rol, p.id_permiso
 FROM rol r
 JOIN permiso p ON p.nombre IN (
     'contenedor.consultar', 'vehiculo.consultar', 'vehiculo.asignar', 'lugar.consultar',
-    'incidencia.crear', 'incidencia.consultar', 'incidencia.modificar'
+    'incidencia.crear', 'incidencia.consultar', 'incidencia.modificar',
+    'ruta.consultar', 'ruta.crear', 'ruta.modificar',
+    'cuadrilla.consultar', 'cuadrilla.crear', 'cuadrilla.modificar',
+    'mantenimiento.consultar', 'mantenimiento.crear', 'mantenimiento.modificar',
+    'recorrido.consultar', 'recorrido.crear', 'recorrido.modificar'
 )
 WHERE r.nombre = 'ADMINISTRATIVO_OPERATIVO'
 ON DUPLICATE KEY UPDATE id_permiso = VALUES(id_permiso);
@@ -170,7 +195,8 @@ SELECT r.id_rol, p.id_permiso
 FROM rol r
 JOIN permiso p ON p.nombre IN (
     'contenedor.consultar', 'contenedor.cambiar_estado', 'vehiculo.consultar', 'maquinaria.consultar',
-    'incidencia.crear', 'incidencia.consultar', 'incidencia.adjuntar_evidencia'
+    'incidencia.crear', 'incidencia.consultar', 'incidencia.adjuntar_evidencia',
+    'ruta.consultar', 'cuadrilla.consultar', 'mantenimiento.consultar', 'recorrido.consultar'
 )
 WHERE r.nombre = 'OPERARIO'
 ON DUPLICATE KEY UPDATE id_permiso = VALUES(id_permiso);
@@ -180,7 +206,8 @@ SELECT r.id_rol, p.id_permiso
 FROM rol r
 JOIN permiso p ON p.nombre IN (
     'contenedor.consultar', 'vehiculo.consultar', 'maquinaria.consultar',
-    'incidencia.crear', 'incidencia.consultar', 'incidencia.adjuntar_evidencia'
+    'incidencia.crear', 'incidencia.consultar', 'incidencia.adjuntar_evidencia',
+    'ruta.consultar', 'cuadrilla.consultar', 'mantenimiento.consultar', 'recorrido.consultar'
 )
 WHERE r.nombre = 'INSPECTOR'
 ON DUPLICATE KEY UPDATE id_permiso = VALUES(id_permiso);

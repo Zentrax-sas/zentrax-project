@@ -2,6 +2,10 @@
 -- Fecha de importación: 2026-08-22 02:51:56
 -- Supuestos documentados: capacidad fija 1100L para todos, tipo de residuo Orgánico, dirección placeholder, mapeo MOTIVO -> estado según normativa del proyecto.
 
+-- Carga masiva opcional para una instalacion nueva. Ejecutar despues de
+-- 00_INICIALIZAR.sql sobre la base seleccionada expresamente con --database.
+-- No crea ni selecciona una base y debe ejecutarse una sola vez.
+
 -- Importacion segura: los IDs 1..131 son identificadores logicos del dataset.
 -- Las rutas reales se resuelven por nombre y zona despues de validar unicidad y colisiones.
 -- Contrato de reejecucion: fallo seguro y atomico si rutas o codigos del dataset ya existen.
