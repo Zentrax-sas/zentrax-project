@@ -92,6 +92,70 @@ class Usuario {
         return false;
     }
 
+    public function beginTransaction(): bool {
+        return $this->conn ? $this->conn->beginTransaction() : false;
+    }
+
+    public function commit(): bool {
+        return $this->conn ? $this->conn->commit() : false;
+    }
+
+    public function rollBack(): bool {
+        if (!$this->conn || !$this->conn->inTransaction()) return false;
+        return $this->conn->rollBack();
+    }
+
+    public function findRoleById(int $idRol): ?array {
+        if (!$this->conn) return null;
+        $stmt = $this->conn->prepare('SELECT id_rol, nombre, descripcion FROM rol WHERE id_rol = :id_rol LIMIT 1');
+        $stmt->bindValue(':id_rol', $idRol, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    public function findSectorByName(string $sector): ?array {
+        if (!$this->conn) return null;
+        $stmt = $this->conn->prepare('SELECT id_sector, nombre, descripcion FROM sector WHERE nombre = :nombre LIMIT 1');
+        $stmt->bindValue(':nombre', $sector);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    public function getRolesDisponibles(): array {
+        if (!$this->conn) return [];
+        $stmt = $this->conn->prepare('SELECT id_rol, nombre, descripcion FROM rol ORDER BY nombre');
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getSectoresDisponibles(): array {
+        if (!$this->conn) return [];
+        $stmt = $this->conn->prepare('SELECT id_sector, nombre, descripcion FROM sector ORDER BY nombre');
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function assignRole(int $idUsuario, int $idRol, string $sector, string $fechaDesde, ?string $fechaHasta): bool {
+        if (!$this->conn) return false;
+        $stmt = $this->conn->prepare(
+            'INSERT INTO usuario_rol (id_usuario, id_rol, sector, fecha_desde, fecha_hasta)
+             SELECT :id_usuario, :id_rol, :sector, :fecha_desde, :fecha_hasta
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM usuario_rol
+                 WHERE id_usuario = :check_usuario AND id_rol = :check_rol
+                   AND sector = :check_sector AND fecha_desde = :check_desde
+                   AND (fecha_hasta <=> :check_hasta)
+             )'
+        );
+        $stmt->execute([
+            ':id_usuario' => $idUsuario, ':id_rol' => $idRol, ':sector' => $sector,
+            ':fecha_desde' => $fechaDesde, ':fecha_hasta' => $fechaHasta,
+            ':check_usuario' => $idUsuario, ':check_rol' => $idRol, ':check_sector' => $sector,
+            ':check_desde' => $fechaDesde, ':check_hasta' => $fechaHasta,
+        ]);
+        return $stmt->rowCount() === 1;
+    }
+
     public function update() {
         if (!$this->conn) return false;
 

@@ -30,6 +30,7 @@ switch ($method) {
 
     case "POST":
         requirePermission('usuario.crear', ['TI']);
+        requirePermission('usuario.asignar_rol', ['TI']);
 
         $data = json_decode(file_get_contents("php://input"), true);
 

@@ -16,7 +16,9 @@ class UsuarioControllerTest extends TestCase
             ->disableOriginalConstructor()
             ->onlyMethods([
                 'read', 'findByEmail', 'create', 'update', 'delete', 'activar',
-                'getRolesVigentes', 'getHistorialRoles',
+                'getRolesVigentes', 'getHistorialRoles', 'findRoleById',
+                'findSectorByName', 'getRolesDisponibles', 'getSectoresDisponibles',
+                'beginTransaction', 'commit', 'rollBack', 'assignRole',
             ])
             ->getMock();
 
@@ -40,7 +42,17 @@ class UsuarioControllerTest extends TestCase
             'nombre' => ' Ana ', 'apellido' => ' Pereyra ',
             'email' => ' ana@zemyna.com ', 'contrasena' => 'secret123',
             'telefono' => ' 099123456 ', 'id_centro' => '2', 'activo' => 'Activo',
+            'id_rol' => '4', 'sector' => ' operaciones ',
+            'fecha_desde' => '2026-09-06', 'fecha_hasta' => '',
         ];
+    }
+
+    private function expectValidRole(): void
+    {
+        $this->usuario->expects($this->once())->method('findRoleById')->with(4)
+            ->willReturn(['id_rol' => 4, 'nombre' => 'OPERARIO']);
+        $this->usuario->expects($this->once())->method('findSectorByName')->with('OPERACIONES')
+            ->willReturn(['nombre' => 'OPERACIONES']);
     }
 
     private function validUpdateData(array $changes = []): array
@@ -118,6 +130,8 @@ class UsuarioControllerTest extends TestCase
     public function testCreateRegistraUsuarioConDatosNormalizadosYHash(): void
     {
         $this->usuario->expects($this->once())->method('findByEmail')->with('ana@zemyna.com')->willReturn(false);
+        $this->expectValidRole();
+        $this->usuario->expects($this->once())->method('beginTransaction')->willReturn(true);
         $this->usuario->expects($this->once())->method('create')->willReturnCallback(function (): bool {
             $this->assertSame('Ana', $this->usuario->nombre);
             $this->assertSame('Pereyra', $this->usuario->apellido);
@@ -130,10 +144,14 @@ class UsuarioControllerTest extends TestCase
             $this->usuario->id_usuario = 42;
             return true;
         });
+        $this->usuario->expects($this->once())->method('assignRole')
+            ->with(42, 4, 'OPERACIONES', '2026-09-06', null)->willReturn(true);
+        $this->usuario->expects($this->once())->method('commit')->willReturn(true);
+        $this->usuario->expects($this->never())->method('rollBack');
 
         $result = $this->controller->create($this->validCreateData());
 
-        $this->assertResponse($result, true, 201, 'Usuario registrado con éxito.');
+        $this->assertResponse($result, true, 201, 'Usuario y rol registrados con éxito.');
         $this->assertSame(['id_usuario' => 42], $result['data']);
         $this->assertSame([], $result['errors']);
         $this->assertArrayNotHasKey('contrasena', $result['data']);
@@ -149,6 +167,7 @@ class UsuarioControllerTest extends TestCase
             'El nombre es obligatorio.', 'El apellido es obligatorio.', 'El email es obligatorio.',
             'La contraseña es obligatoria.', 'El teléfono es obligatorio.',
             'El id_centro debe ser un número entero válido.',
+            'El rol es obligatorio.', 'El sector es obligatorio.',
         ], $result['errors']);
     }
 
@@ -208,13 +227,103 @@ class UsuarioControllerTest extends TestCase
     public function testCreateDevuelveErrorCuandoFallaElModelo(): void
     {
         $this->usuario->expects($this->once())->method('findByEmail')->willReturn(false);
+        $this->expectValidRole();
+        $this->usuario->expects($this->once())->method('beginTransaction')->willReturn(true);
         $this->usuario->expects($this->once())->method('create')->willReturn(false);
+        $this->usuario->expects($this->once())->method('rollBack');
 
         $result = $this->controller->create($this->validCreateData());
 
         $this->assertResponse($result, false, 500, 'Error al registrar el usuario.');
         $this->assertNull($result['data']);
         $this->assertSame([], $result['errors']);
+    }
+
+    public function testCreateRechazaRolFaltante(): void
+    {
+        $data = $this->validCreateData();
+        unset($data['id_rol']);
+        $this->usuario->expects($this->never())->method('create');
+
+        $result = $this->controller->create($data);
+
+        $this->assertResponse($result, false, 400, 'No se pudo registrar el usuario.');
+        $this->assertSame(['El rol es obligatorio.'], $result['errors']);
+    }
+
+    public function testCreateRechazaRolInexistente(): void
+    {
+        $this->usuario->expects($this->once())->method('findByEmail')->willReturn(false);
+        $this->usuario->expects($this->once())->method('findRoleById')->with(4)->willReturn(null);
+        $this->usuario->expects($this->never())->method('create');
+
+        $result = $this->controller->create($this->validCreateData());
+
+        $this->assertResponse($result, false, 404, 'El rol seleccionado no existe.');
+        $this->assertSame(['Seleccioná un rol válido.'], $result['errors']);
+    }
+
+    public function testCreateRechazaSectorInexistente(): void
+    {
+        $this->usuario->expects($this->once())->method('findByEmail')->willReturn(false);
+        $this->usuario->expects($this->once())->method('findRoleById')->willReturn(['id_rol' => 4]);
+        $this->usuario->expects($this->once())->method('findSectorByName')->with('OPERACIONES')->willReturn(null);
+        $this->usuario->expects($this->never())->method('create');
+
+        $result = $this->controller->create($this->validCreateData());
+
+        $this->assertResponse($result, false, 400, 'El sector seleccionado no es válido.');
+        $this->assertSame(['Seleccioná un sector admitido.'], $result['errors']);
+    }
+
+    /** @dataProvider invalidRoleDatesProvider */
+    public function testCreateRechazaFechasDeRolInvalidas(array $changes, string $expectedError): void
+    {
+        $result = $this->controller->create(array_merge($this->validCreateData(), $changes));
+
+        $this->assertResponse($result, false, 400, 'No se pudo registrar el usuario.');
+        $this->assertContains($expectedError, $result['errors']);
+    }
+
+    public static function invalidRoleDatesProvider(): array
+    {
+        return [
+            'desde inválida' => [['fecha_desde' => '06/09/2026'], 'La fecha_desde no es válida.'],
+            'hasta inválida' => [['fecha_hasta' => 'mañana'], 'La fecha_hasta no es válida.'],
+            'rango invertido' => [['fecha_desde' => '2026-09-06', 'fecha_hasta' => '2026-09-05'], 'La fecha_hasta no puede ser anterior a fecha_desde.'],
+        ];
+    }
+
+    public function testCreateRevierteSiFallaAsignacionDeRol(): void
+    {
+        $this->usuario->expects($this->once())->method('findByEmail')->willReturn(false);
+        $this->expectValidRole();
+        $this->usuario->expects($this->once())->method('beginTransaction')->willReturn(true);
+        $this->usuario->expects($this->once())->method('create')->willReturnCallback(function (): bool {
+            $this->usuario->id_usuario = 42;
+            return true;
+        });
+        $this->usuario->expects($this->once())->method('assignRole')->willReturn(false);
+        $this->usuario->expects($this->never())->method('commit');
+        $this->usuario->expects($this->once())->method('rollBack')->willReturn(true);
+
+        $result = $this->controller->create($this->validCreateData());
+
+        $this->assertResponse($result, false, 500, 'Error al registrar el usuario.');
+        $this->assertNull($result['data']);
+    }
+
+    public function testGetRoleOptionsDevuelveCatalogosDelModelo(): void
+    {
+        $roles = [['id_rol' => 4, 'nombre' => 'OPERARIO']];
+        $sectores = [['nombre' => 'OPERACIONES']];
+        $this->usuario->expects($this->once())->method('getRolesDisponibles')->willReturn($roles);
+        $this->usuario->expects($this->once())->method('getSectoresDisponibles')->willReturn($sectores);
+
+        $result = $this->controller->getRoleOptions();
+
+        $this->assertResponse($result, true, 200, 'Roles y sectores cargados correctamente.');
+        $this->assertSame(['roles' => $roles, 'sectores' => $sectores], $result['data']);
     }
 
     public function testUpdateSinNuevaContrasenaConservaElHashActual(): void

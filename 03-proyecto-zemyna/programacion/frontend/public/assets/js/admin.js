@@ -2,6 +2,68 @@ const app = document.getElementById('app');
 const menuButton = document.getElementById('menuButton');
 const toast = document.getElementById('toast');
 
+function loginUrl() {
+  return buildFrontendUrl('login.html');
+}
+
+function redirectToLogin() {
+  window.location.replace(loginUrl());
+}
+
+async function readJsonResponse(response) {
+  const text = await response.text();
+  if (!text) throw new Error('El servidor no devolvió una respuesta válida.');
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error('El servidor no devolvió una respuesta válida.');
+  }
+}
+
+function greetingForHour(hour) {
+  if (hour < 12) return 'Buenos días';
+  if (hour < 20) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+async function cargarSesionAdmin() {
+  try {
+    const response = await fetch(buildApiUrl('/backend/api/session.php'));
+    if (response.status === 401) return redirectToLogin();
+    const json = await readJsonResponse(response);
+    if (!response.ok || !json.success) throw new Error(json.message || 'No se pudo validar la sesión.');
+
+    const nombre = String(json.data?.nombre || '').trim();
+    const apellido = String(json.data?.apellido || '').trim();
+    const nombreCompleto = [nombre, apellido].filter(Boolean).join(' ');
+    if (!nombre) throw new Error('La sesión no contiene un nombre válido.');
+
+    document.getElementById('welcomeGreeting').textContent = `${greetingForHour(new Date().getHours())}, ${nombre}`;
+    document.getElementById('profileName').textContent = nombreCompleto || nombre;
+    document.getElementById('profileRole').textContent = Array.isArray(json.data.roles) ? json.data.roles.join(' · ') : '';
+    document.getElementById('profileAvatar').textContent = [nombre, apellido].filter(Boolean).map(value => value.charAt(0).toUpperCase()).join('').slice(0, 2);
+  } catch (error) {
+    document.getElementById('sessionMessage').textContent = error.message;
+  }
+}
+
+const logoutButton = document.getElementById('logoutButton');
+logoutButton?.addEventListener('click', async () => {
+  logoutButton.disabled = true;
+  document.getElementById('sessionMessage').textContent = 'Cerrando sesión…';
+  try {
+    const response = await fetch(buildApiUrl('/backend/api/logout.php'), { method: 'POST' });
+    const json = await readJsonResponse(response);
+    if (!response.ok || !json.success) throw new Error(json.message || 'No se pudo cerrar la sesión.');
+    redirectToLogin();
+  } catch (error) {
+    document.getElementById('sessionMessage').textContent = error.message;
+    logoutButton.disabled = false;
+  }
+});
+
+cargarSesionAdmin();
+
 menuButton.addEventListener('click', () => {
   const opened = app.classList.toggle('menu-open');
   menuButton.setAttribute('aria-expanded', String(opened));
@@ -14,7 +76,10 @@ function openView(viewName) {
   document.querySelectorAll('.view').forEach(view => view.classList.toggle('active', view.id === `view-${viewName}`));
   document.querySelector('.title-block h1').textContent = titles[viewName];
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  if (viewName === 'usuarios') cargarUsuariosAdmin();
+  if (viewName === 'usuarios') {
+    cargarUsuariosAdmin();
+    cargarOpcionesRol();
+  }
   if (viewName === 'contenedores') cargarContenedoresAdmin();
   if (viewName === 'camiones') cargarCamionesAdmin();
   if (viewName === 'centros') cargarCentrosAdmin();
@@ -359,6 +424,7 @@ document.addEventListener('click', async event => {
     userForm.querySelector('[name="contrasena"]').value = '';
     userForm.querySelector('[name="telefono"]').value = user.telefono || '';
     userForm.querySelector('[name="id_centro"]').value = user.id_centro || '';
+    setRoleFieldsEnabled(false);
     userForm.querySelector('button[type="submit"]').textContent = 'Actualizar usuario';
     userForm.querySelector('[name="nombre"]').focus();
     return;
@@ -538,10 +604,57 @@ const newUserButton = document.getElementById('newUserButton');
 const cancelUserButton = document.getElementById('cancelUserButton');
 const userForm = document.getElementById('userForm');
 const userFormMessage = document.getElementById('userFormMessage');
+const userRoleFields = document.getElementById('userRoleFields');
 
-newUserButton?.addEventListener('click', () => {
+function localIsoDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function setRoleFieldsEnabled(enabled) {
+  userRoleFields.hidden = !enabled;
+  userRoleFields.querySelectorAll('select, input').forEach(field => {
+    field.disabled = !enabled;
+    field.required = enabled && field.name !== 'fecha_hasta';
+  });
+}
+
+function replaceSelectOptions(select, records, valueKey, labelKey) {
+  select.replaceChildren();
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Seleccioná una opción';
+  select.appendChild(placeholder);
+  records.forEach(record => {
+    const option = document.createElement('option');
+    option.value = String(record[valueKey]);
+    option.textContent = String(record[labelKey]);
+    select.appendChild(option);
+  });
+}
+
+async function cargarOpcionesRol() {
+  try {
+    const response = await fetch(buildApiUrl('/backend/api/roles.php'));
+    if (response.status === 401) return redirectToLogin();
+    const json = await readJsonResponse(response);
+    if (!response.ok || !json.success) throw new Error(json.message || 'No se pudieron cargar roles y sectores.');
+    replaceSelectOptions(userForm.querySelector('[name="id_rol"]'), json.data.roles || [], 'id_rol', 'nombre');
+    replaceSelectOptions(userForm.querySelector('[name="sector"]'), json.data.sectores || [], 'nombre', 'nombre');
+  } catch (error) {
+    userFormMessage.textContent = error.message;
+  }
+}
+
+newUserButton?.addEventListener('click', async () => {
+  await cargarOpcionesRol();
   userForm.reset();
   userForm.querySelector('[name="id_usuario"]').value = '';
+  userForm.querySelector('[name="fecha_desde"]').value = localIsoDate();
+  setRoleFieldsEnabled(true);
   userForm.querySelector('[name="contrasena"]').required = true;
   userForm.querySelector('button[type="submit"]').textContent = 'Guardar usuario';
   userForm.hidden = false;
@@ -567,6 +680,7 @@ userForm?.addEventListener('submit', async event => {
   if (isUpdate) payload.id_usuario = idUsuario;
   if (isUpdate && payload.contrasena === '') delete payload.contrasena;
   payload.id_centro = Number(payload.id_centro);
+  if (!isUpdate) payload.id_rol = Number(payload.id_rol);
 
   try {
     const response = await fetch(buildApiUrl('/backend/api/usuarios.php'), {

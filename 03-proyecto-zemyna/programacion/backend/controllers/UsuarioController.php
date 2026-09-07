@@ -86,6 +86,42 @@ class UsuarioController {
         return $errors;
     }
 
+    private function validDate($value): bool {
+        if (!is_string($value)) return false;
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        return $date !== false && $date->format('Y-m-d') === $value;
+    }
+
+    private function validateRolePayload(array $data): array {
+        $errors = [];
+        if ($this->normalizePositiveId($data['id_rol'] ?? null) === null) $errors[] = 'El rol es obligatorio.';
+        $sector = $this->normalizeString($data['sector'] ?? null);
+        if (!is_string($sector) || $sector === '') $errors[] = 'El sector es obligatorio.';
+        elseif (mb_strlen($sector) > 100) $errors[] = 'El sector no puede superar los 100 caracteres.';
+        $desde = $data['fecha_desde'] ?? date('Y-m-d');
+        $hasta = $data['fecha_hasta'] ?? null;
+        if (!$this->validDate($desde)) $errors[] = 'La fecha_desde no es válida.';
+        if ($hasta !== null && $hasta !== '' && !$this->validDate($hasta)) $errors[] = 'La fecha_hasta no es válida.';
+        if ($this->validDate($desde) && $hasta !== null && $hasta !== '' && $this->validDate($hasta) && $hasta < $desde) {
+            $errors[] = 'La fecha_hasta no puede ser anterior a fecha_desde.';
+        }
+        return $errors;
+    }
+
+    public function getRoleOptions() {
+        try {
+            return [
+                'success' => true,
+                'data' => ['roles' => $this->usuario->getRolesDisponibles(), 'sectores' => $this->usuario->getSectoresDisponibles()],
+                'message' => 'Roles y sectores cargados correctamente.',
+                'errors' => [],
+                'statusCode' => 200,
+            ];
+        } catch (PDOException | RuntimeException $exception) {
+            return ['success' => false, 'data' => ['roles' => [], 'sectores' => []], 'message' => 'No se pudieron cargar roles y sectores.', 'errors' => [], 'statusCode' => 500];
+        }
+    }
+
     public function getAll($filters = []) {
         $id = isset($filters['id']) ? (int)$filters['id'] : null;
         $page = isset($filters['page']) ? max(1, (int)$filters['page']) : 1;
@@ -129,7 +165,7 @@ class UsuarioController {
 
     public function create($data) {
         $data = $data ?? [];
-        $errors = $this->validateUsuarioPayload($data, false);
+        $errors = array_merge($this->validateUsuarioPayload($data, false), $this->validateRolePayload($data));
 
         if ($errors) {
             return [
@@ -154,6 +190,22 @@ class UsuarioController {
             ];
         }
 
+        $idRol = $this->normalizePositiveId($data['id_rol'] ?? null);
+        $sector = strtoupper($this->normalizeString($data['sector'] ?? ''));
+        $fechaDesde = $data['fecha_desde'] ?? date('Y-m-d');
+        $fechaHasta = ($data['fecha_hasta'] ?? null) ?: null;
+
+        try {
+            if (!$this->usuario->findRoleById($idRol)) {
+                return ['success' => false, 'data' => null, 'message' => 'El rol seleccionado no existe.', 'errors' => ['Seleccioná un rol válido.'], 'statusCode' => 404];
+            }
+            if (!$this->usuario->findSectorByName($sector)) {
+                return ['success' => false, 'data' => null, 'message' => 'El sector seleccionado no es válido.', 'errors' => ['Seleccioná un sector admitido.'], 'statusCode' => 400];
+            }
+        } catch (PDOException | RuntimeException $exception) {
+            return ['success' => false, 'data' => null, 'message' => 'No se pudo validar el rol del usuario.', 'errors' => [], 'statusCode' => 500];
+        }
+
         $this->usuario->nombre = $this->normalizeString($data['nombre'] ?? null);
         $this->usuario->apellido = $this->normalizeString($data['apellido'] ?? null);
         $this->usuario->email = $email;
@@ -163,14 +215,16 @@ class UsuarioController {
         $this->usuario->id_centro = (int)($data['id_centro'] ?? 0);
         $this->usuario->activo = $this->normalizeString($data['activo'] ?? 'Activo');
 
-        if ($this->usuario->create()) {
-            return [
-                "success" => true,
-                "data" => ["id_usuario" => $this->usuario->id_usuario],
-                "message" => "Usuario registrado con éxito.",
-                "errors" => [],
-                "statusCode" => 201
-            ];
+        try {
+            if (!$this->usuario->beginTransaction()) throw new RuntimeException('No se pudo iniciar la transacción.');
+            if (!$this->usuario->create()) throw new RuntimeException('No se pudo crear el usuario.');
+            if (!$this->usuario->assignRole((int)$this->usuario->id_usuario, $idRol, $sector, $fechaDesde, $fechaHasta)) {
+                throw new RuntimeException('No se pudo asignar el rol.');
+            }
+            if (!$this->usuario->commit()) throw new RuntimeException('No se pudo confirmar la transacción.');
+            return ['success' => true, 'data' => ['id_usuario' => (int)$this->usuario->id_usuario], 'message' => 'Usuario y rol registrados con éxito.', 'errors' => [], 'statusCode' => 201];
+        } catch (PDOException | RuntimeException $exception) {
+            try { $this->usuario->rollBack(); } catch (Throwable $ignored) {}
         }
 
         return [

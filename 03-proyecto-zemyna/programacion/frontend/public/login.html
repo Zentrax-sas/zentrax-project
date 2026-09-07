@@ -75,6 +75,39 @@
         window.location.replace(`${APP_BASE_URL}/login.html`);
     }
 
+    const ROLES_INTERNOS = new Set([
+        'ADMINISTRADOR_TI',
+        'RESPONSABLE_SECTORIAL',
+        'ADMINISTRATIVO_OPERATIVO',
+        'OPERARIO',
+        'INSPECTOR'
+    ]);
+
+    function normalizarNombreRol(rol) {
+        const normalizado = String(rol ?? '')
+            .trim()
+            .replace(/[ .-]/g, '_')
+            .replace(/_+/g, '_')
+            .toUpperCase();
+        const aliases = {
+            SUPERUSUARIO: 'ADMINISTRADOR_TI',
+            ADMIN: 'ADMINISTRADOR_TI',
+            ADMINISTRADOR: 'ADMINISTRADOR_TI',
+            ADMINISTRATIVO: 'ADMINISTRADOR_TI',
+            RESPONSABLE: 'RESPONSABLE_SECTORIAL',
+            TI: 'ADMINISTRADOR_TI'
+        };
+        return aliases[normalizado] ?? normalizado;
+    }
+
+    function tieneRolInternoVigente(data) {
+        if (!Array.isArray(data?.roles)) return false;
+        return data.roles.some(rol => {
+            const nombre = typeof rol === 'object' && rol !== null ? rol.nombre : rol;
+            return ROLES_INTERNOS.has(normalizarNombreRol(nombre));
+        });
+    }
+
     document.getElementById('login-form').addEventListener('submit', async function (event) {
         event.preventDefault();
         const message = document.getElementById('login-message');
@@ -93,18 +126,18 @@
             const json = await response.json();
             if (!response.ok || !json.success) {
                 if (response.status === 401) {
-                    throw new Error('Credenciales inválidas. Prueba con facu@zemyna.com y contraseña zentrax123.');
+                    throw new Error('Credenciales inválidas.');
                 }
                 throw new Error(json.message || 'Error al iniciar sesión');
             }
 
-            message.textContent = 'Sesión iniciada correctamente.';
-            const rol = json.data?.rol ?? null;
-            if (rol === 1 || json.data?.email === 'facu@zemyna.com') {
-                window.location.href = buildFrontendUrl('admin.html');
-            } else {
-                window.location.href = buildFrontendUrl('landing.html');
+            if (!tieneRolInternoVigente(json.data)) {
+                message.textContent = 'Tu cuenta no tiene un rol interno vigente reconocido.';
+                return;
             }
+
+            message.textContent = 'Sesión iniciada correctamente.';
+            window.location.href = buildFrontendUrl('admin.html');
         } catch (error) {
             if (error instanceof TypeError && error.message.toLowerCase().includes('fetch')) {
                 message.textContent = 'No se pudo conectar con el backend. Verifica Apache en XAMPP y abre la app con http://localhost, no con file://.';
