@@ -1,6 +1,8 @@
 .env
 .env.*
 !03-proyecto-zemyna/programacion/.env.example
+!/03-proyecto-zemyna/programacion/.env.docker.example
+/03-proyecto-zemyna/programacion/.env.docker
 
 /03-proyecto-zemyna/programacion/.venv/
 .venv/
@@ -14,3 +16,6 @@ Thumbs.db
 /03-proyecto-zemyna/programacion/backend/uploads/incidencias/*
 !/03-proyecto-zemyna/programacion/backend/uploads/incidencias/.gitkeep
 !/03-proyecto-zemyna/programacion/backend/uploads/incidencias/.htaccess
+
+/03-proyecto-zemyna/programacion/backend/sesion/*.log
+/03-proyecto-zemyna/programacion/backend/sesion/*.lock

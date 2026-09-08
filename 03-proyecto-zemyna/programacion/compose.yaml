@@ -1,0 +1,93 @@
+# Configuracion (completar primero las contrasenas de .env.docker):
+# cp .env.docker.example .env.docker
+# docker compose --env-file .env.docker -f compose.yaml config
+# docker compose --env-file .env.docker -f compose.yaml up -d --build
+# docker compose --env-file .env.docker -f compose.yaml down
+#
+# Carga masiva opcional, una sola vez y despues de que db este saludable:
+# docker compose --env-file .env.docker -f compose.yaml exec -T db sh -c 'mariadb --abort-source-on-error -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' < base-datos/database/sql/seed_contenedores_idm.sql
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    environment:
+      TZ: America/Montevideo
+      DB_HOST: db
+      DB_NAME: "${DB_NAME:?Defina DB_NAME en el entorno o archivo .env}"
+      DB_USER: "${DB_USER:?Defina DB_USER en el entorno o archivo .env}"
+      DB_PASS: "${DB_PASSWORD:?Defina DB_PASSWORD en el entorno o archivo .env}"
+    volumes:
+      # Los volumenes reciben los .htaccess incluidos en la imagen. Si se cambia
+      # Apache por Nginx, se deben denegar explicitamente ambas rutas en Nginx.
+      - uploads_data:/var/www/html/backend/uploads/incidencias
+      - session_logs:/var/www/html/backend/sesion
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@fsockopen(\"127.0.0.1\", 80) ? 0 : 1);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - web
+      - data
+
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      TZ: America/Montevideo
+      MARIADB_DATABASE: "${DB_NAME:?Defina DB_NAME en el entorno o archivo .env}"
+      MARIADB_USER: "${DB_USER:?Defina DB_USER en el entorno o archivo .env}"
+      MARIADB_PASSWORD: "${DB_PASSWORD:?Defina DB_PASSWORD en el entorno o archivo .env}"
+      MARIADB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:?Defina DB_ROOT_PASSWORD en el entorno o archivo .env}"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./base-datos/database/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./base-datos/database/sql/init.sql:/docker-entrypoint-initdb.d/02-init.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - data
+
+  phpmyadmin:
+    image: phpmyadmin:5.2.2-apache
+    restart: unless-stopped
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@fsockopen(\"127.0.0.1\", 80) ? 0 : 1);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - web
+      - data
+
+volumes:
+  db_data:
+  uploads_data:
+  session_logs:
+
+networks:
+  web:
+  data:
+    internal: true

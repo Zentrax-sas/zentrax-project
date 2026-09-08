@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+backend/vendor/
+backend/.phpunit.result.cache
+backend/uploads/incidencias/*
+!backend/uploads/incidencias/.gitkeep
+!backend/uploads/incidencias/.htaccess
+backend/sesion/*
+!backend/sesion/.gitkeep
+!backend/sesion/.htaccess
+!backend/sesion/README.md
+node_modules/

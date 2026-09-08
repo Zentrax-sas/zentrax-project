@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/bootstrap.php';
+require_once __DIR__ . '/../helpers/SessionLogger.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -11,6 +12,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 requireAuth();
+
+$sessionUserId = isset($_SESSION['usuario']['id_usuario'])
+    ? (int) $_SESSION['usuario']['id_usuario']
+    : null;
+$sessionRoles = $_SESSION['usuario']['roles'] ?? [];
 
 $_SESSION = [];
 
@@ -28,6 +34,8 @@ if (ini_get('session.use_cookies')) {
 }
 
 session_destroy();
+
+(new SessionLogger())->log('LOGOUT', 'success', $sessionUserId, $sessionRoles);
 
 http_response_code(200);
 echo json_encode([
