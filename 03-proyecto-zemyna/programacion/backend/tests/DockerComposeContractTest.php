@@ -106,4 +106,29 @@ final class DockerComposeContractTest extends TestCase
             $gitignore
         );
     }
+
+    public function testSchemaConfiguresCollationBeforeTablesAndDoesNotConvertForeignKeysLate(): void
+    {
+        $schema = file_get_contents(
+            $this->projectRoot . '/base-datos/database/sql/schema.sql'
+        );
+
+        $this->assertIsString($schema);
+        $collationPosition = strpos(
+            $schema,
+            'ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
+        );
+        $firstTablePosition = strpos($schema, 'CREATE TABLE vecino');
+
+        $this->assertNotFalse($collationPosition);
+        $this->assertNotFalse($firstTablePosition);
+        $this->assertLessThan($firstTablePosition, $collationPosition);
+        $this->assertStringNotContainsString('CONVERT TO CHARACTER SET', $schema);
+        $normalizedSchema = preg_replace('/\s+/', ' ', $schema);
+        $this->assertIsString($normalizedSchema);
+        $this->assertStringContainsString(
+            'CONSTRAINT fk_denuncia_vecino FOREIGN KEY (ci) REFERENCES vecino(ci)',
+            $normalizedSchema
+        );
+    }
 }
