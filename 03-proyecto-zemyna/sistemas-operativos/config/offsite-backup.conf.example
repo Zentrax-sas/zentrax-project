@@ -1,0 +1,11 @@
+# Instalar como /etc/zemyna/offsite-backup.conf con permisos 600.
+# No guardar tokens aquí: rclone usa su configuración privada independiente.
+BACKUP_DIR=/var/backups/zemyna
+RCLONE_CONFIG=/etc/zemyna/rclone.conf
+REMOTE_NAME=gdrive_zemyna
+REMOTE_BASE_PATH=Zemyna/backups
+LOG_FILE=/var/log/zemyna/offsite-backup.log
+ENABLE_REMOTE_RETENTION=false
+DAILY_RETENTION_DAYS=7
+WEEKLY_RETENTION_WEEKS=5
+MONTHLY_RETENTION_DAYS=365
