@@ -1,0 +1,9 @@
+# Instalar como /etc/zemyna/backup.conf con permisos 600.
+# No contiene credenciales: ENV_FILE apunta al .env.docker privado.
+PROJECT_DIR=/var/www/html/03-proyecto-zemyna/programacion
+COMPOSE_PROJECT_NAME=zemyna_compose_test
+COMPOSE_FILE=compose.yaml
+ENV_FILE=.env.docker
+BACKUP_DIR=/var/backups/zemyna
+LOG_FILE=/var/log/zemyna/backup.log
+RETENTION_DAYS=7
