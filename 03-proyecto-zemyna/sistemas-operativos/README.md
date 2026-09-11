@@ -449,3 +449,10 @@ Compose y ejecutar nuevamente `up -d --build`. No hay rollback automático.
 Nunca ejecutar `docker compose down -v`: elimina los volúmenes que contienen la
 base, las fotografías y los logs persistentes. Este procedimiento tampoco usa
 `down`, `prune`, seeds ni comandos SQL.
+
+## Continuidad y alta disponibilidad
+
+La arquitectura actual, los RPO teóricos, el estado de recuperación ante
+desastres y la propuesta multinodo están documentados en
+[`ALTA_DISPONIBILIDAD.md`](ALTA_DISPONIBILIDAD.md). Zemyna cuenta actualmente
+con persistencia y recuperación verificable, pero no con alta disponibilidad.
