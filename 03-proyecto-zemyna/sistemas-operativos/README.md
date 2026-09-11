@@ -243,3 +243,105 @@ Zemyna usa backups completos porque el respaldo actual es pequeño, simplifica l
 restauración y reduce el riesgo operacional de depender de una cadena de copias.
 Google Drive agrega una copia externa, pero no alta disponibilidad: una caída de
 la aplicación o la base no provoca conmutación automática hacia Drive.
+
+## Acceso SSH endurecido
+
+`config/sshd/00-zemyna-hardening.conf` conserva el acceso administrativo por
+clave pública y deshabilita el ingreso de root, las contraseñas y la autenticación
+interactiva por teclado. No cambia el puerto ni la configuración de firewalld.
+
+El prefijo `00-` es obligatorio en esta VM: existe
+`/etc/ssh/sshd_config.d/01-permitrootlogin.conf` con `PermitRootLogin yes` y
+OpenSSH conserva el primer valor encontrado para estas opciones. El archivo de
+Zemyna debe leerse antes que ese drop-in.
+
+### Requisitos y prueba previa
+
+Antes de instalar:
+
+- confirmar que `sshd` esté activo y que el puerto vigente esté permitido;
+- confirmar que el usuario administrativo ya tenga una clave pública autorizada;
+- comprobar permisos `700` para `.ssh` y `600` para `authorized_keys`;
+- mantener abierta la sesión administrativa original durante todo el proceso.
+
+Desde una segunda terminal, comprobar el acceso usando exclusivamente la clave:
+
+```bash
+ssh -o PreferredAuthentications=publickey -o PasswordAuthentication=no zentrax@SERVIDOR
+```
+
+No continuar si esa segunda sesión no abre correctamente. No cerrar la sesión
+original hasta completar también todas las verificaciones posteriores.
+
+### Instalación y validación
+
+Desde la raíz del repositorio, conservar una copia previa si el destino ya
+existe e instalar con propietario `root:root` y permisos `600`:
+
+```bash
+if sudo test -e /etc/ssh/sshd_config.d/00-zemyna-hardening.conf; then
+  sudo cp -a /etc/ssh/sshd_config.d/00-zemyna-hardening.conf /etc/ssh/sshd_config.d/00-zemyna-hardening.conf.rollback
+fi
+
+sudo install -o root -g root -m 600 \
+  03-proyecto-zemyna/sistemas-operativos/config/sshd/00-zemyna-hardening.conf \
+  /etc/ssh/sshd_config.d/00-zemyna-hardening.conf
+
+sudo sshd -t
+sudo systemctl reload sshd
+```
+
+`sshd -t` debe finalizar correctamente antes de ejecutar la recarga. Una recarga
+evita cortar las sesiones existentes, pero la sesión original igualmente debe
+permanecer abierta como vía de recuperación.
+
+Verificar la configuración efectiva:
+
+```bash
+sudo sshd -T | grep -E '^(permitrootlogin|pubkeyauthentication|passwordauthentication|kbdinteractiveauthentication) '
+```
+
+El resultado esperado es:
+
+```text
+permitrootlogin no
+pubkeyauthentication yes
+passwordauthentication no
+kbdinteractiveauthentication no
+```
+
+Abrir otra sesión nueva y repetir la prueba positiva por clave:
+
+```bash
+ssh -o PreferredAuthentications=publickey -o PasswordAuthentication=no zentrax@SERVIDOR
+```
+
+Luego comprobar que una conexión sin clave sea rechazada, sin introducir ninguna
+contraseña:
+
+```bash
+ssh -o BatchMode=yes -o PubkeyAuthentication=no zentrax@SERVIDOR
+```
+
+La segunda orden debe finalizar con acceso denegado. Sólo después de comprobar
+la prueba positiva, la negativa y los valores efectivos puede cerrarse la sesión
+administrativa original.
+
+### Rollback
+
+Si la validación o una nueva conexión falla, volver a la sesión original que
+permanece abierta. Restaurar la copia previa cuando exista:
+
+```bash
+if sudo test -e /etc/ssh/sshd_config.d/00-zemyna-hardening.conf.rollback; then
+  sudo mv /etc/ssh/sshd_config.d/00-zemyna-hardening.conf.rollback /etc/ssh/sshd_config.d/00-zemyna-hardening.conf
+else
+  sudo rm -f /etc/ssh/sshd_config.d/00-zemyna-hardening.conf
+fi
+
+sudo sshd -t
+sudo systemctl reload sshd
+```
+
+No cerrar la sesión original hasta volver a validar `sshd -t` y confirmar una
+nueva conexión por clave después del rollback.
