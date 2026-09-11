@@ -1,0 +1,12 @@
+# Instalar como /etc/zemyna/deploy.conf con propietario root:root y modo 600.
+# No contiene credenciales. ENV_FILE referencia el entorno Docker privado.
+REPO_DIR=/var/www/html
+APP_DIR=/var/www/html/03-proyecto-zemyna/programacion
+DEPLOY_USER=zentrax
+EXPECTED_ORIGIN=https://github.com/Zentrax-sas/zentrax-project.git
+COMPOSE_PROJECT_NAME=zemyna_compose_test
+COMPOSE_FILE=compose.yaml
+ENV_FILE=.env.docker
+APP_HEALTH_URL=http://127.0.0.1:8080/frontend/public/landing.html
+LOG_FILE=/var/log/zemyna/deploy.log
+HEALTH_TIMEOUT_SECONDS=180

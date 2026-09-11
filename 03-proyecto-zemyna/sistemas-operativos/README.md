@@ -345,3 +345,107 @@ sudo systemctl reload sshd
 
 No cerrar la sesión original hasta volver a validar `sshd -t` y confirmar una
 nueva conexión por clave después del rollback.
+
+## Despliegue reproducible de la aplicación
+
+`scripts/deploy_zemyna.sh` es la primera versión reproducible del despliegue de
+Zemyna. Actualiza por avance rápido el repositorio existente, valida Compose,
+construye e inicia el stack y comprueba su salud. No es un sistema de alta
+disponibilidad ni implementa despliegue sin interrupciones o rollback automático.
+
+Los archivos heredados `scripts/script.sh`, `scripts/start.sh`, `scripts/stop.sh`
+y `/usr/local/bin/deploy.sh` no forman parte de este procedimiento y no deben
+ejecutarse para desplegar esta versión.
+
+### Precondiciones
+
+- Rocky Linux con Git, Docker Engine, Docker Compose v2, `curl`, `flock` y
+  `runuser` ya instalados;
+- servicio Docker activo;
+- repositorio existente en `/var/www/html`, propiedad operativa de `zentrax`;
+- árbol Git limpio y remoto `origin` igual al repositorio oficial de Zentrax;
+- aplicación en `/var/www/html/03-proyecto-zemyna/programacion`;
+- `compose.yaml` y `.env.docker` privado ya configurados;
+- `APP_HEALTH_URL` apuntando a una página HTTP local y representativa;
+- proyecto Compose `zemyna_compose_test` usando los puertos 8080 y 8081;
+- backups recientes y volúmenes persistentes identificados.
+
+El script no instala paquetes, clona repositorios, ejecuta SQL ni modifica los
+servicios nativos Nginx, PHP-FPM o MariaDB. Tampoco modifica firewall o SSH.
+
+### Instalación
+
+Desde la raíz del repositorio:
+
+```bash
+sudo install -d -o root -g root -m 700 /etc/zemyna /var/log/zemyna
+sudo install -o root -g root -m 755 \
+  03-proyecto-zemyna/sistemas-operativos/scripts/deploy_zemyna.sh \
+  /usr/local/bin/deploy_zemyna.sh
+sudo install -o root -g root -m 600 \
+  03-proyecto-zemyna/sistemas-operativos/config/deploy.conf.example \
+  /etc/zemyna/deploy.conf
+```
+
+Revisar `/etc/zemyna/deploy.conf` sin copiar secretos dentro. El archivo sólo
+referencia `.env.docker`, que permanece privado fuera de Git. El valor validado
+para esta instalación es:
+
+```text
+APP_HEALTH_URL=http://127.0.0.1:8080/frontend/public/landing.html
+```
+
+La evidencia obtenida en la VM es `403` para `http://127.0.0.1:8080/` y `200`
+para la landing. La raíz corresponde al document root del contenedor y no es una
+página pública navegable; por eso el despliegue comprueba una página real de la
+aplicación. El script sólo admite URLs `http://127.0.0.1:PUERTO/ruta` o
+`http://localhost:PUERTO/ruta`, y rechaza una comprobación limitada a `/`.
+
+### Ejecución manual
+
+```bash
+sudo /usr/local/bin/deploy_zemyna.sh
+```
+
+El script exige root, pero realiza `fetch` y `pull --ff-only` como `zentrax`.
+Registra únicamente eventos y hashes de commits en
+`/var/log/zemyna/deploy.log`; nunca imprime el contenido de `.env.docker`.
+
+### Validaciones posteriores
+
+```bash
+sudo docker compose --project-name zemyna_compose_test \
+  --env-file /var/www/html/03-proyecto-zemyna/programacion/.env.docker \
+  -f /var/www/html/03-proyecto-zemyna/programacion/compose.yaml ps
+curl --fail --silent --show-error --location --max-time 15 \
+  http://127.0.0.1:8080/frontend/public/landing.html >/dev/null
+sudo tail -n 30 /var/log/zemyna/deploy.log
+```
+
+Confirmar que `db`, `app` y `phpmyadmin` estén `healthy`, que la aplicación
+responda en el puerto 8080 y que phpMyAdmin continúe publicado en el 8081. Los
+servicios nativos no deben haberse detenido ni reiniciado.
+
+### Si el despliegue falla
+
+No ejecutar operaciones automáticas adicionales. Conservar los contenedores y
+volúmenes, registrar el commit anterior/nuevo del log y diagnosticar con:
+
+```bash
+sudo docker compose --project-name zemyna_compose_test \
+  --env-file /var/www/html/03-proyecto-zemyna/programacion/.env.docker \
+  -f /var/www/html/03-proyecto-zemyna/programacion/compose.yaml ps
+sudo docker compose --project-name zemyna_compose_test \
+  --env-file /var/www/html/03-proyecto-zemyna/programacion/.env.docker \
+  -f /var/www/html/03-proyecto-zemyna/programacion/compose.yaml logs --tail=200
+```
+
+Corregir hacia adelante y volver a ejecutar el despliegue. Si fuera necesario
+volver manualmente a un commit conocido, primero conservar un backup, confirmar
+que el árbol esté limpio, evaluar compatibilidad con el esquema persistente y
+usar `git switch --detach COMMIT_VALIDADO` como `zentrax`; después validar
+Compose y ejecutar nuevamente `up -d --build`. No hay rollback automático.
+
+Nunca ejecutar `docker compose down -v`: elimina los volúmenes que contienen la
+base, las fotografías y los logs persistentes. Este procedimiento tampoco usa
+`down`, `prune`, seeds ni comandos SQL.
