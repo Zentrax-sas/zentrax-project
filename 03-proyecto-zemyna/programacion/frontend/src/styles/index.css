@@ -400,3 +400,22 @@
     .tracking-controls .submit-button { width: 100%; }
     .confirmation-actions { flex-direction: column; }
 }
+/* Capas públicas: controles fuera del mapa para conservar el espacio táctil. */
+.map-wrapper { min-width: 0; display: flex; flex-direction: column; }
+.map-wrapper #mapa-vedette { height: 460px; min-height: 350px; flex: 1 0 350px; }
+.map-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; }
+.map-controls legend { padding: 0 6px; }
+.map-controls label { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0; }
+.map-controls input[type="checkbox"] { width: auto; margin: 0; accent-color: #a855f7; }
+.map-controls select { width: auto; max-width: 100%; padding: 6px; margin: 0; }
+.map-legend { margin: 0 12px 12px; font-size: .85rem; line-height: 1.5; }
+.map-wrapper .estado-global { margin: 6px 12px; }
+@media (max-width: 768px) {
+    .map-wrapper { height: auto; }
+    .map-wrapper #mapa-vedette { height: 350px; flex: none; }
+    .map-controls { gap: 10px; }
+    .map-controls label { font-size: .9rem; }
+}
+
+.map-controls label { min-height: 44px; padding: 4px; }
+.map-controls input[type="checkbox"] { min-width: 22px; min-height: 22px; }

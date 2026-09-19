@@ -6,6 +6,10 @@
   <meta name="description" content="Panel operativo interno de Zemyna - Sistema de Gestión de Residuos Urbanos">
   <title>Resumen operativo | Zemyna</title>
   <link rel="stylesheet" href="assets/css/admin.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="assets/css/zemyna-map.css">
 </head>
 <body>
   <div class="app" id="app">
@@ -22,7 +26,7 @@
         <a class="nav-link active" href="#resumen" data-view="resumen"><span class="nav-icon">⌂</span>Resumen operativo</a>
         <a class="nav-link" href="#rutas"><span class="nav-icon">⌁</span>Rutas y recorridos</a>
         <a class="nav-link" href="#camiones" data-view="camiones"><span class="nav-icon">▱</span>Camiones</a>
-        <a class="nav-link" href="#incidencias"><span class="nav-icon">!</span>Incidencias<span class="nav-badge">7</span></a>
+        <a class="nav-link" href="#incidencias" data-view="incidencias"><span class="nav-icon">!</span>Incidencias</a>
         <a class="nav-link" href="#contenedores" data-view="contenedores"><span class="nav-icon">□</span>Contenedores</a>
         <a class="nav-link" href="#centros" data-view="centros"><span class="nav-icon">⌂</span>Centros</a>
         <a class="nav-link" href="#maquinaria" data-view="maquinaria"><span class="nav-icon">⚙</span>Maquinaria</a>
@@ -75,7 +79,7 @@
             <h2 id="welcomeGreeting">Cargando sesión…</h2>
             <p>Visualizá el estado general de la operación y las incidencias que requieren atención.</p>
           </div>
-          <button class="primary-button" id="refreshButton">↻ Actualizar información</button>
+          <button class="primary-button" id="refreshButton">Consultar incidencias</button>
         </section>
 
         <section class="stats" aria-label="Indicadores principales">
@@ -88,11 +92,6 @@
             <div class="stat-top"><span>Contenedores atendidos</span><span class="stat-icon">□</span></div>
             <div class="stat-value">842</div>
             <div class="stat-footer"><span class="up">68%</span><span>del objetivo diario</span></div>
-          </article>
-          <article class="card stat-card" style="--glow:rgba(255,200,87,.18)">
-            <div class="stat-top"><span>Incidencias abiertas</span><span class="stat-icon" style="color:var(--amber)">!</span></div>
-            <div class="stat-value">7</div>
-            <div class="stat-footer"><span class="warning">3 prioritarias</span><span>requieren asignación</span></div>
           </article>
           <article class="card stat-card" style="--glow:rgba(102,224,111,.18)">
             <div class="stat-top"><span>Flota disponible</span><span class="stat-icon" style="color:var(--green)">▱</span></div>
@@ -141,23 +140,53 @@
           </article>
         </section>
 
-        <section class="card panel incidents" id="incidencias">
-          <div class="panel-head">
-            <div><h3 class="panel-title">Incidencias recientes</h3><div class="panel-subtitle">Eventos informados por operarios y vecinos</div></div>
-            <!-- TODO: vista de triage de incidencias con edición de prioridad y cuadrilla. -->
-            <button class="link-button">Gestionar incidencias →</button>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Incidencia</th><th>Ubicación</th><th>Origen</th><th>Hora</th><th>Prioridad</th><th>Estado</th></tr></thead>
-              <tbody>
-                <tr><td><div class="incident-type"><span class="incident-dot red"></span><strong>Contenedor incendiado</strong></div></td><td>Av. Rivera 2841</td><td>Operario</td><td>19:18</td><td><span class="priority high">Alta</span></td><td>Derivada</td></tr>
-                <tr><td><div class="incident-type"><span class="incident-dot"></span><strong>Acceso obstruido</strong></div></td><td>21 de Setiembre 2480</td><td>Operario</td><td>18:46</td><td><span class="priority medium">Media</span></td><td>Pendiente</td></tr>
-                <tr><td><div class="incident-type"><span class="incident-dot green"></span><strong>Residuos fuera del contenedor</strong></div></td><td>Pedro Bustamante 1222</td><td>Vecino</td><td>18:21</td><td><span class="priority low">Baja</span></td><td>Asignada</td></tr>
-              </tbody>
-            </table>
-          </div>
         </section>
+
+        <section class="view" id="view-incidencias">
+          <section class="card panel incidents" id="incidencias">
+            <div class="panel-head"><div><h2 class="panel-title">Gestión de incidencias</h2><p class="panel-subtitle">Consultá reportes y actualizá su atención.</p></div></div>
+            <p id="operationalMapMessage" role="status"></p>
+            <section id="operationalMapPanel" hidden aria-label="Mapa operativo de incidencias">
+              <fieldset class="operational-map-controls">
+                <legend>Capas del mapa operativo</legend>
+                <label><input id="map-show-containers" type="checkbox" checked> Contenedores</label>
+                <label><input id="map-show-incidents" type="checkbox" checked> Incidencias</label>
+                <label>Estado<select id="map-incident-state"><option value="">Todos</option><option>Pendiente</option><option>En Proceso</option><option>Resuelta</option></select></label>
+                <label>Prioridad<select id="map-incident-priority"><option value="">Todas</option><option>Baja</option><option>Media</option><option>Alta</option></select></label>
+              </fieldset>
+              <p class="operational-map-legend">Círculo: contenedor. Rombo con signo de exclamación: incidencia. Los grupos numerados reúnen marcadores cercanos. Abrí una incidencia para consultar su detalle.</p>
+              <div id="operationalMap"></div>
+              <p id="mapa-status" role="status" aria-live="polite"></p>
+              <p id="mapa-incidencias-status" role="status" aria-live="polite"></p>
+            </section>
+            <form id="incidentFilters" class="incident-filters">
+              <label>Estado<select class="filter-select" name="estado"><option value="">Todos</option><option>Pendiente</option><option>En Proceso</option><option>Resuelta</option></select></label>
+              <label>Prioridad<select class="filter-select" name="prioridad"><option value="">Todas</option><option>Baja</option><option>Media</option><option>Alta</option></select></label>
+              <label>Número de seguimiento<input name="tracking_number" placeholder="INC-2026-ABCDE" maxlength="20"></label>
+              <button class="primary-button" type="submit">Buscar</button>
+            </form>
+            <p id="incidentMessage" role="status" aria-live="polite"></p>
+            <div class="table-wrap" tabindex="0" role="region" aria-label="Listado de incidencias">
+              <table class="incident-table"><thead><tr><th>ID / Seguimiento</th><th>Fecha</th><th>Problema / Descripción</th><th>Ubicación</th><th>Estado</th><th>Prioridad</th><th>Acciones</th></tr></thead><tbody id="incidentRows"></tbody></table>
+            </div>
+            <div class="incident-pagination"><button class="link-button" id="incidentPrevious" type="button" disabled>← Anterior</button><span id="incidentPage"></span><button class="link-button" id="incidentNext" type="button" disabled>Siguiente →</button></div>
+            <section id="incidentDetail" hidden aria-labelledby="incidentDetailTitle">
+              <h3 id="incidentDetailTitle" tabindex="-1">Detalle de incidencia</h3>
+              <dl id="incidentDetailFields" class="incident-detail-fields"></dl>
+              <form id="incidentForm" class="resource-form" hidden>
+                <input type="hidden" name="id_incidencia">
+                <div class="form-grid">
+                  <label>Estado<select name="estado" required><option>Pendiente</option><option>En Proceso</option><option>Resuelta</option></select></label>
+                  <label>Prioridad<select name="prioridad" required><option>Baja</option><option>Media</option><option>Alta</option></select></label>
+                  <label>Cuadrilla<select name="id_cuadrilla" disabled><option value="">Sin asignar</option></select></label>
+                </div>
+                <p id="incidentSquadMessage" role="status"></p>
+                <button class="primary-button" type="submit">Guardar cambios</button>
+              </form>
+              <p id="incidentSaveMessage" role="status" aria-live="polite"></p>
+              <button class="link-button" id="incidentClose" type="button">Cerrar detalle</button>
+            </section>
+          </section>
         </section>
 
         <section class="view" id="view-contenedores">
@@ -285,6 +314,9 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"><strong>Información actualizada.</strong> Los indicadores corresponden al último registro operativo.</div>
   <script src="config.js?v=2"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="assets/js/zemyna-map.js"></script>
   <script src="assets/js/admin.js"></script>
 </body>
 </html>

@@ -66,8 +66,10 @@ async function cargarSesionAdmin() {
     document.getElementById('profileName').textContent = nombreCompleto || nombre;
     document.getElementById('profileRole').textContent = Array.isArray(json.data.roles) ? json.data.roles.join(' · ') : '';
     document.getElementById('profileAvatar').textContent = [nombre, apellido].filter(Boolean).map(value => value.charAt(0).toUpperCase()).join('').slice(0, 2);
+    return true;
   } catch (error) {
     document.getElementById('sessionMessage').textContent = error.message;
+    return false;
   }
 }
 
@@ -86,20 +88,26 @@ logoutButton?.addEventListener('click', async () => {
   }
 });
 
-cargarSesionAdmin();
+const adminSessionReady = cargarSesionAdmin();
 
 menuButton.addEventListener('click', () => {
   const opened = app.classList.toggle('menu-open');
   menuButton.setAttribute('aria-expanded', String(opened));
 });
 
-const titles = { resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', centros: 'Centros', maquinaria: 'Maquinaria', usuarios: 'Usuarios y roles' };
+const titles = { incidencias: 'Incidencias', resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', centros: 'Centros', maquinaria: 'Maquinaria', usuarios: 'Usuarios y roles' };
 function openView(viewName) {
   if (!titles[viewName]) return;
   document.querySelectorAll('.nav-link').forEach(item => item.classList.toggle('active', item.dataset.view === viewName));
   document.querySelectorAll('.view').forEach(view => view.classList.toggle('active', view.id === `view-${viewName}`));
   document.querySelector('.title-block h1').textContent = titles[viewName];
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  operationalMapVersion++;
+  operationalMap?.pause();
+  if (viewName === 'incidencias') {
+    cargarIncidenciasAdmin();
+    abrirMapaOperativo();
+  }
   if (viewName === 'usuarios') {
     cargarUsuariosAdmin();
     cargarOpcionesRol();
@@ -124,7 +132,7 @@ document.querySelectorAll('.nav-link').forEach(link => {
 });
 
 const initialView = location.hash.replace('#', '');
-if (titles[initialView]) openView(initialView);
+window.addEventListener('DOMContentLoaded', () => { if (titles[initialView]) openView(initialView); });
 
 function enableTableFilter(searchId, filterId, rowsId, countId, emptyId, itemName) {
   const search = document.getElementById(searchId);
@@ -826,20 +834,202 @@ function showToast(title, detail = '') {
   window.toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2600);
 }
 
-document.getElementById('refreshButton').addEventListener('click', event => {
-  const button = event.currentTarget;
-  button.textContent = '↻ Actualizando…';
-  button.disabled = true;
-  window.setTimeout(() => {
-    button.textContent = '✓ Información actualizada';
-    showToast('Información actualizada.', 'Se sincronizaron rutas, flota e incidencias.');
-    window.setTimeout(() => {
-      button.textContent = '↻ Actualizar información';
-      button.disabled = false;
-    }, 1400);
-  }, 700);
+document.getElementById('refreshButton').addEventListener('click', () => {
+  openView('incidencias');
+  history.replaceState(null, '', '#incidencias');
 });
 
 document.getElementById('notificationButton').addEventListener('click', () => {
-  showToast('3 alertas operativas.', 'Hay incidencias prioritarias pendientes de revisión.');
+  showToast('Notificaciones no disponibles.');
 });
+
+const incidentFilters = document.getElementById('incidentFilters');
+const incidentRows = document.getElementById('incidentRows');
+const incidentMessage = document.getElementById('incidentMessage');
+const incidentDetail = document.getElementById('incidentDetail');
+const incidentForm = document.getElementById('incidentForm');
+const incidentSaveMessage = document.getElementById('incidentSaveMessage');
+let incidentPage = 1;
+let incidentRequest;
+let incidentDetailRequest;
+let incidentSaving = false;
+let incidentQuery = {};
+
+async function incidentApi(params = {}, options = {}) {
+  const query = new URLSearchParams({ admin: '1', ...params });
+  const response = await fetch(buildApiUrl(`/backend/api/incidencias.php?${query}`), options);
+  if (response.status === 401 || response.status === 403) bloquearMapaOperativo();
+  if (response.status === 401) redirectToLogin();
+  const json = await readJsonResponse(response);
+  if (!response.ok || !json.success) {
+    const error = new Error(json.message || 'No se pudo completar la operación.');
+    error.status = response.status;
+    throw error;
+  }
+  return json;
+}
+
+async function cargarIncidenciasAdmin() {
+  incidentRequest?.abort();
+  const request = new AbortController();
+  incidentRequest = request;
+  incidentRows.replaceChildren();
+  incidentMessage.textContent = 'Cargando incidencias…';
+  document.getElementById('incidentPrevious').disabled = true;
+  document.getElementById('incidentNext').disabled = true;
+  document.getElementById('incidentPage').textContent = '';
+  try {
+    const json = await incidentApi({ ...incidentQuery, page: incidentPage, limit: 20 }, { signal: request.signal });
+    if (request.signal.aborted) return;
+    const rows = json.data;
+    incidentRows.innerHTML = rows.map(item => `<tr>
+      <td>#${escapeHtml(item.id_incidencia)}<br>${escapeHtml(item.tracking_number)}</td>
+      <td>${escapeHtml(item.fecha_reporte)}</td>
+      <td><strong>${escapeHtml(item.tipo_problema)}</strong><div class="incident-summary">${escapeHtml(String(item.descripcion || '').slice(0, 120))}</div></td>
+      <td>${escapeHtml(item.contenedor_codigo ? `Contenedor ${item.contenedor_codigo}` : item.ruta_nombre ? `Ruta ${item.ruta_nombre}` : 'Sin ubicación asociada')}</td>
+      <td>${escapeHtml(item.estado)}</td><td>${escapeHtml(item.prioridad)}</td>
+      <td><button class="link-button" type="button" data-incident-id="${escapeHtml(item.id_incidencia)}">Ver detalle</button></td>
+    </tr>`).join('');
+    incidentMessage.textContent = rows.length ? `${rows.length} incidencias en esta página.` : 'No hay incidencias para estos filtros.';
+    document.getElementById('incidentPage').textContent = `Página ${incidentPage}`;
+    document.getElementById('incidentPrevious').disabled = incidentPage <= 1;
+    document.getElementById('incidentNext').disabled = rows.length < 20;
+    return true;
+  } catch (error) {
+    if (error.name === 'AbortError') return false;
+    incidentMessage.textContent = error.status === 404 ? 'No hay incidencias para estos filtros.' : error.message;
+    document.getElementById('incidentPrevious').disabled = incidentPage <= 1;
+    return false;
+  }
+}
+
+incidentFilters.addEventListener('submit', event => {
+  event.preventDefault();
+  incidentQuery = Object.fromEntries([...new FormData(incidentFilters)].map(([k, v]) => [k, v.trim()]).filter(([, v]) => v));
+  incidentPage = 1;
+  cargarIncidenciasAdmin();
+});
+document.getElementById('incidentPrevious').addEventListener('click', () => { if (incidentPage > 1) incidentPage--; cargarIncidenciasAdmin(); });
+document.getElementById('incidentNext').addEventListener('click', () => { incidentPage++; cargarIncidenciasAdmin(); });
+document.getElementById('incidentClose').addEventListener('click', () => {
+  if (incidentSaving) return;
+  incidentDetailRequest?.abort();
+  incidentDetail.hidden = true;
+});
+incidentRows.addEventListener('click', event => {
+  const button = event.target.closest('[data-incident-id]');
+  if (button && !incidentSaving) mostrarIncidencia(button.dataset.incidentId);
+});
+
+async function mostrarIncidencia(id) {
+  incidentDetailRequest?.abort();
+  const request = new AbortController();
+  incidentDetailRequest = request;
+  incidentDetail.hidden = false;
+  incidentForm.hidden = true;
+  incidentSaveMessage.textContent = 'Cargando detalle…';
+  document.getElementById('incidentDetailFields').replaceChildren();
+  document.getElementById('incidentDetailTitle').focus();
+  try {
+    const json = await incidentApi({ id }, { signal: request.signal });
+    if (request.signal.aborted) return;
+    const item = json.data[0];
+    const fields = { ID: item.id_incidencia, Seguimiento: item.tracking_number, Fecha: item.fecha_reporte,
+      Problema: item.tipo_problema, Descripción: item.descripcion, Contenedor: item.contenedor_codigo || item.id_contenedor || 'Sin contenedor',
+      Ruta: item.ruta_nombre || item.id_ruta || 'Sin ruta', Estado: item.estado, Prioridad: item.prioridad,
+      Cuadrilla: item.cuadrilla_nombre || 'Sin asignar', Usuario: [item.usuario_nombre, item.usuario_apellido].filter(Boolean).join(' ') || 'Sin usuario asociado' };
+    document.getElementById('incidentDetailFields').innerHTML = Object.entries(fields).map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`).join('');
+    incidentSaveMessage.textContent = json.can_update ? '' : 'Tenés acceso de consulta; no podés modificar esta incidencia.';
+    if (!json.can_update) return;
+    incidentForm.hidden = false;
+    for (const name of ['id_incidencia', 'estado', 'prioridad']) incidentForm.elements[name].value = item[name];
+    const squads = incidentForm.elements.id_cuadrilla;
+    squads.disabled = true;
+    squads.replaceChildren(new Option(item.cuadrilla_nombre || 'Sin asignar', item.id_cuadrilla || ''));
+    const squadMessage = document.getElementById('incidentSquadMessage');
+    squadMessage.textContent = 'Cargando cuadrillas…';
+    try {
+      const result = await incidentApi({ opciones: 'cuadrillas' }, { signal: request.signal });
+      if (request.signal.aborted) return;
+      squads.replaceChildren(new Option('Sin asignar', ''));
+      for (const squad of result.data) squads.add(new Option(`${squad.nombre} · ${squad.turno}`, squad.id_cuadrilla));
+      squads.value = item.id_cuadrilla || '';
+      squads.disabled = false;
+      squadMessage.textContent = '';
+    } catch (error) {
+      if (error.name !== 'AbortError') squadMessage.textContent = `${error.message} Podés editar estado y prioridad.`;
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') incidentSaveMessage.textContent = error.message;
+  }
+}
+
+incidentForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (incidentSaving || !window.confirm('¿Confirmás los cambios de estado, prioridad o asignación de esta incidencia?')) return;
+  const payload = Object.fromEntries(new FormData(incidentForm));
+  payload.id_incidencia = Number(payload.id_incidencia);
+  if ('id_cuadrilla' in payload) payload.id_cuadrilla = payload.id_cuadrilla ? Number(payload.id_cuadrilla) : null;
+  incidentSaving = true;
+  incidentDetailRequest?.abort();
+  const controls = [...incidentForm.querySelectorAll('input, select, button'), document.getElementById('incidentClose')];
+  const disabled = controls.map(control => control.disabled);
+  controls.forEach(control => { control.disabled = true; });
+  incidentSaveMessage.textContent = 'Guardando cambios…';
+  try {
+    const result = await incidentApi({}, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    incidentSaveMessage.textContent = result.message;
+    showToast(result.message);
+    await cargarIncidenciasAdmin();
+    operationalMap?.refreshIncidents();
+    incidentDetail.hidden = true;
+  } catch (error) {
+    incidentSaveMessage.textContent = error.message;
+  } finally {
+    controls.forEach((control, index) => { control.disabled = disabled[index]; });
+    incidentSaving = false;
+  }
+});
+
+
+let operationalMap = null;
+let operationalMapVersion = 0;
+function bloquearMapaOperativo() {
+  operationalMapVersion++;
+  operationalMap?.pause();
+  document.getElementById('operationalMapPanel').hidden = true;
+  document.getElementById('operationalMapMessage').textContent = 'El mapa requiere una sesión válida y permiso para consultar incidencias.';
+}
+async function abrirMapaOperativo() {
+  const version = ++operationalMapVersion;
+  const panel = document.getElementById('operationalMapPanel');
+  const message = document.getElementById('operationalMapMessage');
+  panel.hidden = true;
+  message.textContent = 'Validando acceso al mapa…';
+  if (!await adminSessionReady) {
+    if (version === operationalMapVersion) bloquearMapaOperativo();
+    return;
+  }
+  try {
+    // La sesión por sí sola no habilita el mapa: verifica el permiso mediante la API protegida.
+    await incidentApi({ limit: 1 });
+    if (version !== operationalMapVersion) return;
+    panel.hidden = false;
+    if (operationalMap) operationalMap.resume();
+    else operationalMap = ZemynaMap.create({
+      administrative: true,
+      mapId: 'operationalMap',
+      onAccessDenied: bloquearMapaOperativo,
+      onIncidentSelect: id => {
+        if (incidentSaving) return;
+        mostrarIncidencia(id);
+        incidentDetail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+    message.textContent = '';
+  } catch (error) {
+    if (version !== operationalMapVersion) return;
+    panel.hidden = true;
+    message.textContent = error.message;
+  }
+}

@@ -451,3 +451,31 @@ td strong { color: var(--text); font-size: 10px; }
   .form-actions .primary-button { width: 100%; }
   .panel { padding: 16px; }
 }
+
+/* Gestión de incidencias: conserva la tabla desplazable en pantallas peque?as. */
+.incident-filters { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; margin: 20px 0; }
+.incident-filters label { display: grid; gap: 7px; flex: 1 1 180px; }
+.incident-filters input { padding: 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: inherit; min-width: 0; }
+.incident-table { min-width: 880px; }
+.incident-summary { max-width: 280px; white-space: normal; overflow-wrap: anywhere; color: var(--muted); }
+.incident-pagination { display: flex; justify-content: space-between; align-items: center; margin: 18px 0; }
+.incident-detail-fields { display: grid; grid-template-columns: minmax(100px, 140px) minmax(0, 1fr); gap: 12px; }
+.incident-detail-fields dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+#incidentDetail { border-top: 1px solid var(--line); padding-top: 20px; }
+#incidentMessage, #incidentSaveMessage, #incidentSquadMessage { margin: 12px 0; }
+#incidencias button:disabled { opacity: .5; cursor: wait; }
+@media (max-width: 600px) { .incident-detail-fields { grid-template-columns: 1fr; gap: 6px; } .incident-detail-fields dd { margin-bottom: 12px; } }
+
+#operationalMapPanel[hidden] { display: none; }
+#operationalMap { height: 420px; width: 100%; border-radius: 10px; z-index: 0; }
+.operational-map-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; border: 1px solid var(--line); padding: 12px; margin: 18px 0 10px; border-radius: 10px; }
+.operational-map-controls label { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.operational-map-controls input { width: 22px; height: 22px; }
+.operational-map-controls select { min-height: 44px; padding: 8px; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
+.operational-map-legend, #mapa-status, #mapa-incidencias-status { margin: 10px 0; font-size: .9rem; }
+#operationalMap .leaflet-popup-content { color: #111827; }
+#operationalMap .leaflet-popup-content button { min-height: 44px; padding: 8px; cursor: pointer; }
+@media (max-width: 600px) {
+  #operationalMap { height: 350px; }
+  .operational-map-controls label { flex: 1 1 150px; }
+}

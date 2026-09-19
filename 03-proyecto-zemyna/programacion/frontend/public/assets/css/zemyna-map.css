@@ -1,0 +1,4 @@
+.incident-map-icon { background: transparent; border: 0; }
+.incident-map-symbol { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 4px; transform: rotate(45deg); background: #fbbf24; border: 2px solid #fff; color: #111827; box-shadow: 0 1px 5px #111; }
+.incident-map-symbol b { transform: rotate(-45deg); font-size: 18px; }
+.incident-map-cluster { display: grid; place-items: center; min-width: 38px; height: 32px; padding: 2px; border: 2px solid white; border-radius: 6px; background: #fbbf24; color: #111827; font-weight: bold; box-shadow: 0 1px 5px #111; }

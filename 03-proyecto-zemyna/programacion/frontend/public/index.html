@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="assets/logo.jpeg" type="image/jpeg">
     <title>Zemyna | Inicio</title>
-    <link rel="stylesheet" href="../src/styles/index.css?v=3">
+    <link rel="stylesheet" href="../src/styles/index.css?v=4">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="assets/css/zemyna-map.css">
 </head>
 <body>
 
@@ -28,12 +29,19 @@
 
     <section class="hero">
         <h2>Reporte Ciudadano</h2>
-        <p>Hacé clic en un contenedor del mapa para ver su estado y registrar una incidencia en la demo.</p>
+        <p>Hacé clic en un contenedor del mapa para ver su estado y registrar una incidencia. También podés consultar los reportes de la zona.</p>
     </section>
 
     <main class="main-container">
         <div class="map-wrapper">
+            <fieldset class="map-controls">
+                <legend>Capas del mapa</legend>
+                <label><input id="map-show-containers" type="checkbox" checked> Contenedores</label>
+                <label><input id="map-show-incidents" type="checkbox"> Incidencias</label>
+            </fieldset>
+            <p class="map-legend">Círculo: contenedor seleccionable para reportar. Rombo con signo de exclamación: incidencia activa de consulta. Los grupos numerados reúnen marcadores cercanos.</p>
             <div id="mapa-vedette"></div>
+            <p id="mapa-incidencias-status" class="estado-global" role="status" aria-live="polite"></p>
             <p id="mapa-status" class="estado-global" role="status" aria-live="polite"></p>
         </div>
 
@@ -102,6 +110,7 @@
     <script src="config.js?v=2"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="mapa.js?v=4"></script>
+    <script src="assets/js/zemyna-map.js"></script>
+    <script src="mapa.js?v=6"></script>
 </body>
 </html>

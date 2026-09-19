@@ -20,15 +20,19 @@ class Incidencia {
         $this->conn = $db;
     }
 
-    public function read($id = null, $page = 1, $limit = 20, $trackingNumber = null) {
+    public function read($id = null, $page = 1, $limit = 20, $trackingNumber = null, $estado = null, $prioridad = null) {
         if (!$this->conn) return null;
 
-        $where = '';
-        if ($id !== null && $id !== '') {
-            $where = ' WHERE i.id_incidencia = :id_incidencia';
-        } elseif ($trackingNumber !== null && $trackingNumber !== '') {
-            $where = ' WHERE i.tracking_number = :tracking_number';
+        $conditions = [];
+        $params = [];
+        foreach (['id_incidencia' => $id, 'tracking_number' => $trackingNumber,
+                  'estado' => $estado, 'prioridad' => $prioridad] as $column => $value) {
+            if ($value !== null && $value !== '') {
+                $conditions[] = "i.$column = :$column";
+                $params[":$column"] = $value;
+            }
         }
+        $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
 
         $offset = ($page - 1) * $limit;
 
@@ -49,17 +53,70 @@ class Incidencia {
 
         $stmt = $this->conn->prepare($query);
 
-        if ($id !== null && $id !== '') {
-            $stmt->bindValue(':id_incidencia', (int)$id, PDO::PARAM_INT);
-        } elseif ($trackingNumber !== null && $trackingNumber !== '') {
-            $stmt->bindValue(':tracking_number', $trackingNumber);
+        foreach ($params as $name => $value) {
+            $stmt->bindValue($name, $value, $name === ':id_incidencia' ? PDO::PARAM_INT : PDO::PARAM_STR);
         }
 
         $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
-        $stmt->execute();
+        if (!$stmt->execute()) return null;
 
         return $stmt;
+    }
+
+    public function readForMap(float $south, float $north, float $west, float $east, int $limit, ?string $estado = null, ?string $prioridad = null) {
+        if (!$this->conn) return null;
+        // La incidencia no tiene coordenadas propias. No se infiere una ubicación de la ruta.
+        $query = "SELECT i.id_incidencia, i.estado, i.prioridad, i.tipo_problema, i.fecha_reporte,
+                         c.latitud, c.longitud, c.codigo AS contenedor_codigo
+                  FROM incidencia i
+                  INNER JOIN contenedor c ON c.id_contenedor = i.id_contenedor
+                  WHERE c.activo = 1
+                    AND c.latitud BETWEEN -90 AND 90
+                    AND c.longitud BETWEEN -180 AND 180
+                    AND c.latitud BETWEEN :south AND :north
+                    AND c.longitud BETWEEN :west AND :east";
+        if ($estado !== null) $query .= ' AND i.estado = :estado';
+        if ($prioridad !== null) $query .= ' AND i.prioridad = :prioridad';
+        $query .= ' ORDER BY i.id_incidencia DESC LIMIT :limit';
+        $stmt = $this->conn->prepare($query);
+        foreach (['south' => $south, 'north' => $north, 'west' => $west, 'east' => $east] as $key => $value) {
+            $stmt->bindValue(':' . $key, $value);
+        }
+        if ($estado !== null) $stmt->bindValue(':estado', $estado);
+        if ($prioridad !== null) $stmt->bindValue(':prioridad', $prioridad);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        if (!$stmt->execute()) return null;
+        return $stmt;
+    }
+
+    public function cuadrillas(): array {
+        if (!$this->conn) throw new PersistenceException('Sin conexión.');
+        $stmt = $this->conn->prepare('SELECT id_cuadrilla, nombre, turno FROM cuadrilla ORDER BY nombre, id_cuadrilla');
+        if (!$stmt->execute()) throw new PersistenceException('No se pudieron consultar las cuadrillas.');
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function cuadrillaExists(int $id): bool {
+        if (!$this->conn) throw new PersistenceException('Sin conexión.');
+        $stmt = $this->conn->prepare('SELECT id_cuadrilla FROM cuadrilla WHERE id_cuadrilla = :id');
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        if (!$stmt->execute()) throw new PersistenceException('No se pudo consultar la cuadrilla.');
+        return $stmt->fetchColumn() !== false;
+    }
+
+    public function updateManagement(int $id, array $changes): bool {
+        if (!$this->conn) return false;
+        $sets = [];
+        $params = [':id' => $id];
+        foreach (['estado', 'prioridad', 'id_cuadrilla'] as $column) {
+            if (array_key_exists($column, $changes)) {
+                $sets[] = "$column = :$column";
+                $params[":$column"] = $changes[$column];
+            }
+        }
+        $stmt = $this->conn->prepare('UPDATE incidencia SET ' . implode(', ', $sets) . ' WHERE id_incidencia = :id');
+        return $stmt->execute($params);
     }
 
     public function create() {

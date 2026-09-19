@@ -14,13 +14,22 @@ switch ($method) {
             'tracking_number' => $_GET['tracking_number'] ?? null,
             'page' => $_GET['page'] ?? 1,
             'limit' => $_GET['limit'] ?? 20,
+            'estado' => $_GET['estado'] ?? null,
+            'prioridad' => $_GET['prioridad'] ?? null,
         ];
 
-        if (array_key_exists('tracking_number', $_GET)) {
+        if (($_GET['view'] ?? null) !== 'map' && array_key_exists('tracking_number', $_GET) && !array_key_exists('admin', $_GET)) {
             $response = $controller->getPublicByTracking($filters['tracking_number']);
+        } elseif (($_GET['view'] ?? null) === 'map') {
+            if (array_key_exists('admin', $_GET)) {
+                requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
+            }
+            $response = $controller->getMap($_GET);
         } else {
             requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
-            $response = $controller->getAll($filters);
+            $response = ($_GET['opciones'] ?? null) === 'cuadrillas'
+                ? $controller->getCuadrillas() : $controller->getAll($filters);
+            $response['can_update'] = hasEffectivePermission('incidencia.modificar', ['OPERACIONES', 'PUNTOS_Y_DESTINOS']);
         }
         http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));
         echo json_encode($response);
@@ -29,7 +38,7 @@ switch ($method) {
     case "POST":
         $data = json_decode(file_get_contents("php://input"), true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
             http_response_code(400);
             echo json_encode([
                 "success" => false,
@@ -49,7 +58,7 @@ switch ($method) {
 
         $data = json_decode(file_get_contents("php://input"), true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
             http_response_code(400);
             echo json_encode([
                 "success" => false,
@@ -59,7 +68,7 @@ switch ($method) {
             break;
         }
 
-        $response = $controller->update($data ?? []);
+        $response = $controller->updateAdministrative($data ?? []);
         http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));
         echo json_encode($response);
         break;
