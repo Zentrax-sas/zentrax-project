@@ -12,6 +12,8 @@ class Element {
   querySelector() { return new Element(); }
   querySelectorAll() { return []; }
   reportValidity() { return true; }
+  focus() {}
+  scrollIntoView() {}
   reset() {}
   replaceChildren(...nodes) { this.children = nodes; }
   appendChild(node) { this.children.push(node); }
@@ -99,10 +101,10 @@ test('leyenda legible y contenedor seleccionable sin cambios desde incidencias',
 test('administracion solicita ruta protegida y filtra estado y prioridad', async () => {
   const h = harness(true);
   assert.match(h.incidents()[0].url, /admin=1/);
-  h.elements.get('map-incident-state').value = 'Resuelta'; h.elements.get('map-incident-state').change();
+  h.elements.get('map-incident-state').value = 'En Proceso'; h.elements.get('map-incident-state').change();
   h.elements.get('map-incident-priority').value = 'Alta'; h.elements.get('map-incident-priority').change(); h.flush();
-  const r = h.incidents().at(-1); assert.match(r.url, /estado=Resuelta/); assert.match(r.url, /prioridad=Alta/);
-  respond(r, [item(2, 'Resuelta')]); await tick(); assert.equal(h.groups[1].markers.size, 1);
+  const r = h.incidents().at(-1); assert.match(r.url, /estado=En\+Proceso/); assert.match(r.url, /prioridad=Alta/);
+  assert.match(r.url, /activas=1/); respond(r, [item(2, 'En Proceso'), item(3, 'Resuelta')]); await tick(); assert.equal(h.groups[1].markers.size, 1);
   assert.match(text([...h.groups[1].markers][0].popup), /Prioridad: Alta/);
 });
 test('administracion reutiliza detalle sin insertar datos privados en popup', async () => {
@@ -190,4 +192,113 @@ test('popups publicos y administrativos conservan acentos sin reconversion', asy
     assert.ok(content.includes(row.contenedor_codigo));
     assert.doesNotMatch(content, /Ã|Â|�/);
   }
+});
+
+
+async function reportHarness() {
+  const h = harness(true, {}, 'admin');
+  h.run(fs.readFileSync(path.join(publicDir, 'assets/js/incidence-report.js'), 'utf8'));
+  respond(h.requests[0], { nombre: 'Prueba', roles: [] });
+  const loading = h.run('window.IncidenceReport.load()');
+  await tick();
+  return { h, loading };
+}
+function reportResponse(request, data, total = 25) {
+  request.resolve({ status: 200, ok: true, text: async () => JSON.stringify({ success: true, data,
+    totals: { abiertas: total, cerradas: 0, total }, meta: { pages: Math.ceil(total / 20) } }) });
+}
+test('informe pagina filtra y escapa datos sin limitar los totales a la pagina', async () => {
+  const { h, loading } = await reportHarness();
+  assert.match(h.requests.at(-1).url, /view=report/);
+  const row = { tracking_number: '<img onerror=alert(1)>', tipo_problema: 'Dañado', estado: 'Pendiente', prioridad: 'Media', fecha_reporte: '2026-09-19', contenedor_codigo: 'C-1' };
+  reportResponse(h.requests.at(-1), [row]); await loading;
+  assert.match(h.elements.get('reportRows').innerHTML, /&lt;img/);
+  assert.doesNotMatch(h.elements.get('reportRows').innerHTML, /<img/);
+  assert.match(h.elements.get('reportTotals').textContent, /Total: 25/);
+  assert.equal(h.elements.get('reportNext').disabled, false);
+  h.elements.get('reportNext').listeners.click(); await tick();
+  assert.match(h.requests.at(-1).url, /page=2/);
+  reportResponse(h.requests.at(-1), [row]); await tick();
+  h.elements.get('reportGroup').value = 'cerradas';
+  h.elements.get('reportFrom').value = '2026-01-01';
+  h.elements.get('reportTo').value = '2026-12-31';
+  h.elements.get('reportFilters').listeners.submit({ preventDefault() {} }); await tick();
+  assert.match(h.requests.at(-1).url, /grupo=cerradas/);
+  assert.match(h.requests.at(-1).url, /desde=2026-01-01/);
+  assert.match(h.requests.at(-1).url, /hasta=2026-12-31/);
+  assert.match(h.requests.at(-1).url, /page=1/);
+});
+test('informe cancela respuestas obsoletas y controla vacio error y carga', async () => {
+  const { h, loading } = await reportHarness(); const old = h.requests.at(-1);
+  assert.match(h.elements.get('reportMessage').textContent, /Cargando/);
+  const next = h.run('window.IncidenceReport.load()'); await tick();
+  assert.equal(old.options.signal.aborted, true);
+  reportResponse(h.requests.at(-1), [], 0); await next;
+  reportResponse(old, [{ tracking_number: 'obsoleto' }]); await loading;
+  assert.equal(h.elements.get('reportRows').innerHTML, '');
+  assert.match(h.elements.get('reportMessage').textContent, /No hay/);
+  const denied = h.run('window.IncidenceReport.load()'); await tick();
+  respond(h.requests.at(-1), [], 403); await denied;
+  assert.equal(h.elements.get('reportNext').disabled, true);
+  assert.match(h.elements.get('reportTotals').textContent, /pendientes/);
+  assert.match(h.elements.get('reportMessage').textContent, /No se pudo/);
+});
+
+
+test('prioridades administrativas sin letras conservan forma colores y texto accesible; publico no muestra prioridad', async () => {
+  const h = harness(true);
+  respond(h.incidents()[0], ['Baja', 'Media', 'Alta'].map((prioridad, i) => ({ ...item(i + 1), prioridad })));
+  await tick();
+  const markers = [...h.groups[1].markers];
+  for (const [i, priority] of ['Baja', 'Media', 'Alta'].entries()) {
+    assert.doesNotMatch(markers[i].options.icon.html, /<b>[BMA]<\/b>/);
+    assert.match(markers[i].options.icon.html, /incident-map-symbol/);
+    assert.ok(markers[i].options.title.includes(`prioridad ${priority}`));
+    assert.ok(markers[i].options.alt.includes(`prioridad ${priority}`));
+    assert.ok(text(markers[i].popup).includes(`Prioridad: ${priority}`));
+  }
+  assert.equal(new Set(markers.map(m => m.options.icon.html)).size, 3);
+  const p = harness(); enable(p); for (const req of p.incidents()) respond(req, [item()]); await tick();
+  assert.match([...p.groups[1].markers][0].options.icon.html, /<b>!<\/b>/);
+  assert.doesNotMatch([...p.groups[1].markers][0].options.title, /Alta|prioridad/);
+});
+
+test('localizar resuelta cancela carga masiva y volver elimina marcador individual', async () => {
+  const h = harness(true); const pending = h.incidents()[0];
+  assert.equal(h.instance.focusIncident(item(9, 'Resuelta')), true);
+  assert.equal(pending.options.signal.aborted, true);
+  assert.equal(h.groups[1].markers.size, 1);
+  const marker = [...h.groups[1].markers][0];
+  assert.match(text(marker.popup), /contenedor relacionado/);
+  assert.match(marker.options.icon.html, /<b>R<\/b>/);
+  h.emit('movestart'); h.emit('moveend'); h.flush();
+  assert.equal(h.incidents().length, 1);
+  respond(pending, [item()]); await tick();
+  assert.equal(h.groups[1].markers.size, 1);
+  h.instance.showActiveIncidents();
+  assert.equal(h.groups[1].markers.size, 0);
+  assert.match(h.incidents().at(-1).url, /activas=1/);
+  respond(h.incidents().at(-1), [item(), item(9, 'Resuelta')]); await tick();
+  assert.equal(h.groups[1].markers.size, 1);
+  h.instance.focusIncident(item());
+  assert.equal(h.groups[1].markers.size, 1);
+  assert.equal(h.instance.focusIncident({ ...item(), latitud: null }), false);
+  h.instance.refreshIncidents();
+  assert.equal(h.groups[1].markers.size, 0);
+  assert.match(h.incidents().at(-1).url, /activas=1/);
+});
+
+
+test('detalle muestra resolucion historica desconocida y oculta mapa sin ubicacion', async () => {
+  const h = harness(true, {}, 'admin');
+  const loading = h.run('mostrarIncidencia(9)');
+  respond(h.requests.at(-1), [{ ...item(9, 'Resuelta'), fecha_resolucion: null }]); await tick();
+  respond(h.requests.at(-1), null); await loading;
+  assert.equal(h.elements.get('incidentViewMap').hidden, true);
+  assert.match(h.elements.get('incidentDetailFields').innerHTML, /Fecha de resolución no registrada/);
+  const located = h.run('mostrarIncidencia(9)');
+  respond(h.requests.at(-1), [{ ...item(9, 'Resuelta'), fecha_resolucion: '2026-09-19 13:00:00' }]); await tick();
+  respond(h.requests.at(-1), item(9, 'Resuelta')); await located;
+  assert.equal(h.elements.get('incidentViewMap').hidden, false);
+  assert.match(h.elements.get('incidentDetailFields').innerHTML, /2026-09-19 13:00:00/);
 });

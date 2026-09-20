@@ -149,6 +149,54 @@ class IncidenciaController {
         return ['success' => false, 'data' => [], 'message' => $message, 'errors' => [], 'statusCode' => $status];
     }
 
+    public function getLocation($id): array {
+        if (!$this->positiveInteger($id)) return $this->managementError(400, 'ID inválido.');
+        try {
+            $row = $this->incidencia->location((int)$id);
+            if (!$row) return $this->managementError(404, 'Incidencia no encontrada.');
+            $valid = is_numeric($row['latitud']) && is_numeric($row['longitud'])
+                && abs((float)$row['latitud']) <= 90 && abs((float)$row['longitud']) <= 180;
+            return ['success' => true, 'statusCode' => 200, 'data' => $valid ? $row : null,
+                'message' => $valid ? 'Ubicación del contenedor relacionado.' : 'Ubicación no disponible'];
+        } catch (PDOException | PersistenceException $exception) {
+            return $this->managementError(500, 'No se pudo consultar la ubicación.');
+        }
+    }
+
+    public function getReport(array $filters): array {
+        $group = $filters['grupo'] ?? 'todos';
+        $page = $filters['page'] ?? 1;
+        $limit = $filters['limit'] ?? 20;
+        if (!in_array($group, ['todos', 'abiertas', 'cerradas'], true)
+            || !$this->positiveInteger($page, 1000000) || !$this->positiveInteger($limit, 100)) {
+            return $this->managementError(400, 'Grupo o paginación inválidos.');
+        }
+        $dates = [];
+        foreach (['desde', 'hasta'] as $key) {
+            $value = $filters[$key] ?? null;
+            if ($value === '') $value = null;
+            if ($value !== null) {
+                if (!is_string($value) || !preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/D', $value)) {
+                    return $this->managementError(400, 'Las fechas deben tener formato AAAA-MM-DD.');
+                }
+                [$year, $month, $day] = array_map('intval', explode('-', $value));
+                if ($year < 1000 || !checkdate($month, $day, $year)) {
+                    return $this->managementError(400, 'Fecha inválida.');
+                }
+            }
+            $dates[$key] = $value;
+        }
+        if ($dates['desde'] !== null && $dates['hasta'] !== null && $dates['desde'] > $dates['hasta']) {
+            return $this->managementError(400, 'Desde no puede ser posterior a hasta.');
+        }
+        try {
+            return ['success' => true, 'statusCode' => 200] + $this->incidencia->report(
+                $group, $dates['desde'], $dates['hasta'], (int)$page, (int)$limit);
+        } catch (PDOException | PersistenceException $exception) {
+            return $this->managementError(500, 'No se pudo cargar el informe de incidencias.');
+        }
+    }
+
     public function getCuadrillas(): array {
         try {
             return ['success' => true, 'data' => $this->incidencia->cuadrillas(), 'statusCode' => 200];
@@ -283,7 +331,8 @@ class IncidenciaController {
                 $coordinates['east'],
                 $limit + 1,
                 $filters['estado'] ?? null,
-                $filters['prioridad'] ?? null
+                $filters['prioridad'] ?? null,
+                ($filters['activas'] ?? null) === '1'
             );
             if (!$stmt) {
                 throw new PDOException('No hay conexión disponible.');

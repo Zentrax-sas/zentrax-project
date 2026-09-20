@@ -30,6 +30,7 @@ final class IncidenciaAdminTest extends TestCase
             INSERT INTO cuadrilla VALUES(1, 'Cuadrilla prueba', 'Matutino');
             INSERT INTO incidencia VALUES(1,'INC-2026-ABCDE','Descripción original','2026-08-20 10:00:00','Pendiente','Media','Contenedor Desbordado',1,NULL,NULL,NULL);
             INSERT INTO incidencia VALUES(2,'INC-2026-ABCDF','Otro reporte','2026-08-20 11:00:00','Resuelta','Alta','Contenedor Desbordado',1,NULL,1,NULL);");
+        $this->db->exec('ALTER TABLE incidencia ADD COLUMN fecha_resolucion TEXT DEFAULT NULL; ALTER TABLE contenedor ADD COLUMN latitud NUMERIC; ALTER TABLE contenedor ADD COLUMN longitud NUMERIC');
         $this->controller = new IncidenciaController($this->db);
     }
 
@@ -217,5 +218,120 @@ final class IncidenciaAdminTest extends TestCase
         $this->assertSame($type, $tracking['data']['tipo_problema']);
         $listed = $this->controller->getAll(['tracking_number' => $created['data']['tracking_number']]);
         $this->assertSame($text, $listed['data'][0]['descripcion']);
+    }
+    public function testInformeClasificaPaginaYOrdenaSinLimitarTotales(): void
+    {
+        $this->db->exec("INSERT INTO incidencia (id_incidencia,tracking_number,descripcion,fecha_reporte,estado,prioridad,tipo_problema,id_contenedor,id_ruta,id_cuadrilla,id_usuario) VALUES(3,'INC-2026-AAAAA','Prueba','2026-08-21 23:59:59','En Proceso','Baja','Contenedor Desbordado',NULL,NULL,NULL,NULL)");
+        $result = $this->controller->getReport(['limit' => 1]);
+        $this->assertSame(200, $result['statusCode']);
+        $this->assertSame(['total' => 3, 'abiertas' => 2, 'cerradas' => 1], $result['totals']);
+        $this->assertSame([3], array_column($result['data'], 'id_incidencia'));
+        $second = $this->controller->getReport(['limit' => 1, 'page' => 2]);
+        $this->assertSame($result['totals'], $second['totals']);
+        $this->assertSame([2], array_column($second['data'], 'id_incidencia'));
+        $this->assertSame(3, $second['meta']['pages']);
+        $this->assertArrayNotHasKey('descripcion', $result['data'][0]);
+        $this->assertNull($result['data'][0]['contenedor_codigo']);
+        $open = $this->controller->getReport(['grupo' => 'abiertas']);
+        $this->assertSame([3, 1], array_column($open['data'], 'id_incidencia'));
+        $this->assertSame(['total' => 2, 'abiertas' => 2, 'cerradas' => 0], $open['totals']);
+        $closed = $this->controller->getReport(['grupo' => 'cerradas']);
+        $this->assertSame([2], array_column($closed['data'], 'id_incidencia'));
+        $this->assertSame(['total' => 1, 'abiertas' => 0, 'cerradas' => 1], $closed['totals']);
+        $date = $this->controller->getReport(['desde' => '2026-08-21', 'hasta' => '2026-08-21']);
+        $this->assertSame([3], array_column($date['data'], 'id_incidencia'));
+        $this->assertSame(1, $date['totals']['total']);
+        $this->assertSame(2, $this->controller->getReport(['hasta' => '2026-08-20'])['totals']['total']);
+        $this->assertSame(1, $this->controller->getReport(['desde' => '2026-08-21'])['totals']['total']);
+    }
+
+    public function testInformeVacioYPaginaFueraDeRango(): void
+    {
+        $result = $this->controller->getReport(['desde' => '2099-01-01']);
+        $this->assertSame([], $result['data']);
+        $this->assertSame(['total' => 0, 'abiertas' => 0, 'cerradas' => 0], $result['totals']);
+        $this->assertSame(0, $result['meta']['pages']);
+        $result = $this->controller->getReport(['page' => 9]);
+        $this->assertSame([], $result['data']);
+        $this->assertSame(2, $result['totals']['total']);
+    }
+
+    /** @dataProvider invalidReportFilters */
+    public function testInformeRechazaFiltrosInvalidos(array $filters): void
+    {
+        $this->assertSame(400, $this->controller->getReport($filters)['statusCode']);
+    }
+
+    public static function invalidReportFilters(): array
+    {
+        return array_map(fn($filter) => [$filter], [
+            ['grupo' => 'Pendiente'], ['grupo' => []], ['grupo' => "' OR 1=1 --"],
+            ['page' => 0], ['page' => []], ['page' => '1.5'], ['page' => 1000001],
+            ['limit' => 0], ['limit' => 101], ['limit' => []],
+            ['desde' => '2026-02-29'], ['hasta' => '2026-13-01'], ['desde' => []],
+            ['desde' => '2026-1-01'], ['hasta' => '2026-01-01 12:00:00'],
+            ['desde' => '0999-01-01'], ['desde' => '2026-08-22', 'hasta' => '2026-08-20'],
+        ]);
+    }
+
+    public function testInformeFechaValidaYErrorSeguro(): void
+    {
+        $this->assertSame(200, $this->controller->getReport(['desde' => '2024-02-29', 'hasta' => ''])['statusCode']);
+        $this->db->exec('DROP TABLE incidencia');
+        $result = $this->controller->getReport([]);
+        $this->assertSame(500, $result['statusCode']);
+        $this->assertStringNotContainsString('SQLSTATE', json_encode($result));
+    }
+    public function testResolucionDelCicloActualConservaFechaYReaperturaLaLimpia(): void
+    {
+        foreach (['Pendiente', 'En Proceso'] as $initial) {
+            $this->controller->updateAdministrative(['id_incidencia' => 1, 'estado' => $initial]);
+            $before = (new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d H:i:s');
+            $this->assertSame(200, $this->controller->updateAdministrative(['id_incidencia' => 1, 'estado' => 'Resuelta', 'fecha_resolucion' => '1900-01-01'])['statusCode']);
+            $row = $this->controller->getAll(['id' => 1])['data'][0];
+            $date = $row['fecha_resolucion'];
+            $this->assertGreaterThanOrEqual($before, $date);
+            $this->assertLessThanOrEqual((new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d H:i:s'), $date);
+            $this->assertNotSame($row['fecha_reporte'], $date);
+            foreach ([['prioridad' => 'Baja'], ['id_cuadrilla' => 1], ['estado' => 'Resuelta'], $row] as $change) {
+                $this->assertSame(200, $this->controller->updateAdministrative(['id_incidencia' => 1] + $change)['statusCode']);
+                $this->assertSame($date, $this->controller->getAll(['id' => 1])['data'][0]['fecha_resolucion']);
+            }
+            $report = $this->controller->getReport(['grupo' => 'cerradas']);
+            $dates = array_column($report['data'], 'fecha_resolucion', 'id_incidencia');
+            $this->assertSame($date, $dates[1]);
+            $row['estado'] = $initial;
+            $this->assertSame(200, $this->controller->updateAdministrative($row)['statusCode']);
+            $this->assertNull($this->controller->getAll(['id' => 1])['data'][0]['fecha_resolucion']);
+        }
+    }
+
+    public function testResolucionHistoricaDesconocidaNoSeInventa(): void
+    {
+        $row = $this->controller->getAll(['id' => 2])['data'][0];
+        $this->assertNull($row['fecha_resolucion']);
+        $this->controller->updateAdministrative($row);
+        $this->assertNull($this->controller->getAll(['id' => 2])['data'][0]['fecha_resolucion']);
+        $this->controller->updateAdministrative(['id_incidencia' => 2, 'estado' => 'Pendiente']);
+        $this->assertNull($this->controller->getAll(['id' => 2])['data'][0]['fecha_resolucion']);
+        $this->controller->updateAdministrative(['id_incidencia' => 2, 'estado' => 'Resuelta']);
+        $this->assertNotNull($this->controller->getAll(['id' => 2])['data'][0]['fecha_resolucion']);
+    }
+
+    public function testUbicacionIndividualResueltaYCoordenadasAusentes(): void
+    {
+        $this->assertNull($this->controller->getLocation(2)['data']);
+        $this->db->exec('UPDATE contenedor SET latitud=-34.91,longitud=-56.15 WHERE id_contenedor=1');
+        $result = $this->controller->getLocation(2);
+        $this->assertSame('Resuelta', $result['data']['estado']);
+        $this->assertEquals(-34.91, $result['data']['latitud']);
+        $this->assertArrayNotHasKey('tracking_number', $result['data']);
+        $this->assertArrayNotHasKey('descripcion', $result['data']);
+        $this->db->exec('UPDATE contenedor SET latitud=91');
+        $this->assertNull($this->controller->getLocation(2)['data']);
+        $this->db->exec('UPDATE incidencia SET id_contenedor=NULL WHERE id_incidencia=2');
+        $this->assertNull($this->controller->getLocation(2)['data']);
+        $this->assertSame(404, $this->controller->getLocation(999)['statusCode']);
+        $this->assertSame(400, $this->controller->getLocation([])['statusCode']);
     }
 }

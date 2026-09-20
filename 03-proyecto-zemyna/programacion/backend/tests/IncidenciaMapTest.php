@@ -158,4 +158,10 @@ final class IncidenciaMapTest extends TestCase
         $this->assertSame($type, $decoded['data'][0]['tipo_problema']);
         $this->assertSame(bin2hex($type), bin2hex($decoded['data'][0]['tipo_problema']));
     }
+    public function testCargaActivaExcluyeHistorialResuelto(): void
+    {
+        $result = $this->controller->getMap($this->viewport(['activas' => '1']));
+        $this->assertSame([1], array_column($result['data'], 'id_incidencia'));
+        $this->assertSame([], $this->controller->getMap($this->viewport(['activas' => '1', 'estado' => 'Resuelta']))['data']);
+    }
 }

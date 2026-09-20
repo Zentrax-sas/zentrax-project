@@ -26,6 +26,7 @@
         <a class="nav-link active" href="#resumen" data-view="resumen"><span class="nav-icon">⌂</span>Resumen operativo</a>
         <a class="nav-link" href="#rutas"><span class="nav-icon">⌁</span>Rutas y recorridos</a>
         <a class="nav-link" href="#camiones" data-view="camiones"><span class="nav-icon">▱</span>Camiones</a>
+        <a class="nav-link" href="#informe-incidencias" data-view="informe-incidencias"><span class="nav-icon">≡</span>Informe de incidencias</a>
         <a class="nav-link" href="#incidencias" data-view="incidencias"><span class="nav-icon">!</span>Incidencias</a>
         <a class="nav-link" href="#contenedores" data-view="contenedores"><span class="nav-icon">□</span>Contenedores</a>
         <a class="nav-link" href="#centros" data-view="centros"><span class="nav-icon">⌂</span>Centros</a>
@@ -151,10 +152,11 @@
                 <legend>Capas del mapa operativo</legend>
                 <label><input id="map-show-containers" type="checkbox" checked> Contenedores</label>
                 <label><input id="map-show-incidents" type="checkbox" checked> Incidencias</label>
-                <label>Estado<select id="map-incident-state"><option value="">Todos</option><option>Pendiente</option><option>En Proceso</option><option>Resuelta</option></select></label>
+                <label>Estado<select id="map-incident-state"><option value="">Activas</option><option>Pendiente</option><option>En Proceso</option></select></label>
                 <label>Prioridad<select id="map-incident-priority"><option value="">Todas</option><option>Baja</option><option>Media</option><option>Alta</option></select></label>
               </fieldset>
-              <p class="operational-map-legend">Círculo: contenedor. Rombo con signo de exclamación: incidencia. Los grupos numerados reúnen marcadores cercanos. Abrí una incidencia para consultar su detalle.</p>
+              <p class="operational-map-legend">Círculo: contenedor. Rombo: incidencia. Prioridades: Baja (gris), Media (ámbar), Alta (rojo). R = resuelta en consulta individual. Los grupos numerados reúnen marcadores cercanos. Abrí una incidencia para consultar su detalle.</p>
+              <button id="map-active-view" type="button" class="link-button" hidden>Volver a incidencias activas</button>
               <div id="operationalMap"></div>
               <p id="mapa-status" role="status" aria-live="polite"></p>
               <p id="mapa-incidencias-status" role="status" aria-live="polite"></p>
@@ -173,6 +175,9 @@
             <section id="incidentDetail" hidden aria-labelledby="incidentDetailTitle">
               <h3 id="incidentDetailTitle" tabindex="-1">Detalle de incidencia</h3>
               <dl id="incidentDetailFields" class="incident-detail-fields"></dl>
+              <p id="incidentLocationMessage" role="status"></p>
+              <button id="incidentViewMap" type="button" class="link-button" hidden>Ver en mapa</button>
+              <p>La fecha de resolución corresponde al ciclo actual (America/Montevideo); al reabrir se borra. No representa un historial de resoluciones.</p>
               <form id="incidentForm" class="resource-form" hidden>
                 <input type="hidden" name="id_incidencia">
                 <div class="form-grid">
@@ -186,6 +191,27 @@
               <p id="incidentSaveMessage" role="status" aria-live="polite"></p>
               <button class="link-button" id="incidentClose" type="button">Cerrar detalle</button>
             </section>
+          </section>
+        </section>
+
+        <section class="view" id="view-informe-incidencias">
+          <section class="card panel">
+            <h2 class="panel-title">Informe de incidencias</h2>
+            <p class="panel-subtitle">Abiertas: Pendiente y En Proceso. Cerradas: Resuelta.</p>
+            <p>Los totales incluyen todos los registros del grupo y rango seleccionados, no solo esta página. Las fechas corresponden a fecha de reporte e incluyen ambos días completos.</p>
+            <form id="reportFilters" class="incident-filters">
+              <label>Grupo<select id="reportGroup"><option value="todos">Todas</option><option value="abiertas">Abiertas</option><option value="cerradas">Cerradas</option></select></label>
+              <label>Desde<input type="date" id="reportFrom" min="1000-01-01" max="9999-12-31"></label>
+              <label>Hasta<input type="date" id="reportTo" min="1000-01-01" max="9999-12-31"></label>
+              <button type="submit" class="primary-button">Consultar</button>
+            </form>
+            <p class="panel-subtitle">Fecha de resolución: Hora de Montevideo.</p>
+            <p id="reportTotals" aria-live="polite">Totales pendientes de consulta.</p>
+            <p id="reportMessage" role="status" aria-live="polite"></p>
+            <div class="table-wrap" tabindex="0" role="region" aria-label="Informe de incidencias">
+              <table class="incident-table"><thead><tr><th>Seguimiento</th><th>Fecha</th><th>Tipo</th><th>Estado</th><th>Prioridad</th><th>Contenedor o ruta</th><th>Fecha de resolución</th></tr></thead><tbody id="reportRows"></tbody></table>
+            </div>
+            <div class="incident-pagination"><button type="button" id="reportPrevious" class="secondary-button" disabled>Anterior</button><span id="reportPage"></span><button type="button" id="reportNext" class="secondary-button" disabled>Siguiente</button></div>
           </section>
         </section>
 
@@ -318,5 +344,6 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="assets/js/zemyna-map.js"></script>
   <script src="assets/js/admin.js"></script>
+  <script src="assets/js/incidence-report.js"></script>
 </body>
 </html>

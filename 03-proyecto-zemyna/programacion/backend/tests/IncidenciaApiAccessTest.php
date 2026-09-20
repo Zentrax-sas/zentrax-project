@@ -19,6 +19,8 @@ session_start();
 putenv('DB_HOST=127.0.0.1;port=1');
 class IncidenciaController {
     public function __construct($db) {}
+    public function getLocation($id) { return ['success' => true, 'statusCode' => 200, 'operation' => 'location', 'data' => []]; }
+    public function getReport($filters) { return ['success' => true, 'statusCode' => 200, 'operation' => 'report', 'data' => []]; }
     public function getMap($filters) { return ['success' => true, 'statusCode' => 200, 'operation' => 'map', 'data' => []]; }
     public function getAll($filters) { return ['success' => true, 'statusCode' => 200, 'operation' => 'list', 'data' => [$filters]]; }
     public function getPublicByTracking($tracking) { return ['success' => true, 'statusCode' => 200, 'operation' => 'public', 'data' => ['tracking_number' => $tracking]]; }
@@ -63,6 +65,13 @@ PHP;
         $none = ['usuario' => ['roles' => ['OPERARIO'], 'autorizaciones' => []]];
         $wrongSector = ['usuario' => ['roles' => [], 'autorizaciones' => [['permiso' => 'incidencia.consultar', 'sector' => 'LOGISTICA']]]];
         return [
+            'ubicación sin sesión' => ['GET', ['view' => 'location', 'id' => 2, 'tracking_number' => 'INC-2026-ABCDF'], [], 401, null],
+            'ubicación sin permiso' => ['GET', ['view' => 'location', 'id' => 2], $none, 403, null],
+            'ubicación autorizada' => ['GET', ['view' => 'location', 'id' => 2], $reader, 200, 'location'],
+            'informe sin sesión incluso con tracking' => ['GET', ['view' => 'report', 'tracking_number' => 'INC-2026-ABCDE'], [], 401, null],
+            'informe sin permiso' => ['GET', ['view' => 'report'], $none, 403, null],
+            'informe sector incorrecto' => ['GET', ['view' => 'report'], $wrongSector, 403, null],
+            'informe autorizado' => ['GET', ['view' => 'report'], $reader, 200, 'report'],
             'mapa administrativo sin sesión' => ['GET', ['view' => 'map', 'admin' => 1], [], 401, null],
             'mapa administrativo sin permiso' => ['GET', ['view' => 'map', 'admin' => 1], $none, 403, null],
             'mapa administrativo sector incorrecto' => ['GET', ['view' => 'map', 'admin' => 1], $wrongSector, 403, null],

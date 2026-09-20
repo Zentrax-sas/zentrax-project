@@ -2,6 +2,7 @@
 window.ZemynaMap = {
 create(options = {}) {
 let active = true;
+let focusedIncident = null;
 const administrative = options.administrative === true;
 const map = L.map(options.mapId || 'mapa-vedette', { maxZoom: 19 }).setView([-34.9150, -56.1540], 14);
 const clusterGroup = L.markerClusterGroup({
@@ -213,6 +214,7 @@ function incidentPopup(item) {
     title.textContent = item.tipo_problema || 'Tipo no disponible';
     popup.append(title);
     const fields = [['Estado', item.estado], ['Fecha', item.fecha_reporte], ['Contenedor', item.contenedor_codigo]];
+    if (administrative) fields.push(['Ubicación', 'Ubicación del contenedor relacionado; no son coordenadas propias del reclamo.']);
     if (administrative) fields.splice(1, 0, ['Prioridad', item.prioridad]);
     for (const [label, value] of fields) {
         const line = document.createElement('p');
@@ -232,23 +234,23 @@ function incidentPopup(item) {
 function reconcileIncidentMarkers(items) {
     const visibleIds = new Set();
     for (const item of items) {
-        if (!administrative && !['Pendiente', 'En Proceso'].includes(item.estado)) continue;
+        if (!['Pendiente', 'En Proceso'].includes(item.estado) && (!administrative || String(focusedIncident?.id_incidencia) !== String(item.id_incidencia))) continue;
         if (!validMapCoordinates(item) || !Number.isSafeInteger(Number(item.id_incidencia)) || Number(item.id_incidencia) <= 0) continue;
         const key = String(item.id_incidencia);
         visibleIds.add(key);
         const signature = JSON.stringify(item);
         const existing = incidentMarkers.get(key);
+        if (existing && existing.signature === signature) continue;
         if (existing) {
-            if (existing.signature !== signature) {
-                existing.marker.setLatLng([Number(item.latitud), Number(item.longitud)]);
-                existing.marker.setPopupContent(incidentPopup(item));
-                existing.signature = signature;
-            }
-            continue;
+            incidentClusterGroup.removeLayer(existing.marker);
+            incidentMarkers.delete(key);
         }
+        const priority = administrative ? ({ Baja: ['', 'low'], Media: ['', 'medium'], Alta: ['', 'high'] }[item.prioridad] || ['?', 'low']) : ['!', ''];
+        if (administrative && item.estado === 'Resuelta') { priority[0] = 'R'; priority[1] = 'resolved'; }
+        const label = administrative ? `Incidencia ${item.estado}; prioridad ${item.prioridad}. Ubicación del contenedor relacionado.` : 'Incidencia: consultar reporte';
         const marker = L.marker([Number(item.latitud), Number(item.longitud)], {
-            icon: L.divIcon({ html: '<span class="incident-map-symbol"><b>!</b></span>', className: 'incident-map-icon', iconSize: [30, 30], iconAnchor: [-8, 30] }),
-            title: 'Incidencia: consultar reporte', alt: 'Incidencia', keyboard: true
+            icon: L.divIcon({ html: `<span class="incident-map-symbol priority-${priority[1]}"><b>${priority[0]}</b></span>`, className: 'incident-map-icon', iconSize: [30, 30], iconAnchor: [-8, 30] }),
+            title: label, alt: label, keyboard: true
         }).bindPopup(incidentPopup(item));
         // No tiene handler de selección: abrir una incidencia nunca cambia el formulario.
         incidentMarkers.set(key, { marker, signature });
@@ -275,6 +277,11 @@ function setIncidentMapStatus(message, state = '') {
 
 async function cargarIncidenciasMapa() {
     if (!active) return;
+    if (focusedIncident) {
+        reconcileIncidentMarkers([focusedIncident]);
+        setIncidentMapStatus('Consulta individual: ubicación del contenedor relacionado. Volvé a incidencias activas para continuar.', 'success');
+        return;
+    }
     incidentsRequestController?.abort();
     const requestId = ++incidentsRequestSequence;
     if (!showIncidents.checked || map.getZoom() < MIN_MAP_ZOOM_FOR_CONTAINERS) {
@@ -287,6 +294,7 @@ async function cargarIncidenciasMapa() {
     const params = new URLSearchParams(obtenerParametrosViewport());
     if (administrative) {
         params.set('admin', '1');
+        params.set('activas', '1');
         if (incidentState.value) params.set('estado', incidentState.value);
         if (incidentPriority.value) params.set('prioridad', incidentPriority.value);
     }
@@ -315,7 +323,7 @@ async function cargarIncidenciasMapa() {
         const records = new Map();
         for (const response of responses) {
             for (const item of response.data) {
-                if (administrative || ['Pendiente', 'En Proceso'].includes(item.estado)) records.set(String(item.id_incidencia), item);
+                if (['Pendiente', 'En Proceso'].includes(item.estado)) records.set(String(item.id_incidencia), item);
             }
         }
         reconcileIncidentMarkers([...records.values()]);
@@ -340,7 +348,7 @@ function cancelarCargaIncidencias() {
 }
 function programarCargaIncidencias() {
     cancelarCargaIncidencias();
-    if (!active || !showIncidents.checked) return;
+    if (!active || focusedIncident || !showIncidents.checked) return;
     // Retira los marcadores que ya no están en el área visible mientras llega la nueva respuesta.
     const bounds = map.getBounds();
     for (const [key, record] of incidentMarkers) {
@@ -361,6 +369,8 @@ showContainers.addEventListener('change', () => {
     cargarContenedoresMapa();
 });
 showIncidents.addEventListener('change', () => {
+    focusedIncident = null;
+    if (administrative) document.getElementById('map-active-view').hidden = true;
     cancelarCargaIncidencias();
     if (showIncidents.checked) map.addLayer(incidentClusterGroup);
     else map.removeLayer(incidentClusterGroup);
@@ -368,6 +378,8 @@ showIncidents.addEventListener('change', () => {
 });
 for (const filter of [incidentState, incidentPriority].filter(Boolean)) {
     filter.addEventListener('change', () => {
+        focusedIncident = null;
+        document.getElementById('map-active-view').hidden = true;
         clearIncidentMarkers();
         programarCargaIncidencias();
     });
@@ -382,6 +394,8 @@ map.on('moveend zoomend', programarCargaIncidencias);
 cargarIncidenciasMapa();
 
 function pause() {
+    focusedIncident = null;
+    if (administrative) document.getElementById('map-active-view').hidden = true;
     active = false;
     cancelarCargaIncidencias();
     contenedoresRequestSequence++;
@@ -396,7 +410,26 @@ function resume() {
     cargarContenedoresMapa();
     cargarIncidenciasMapa();
 }
-return { map, pause, resume, refreshIncidents: programarCargaIncidencias };
+function focusIncident(item) {
+    if (!administrative || !active || !validMapCoordinates(item)) return false;
+    cancelarCargaIncidencias();
+    focusedIncident = item;
+    clearIncidentMarkers();
+    showIncidents.checked = true;
+    map.addLayer(incidentClusterGroup);
+    document.getElementById('map-active-view').hidden = false;
+    map.setView([Number(item.latitud), Number(item.longitud)], 17);
+    cargarIncidenciasMapa();
+    return true;
+}
+function showActiveIncidents() {
+    focusedIncident = null;
+    clearIncidentMarkers();
+    document.getElementById('map-active-view').hidden = true;
+    cargarIncidenciasMapa();
+}
+if (administrative) document.getElementById('map-active-view').addEventListener('click', showActiveIncidents);
+return { map, pause, resume, focusIncident, showActiveIncidents, refreshIncidents: () => { if (focusedIncident) showActiveIncidents(); else programarCargaIncidencias(); } };
 
 }
 };

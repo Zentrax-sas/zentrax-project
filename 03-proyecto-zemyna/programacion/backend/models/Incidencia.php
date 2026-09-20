@@ -64,7 +64,35 @@ class Incidencia {
         return $stmt;
     }
 
-    public function readForMap(float $south, float $north, float $west, float $east, int $limit, ?string $estado = null, ?string $prioridad = null) {
+    public function report(string $group, ?string $from, ?string $to, int $page, int $limit): array {
+        if (!$this->conn) throw new PDOException('Sin conexión.');
+        $conditions = ["i.estado IN ('Pendiente', 'En Proceso', 'Resuelta')"];
+        $params = [];
+        if ($group === 'abiertas') $conditions[] = "i.estado IN ('Pendiente', 'En Proceso')";
+        if ($group === 'cerradas') $conditions[] = "i.estado = 'Resuelta'";
+        if ($from !== null) { $conditions[] = 'i.fecha_reporte >= :desde'; $params[':desde'] = $from . ' 00:00:00'; }
+        if ($to !== null) { $conditions[] = 'i.fecha_reporte <= :hasta'; $params[':hasta'] = $to . ' 23:59:59'; }
+        $where = ' WHERE ' . implode(' AND ', $conditions);
+        $count = $this->conn->prepare("SELECT COUNT(*) AS total,
+            COALESCE(SUM(CASE WHEN i.estado IN ('Pendiente', 'En Proceso') THEN 1 ELSE 0 END), 0) AS abiertas,
+            COALESCE(SUM(CASE WHEN i.estado = 'Resuelta' THEN 1 ELSE 0 END), 0) AS cerradas FROM incidencia i" . $where);
+        if (!$count->execute($params)) throw new PDOException('Error al contar.');
+        $totals = array_map('intval', $count->fetch(PDO::FETCH_ASSOC));
+        $stmt = $this->conn->prepare('SELECT i.id_incidencia, i.tracking_number, i.fecha_reporte,
+            i.tipo_problema, i.estado, i.prioridad, i.fecha_resolucion, c.codigo AS contenedor_codigo, r.nombre AS ruta_nombre
+            FROM incidencia i LEFT JOIN contenedor c ON c.id_contenedor = i.id_contenedor
+            LEFT JOIN ruta r ON r.id_ruta = i.id_ruta' . $where . '
+            ORDER BY i.fecha_reporte DESC, i.id_incidencia DESC LIMIT :limit OFFSET :offset');
+        foreach ($params as $key => $value) $stmt->bindValue($key, $value, PDO::PARAM_STR);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', ($page - 1) * $limit, PDO::PARAM_INT);
+        if (!$stmt->execute()) throw new PDOException('Error al consultar.');
+        return ['data' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'totals' => $totals,
+            'meta' => ['page' => $page, 'limit' => $limit, 'total' => $totals['total'],
+                'pages' => (int)ceil($totals['total'] / $limit)]];
+    }
+
+    public function readForMap(float $south, float $north, float $west, float $east, int $limit, ?string $estado = null, ?string $prioridad = null, bool $activeOnly = false) {
         if (!$this->conn) return null;
         // La incidencia no tiene coordenadas propias. No se infiere una ubicación de la ruta.
         $query = "SELECT i.id_incidencia, i.estado, i.prioridad, i.tipo_problema, i.fecha_reporte,
@@ -76,6 +104,7 @@ class Incidencia {
                     AND c.longitud BETWEEN -180 AND 180
                     AND c.latitud BETWEEN :south AND :north
                     AND c.longitud BETWEEN :west AND :east";
+        if ($activeOnly) $query .= " AND i.estado IN ('Pendiente', 'En Proceso')";
         if ($estado !== null) $query .= ' AND i.estado = :estado';
         if ($prioridad !== null) $query .= ' AND i.prioridad = :prioridad';
         $query .= ' ORDER BY i.id_incidencia DESC LIMIT :limit';
@@ -88,6 +117,26 @@ class Incidencia {
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         if (!$stmt->execute()) return null;
         return $stmt;
+    }
+
+    public function location(int $id): ?array {
+        if (!$this->conn) throw new PDOException('Sin conexión.');
+        $stmt = $this->conn->prepare('SELECT i.id_incidencia, i.estado, i.prioridad, i.tipo_problema,
+            i.fecha_reporte, c.codigo AS contenedor_codigo, c.latitud, c.longitud
+            FROM incidencia i LEFT JOIN contenedor c ON c.id_contenedor = i.id_contenedor
+            WHERE i.id_incidencia = :id');
+        if (!$stmt->execute([':id' => $id])) throw new PDOException('Error de consulta.');
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    // Se evalúa antes de asignar estado: MariaDB evalúa SET de izquierda a derecha.
+    private function resolutionAssignment(): string {
+        return "fecha_resolucion = CASE WHEN :resolution_state <> 'Resuelta' THEN NULL
+            WHEN estado IN ('Pendiente', 'En Proceso') THEN :resolution_now ELSE fecha_resolucion END";
+    }
+
+    private function resolutionNow(): string {
+        return (new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d H:i:s');
     }
 
     public function cuadrillas(): array {
@@ -109,6 +158,11 @@ class Incidencia {
         if (!$this->conn) return false;
         $sets = [];
         $params = [':id' => $id];
+        if (array_key_exists('estado', $changes)) {
+            $sets[] = $this->resolutionAssignment();
+            $params[':resolution_state'] = $changes['estado'];
+            $params[':resolution_now'] = $this->resolutionNow();
+        }
         foreach (['estado', 'prioridad', 'id_cuadrilla'] as $column) {
             if (array_key_exists($column, $changes)) {
                 $sets[] = "$column = :$column";
@@ -173,7 +227,7 @@ class Incidencia {
         }
 
         $query = "UPDATE " . $this->table_name . "
-                  SET descripcion = :descripcion,
+                  SET " . $this->resolutionAssignment() . ", descripcion = :descripcion,
                       fecha_reporte = :fecha_reporte,
                       estado = :estado,
                       prioridad = :prioridad,
@@ -186,6 +240,8 @@ class Incidencia {
 
         $stmt = $this->conn->prepare($query);
 
+        $stmt->bindValue(':resolution_state', $this->estado);
+        $stmt->bindValue(':resolution_now', $this->resolutionNow());
         $stmt->bindParam(':id_incidencia', $this->id_incidencia);
         $stmt->bindParam(':descripcion', $this->descripcion);
         $stmt->bindParam(':fecha_reporte', $this->fecha_reporte);

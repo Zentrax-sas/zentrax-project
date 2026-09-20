@@ -95,7 +95,7 @@ menuButton.addEventListener('click', () => {
   menuButton.setAttribute('aria-expanded', String(opened));
 });
 
-const titles = { incidencias: 'Incidencias', resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', centros: 'Centros', maquinaria: 'Maquinaria', usuarios: 'Usuarios y roles' };
+const titles = { 'informe-incidencias': 'Informe de incidencias', incidencias: 'Incidencias', resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', centros: 'Centros', maquinaria: 'Maquinaria', usuarios: 'Usuarios y roles' };
 function openView(viewName) {
   if (!titles[viewName]) return;
   document.querySelectorAll('.nav-link').forEach(item => item.classList.toggle('active', item.dataset.view === viewName));
@@ -104,6 +104,8 @@ function openView(viewName) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   operationalMapVersion++;
   operationalMap?.pause();
+  window.IncidenceReport?.pause();
+  if (viewName === 'informe-incidencias') window.IncidenceReport?.load();
   if (viewName === 'incidencias') {
     cargarIncidenciasAdmin();
     abrirMapaOperativo();
@@ -921,7 +923,11 @@ incidentRows.addEventListener('click', event => {
   if (button && !incidentSaving) mostrarIncidencia(button.dataset.incidentId);
 });
 
+let locationIncidentId = null;
 async function mostrarIncidencia(id) {
+  locationIncidentId = null;
+  document.getElementById('incidentViewMap').hidden = true;
+  document.getElementById('incidentLocationMessage').textContent = 'Consultando ubicación…';
   incidentDetailRequest?.abort();
   const request = new AbortController();
   incidentDetailRequest = request;
@@ -936,10 +942,21 @@ async function mostrarIncidencia(id) {
     const item = json.data[0];
     const fields = { ID: item.id_incidencia, Seguimiento: item.tracking_number, Fecha: item.fecha_reporte,
       Problema: item.tipo_problema, Descripción: item.descripcion, Contenedor: item.contenedor_codigo || item.id_contenedor || 'Sin contenedor',
+      'Resolución (America/Montevideo)': item.fecha_resolucion || (item.estado === 'Resuelta' ? 'Fecha de resolución no registrada' : 'No resuelta'),
       Ruta: item.ruta_nombre || item.id_ruta || 'Sin ruta', Estado: item.estado, Prioridad: item.prioridad,
       Cuadrilla: item.cuadrilla_nombre || 'Sin asignar', Usuario: [item.usuario_nombre, item.usuario_apellido].filter(Boolean).join(' ') || 'Sin usuario asociado' };
     document.getElementById('incidentDetailFields').innerHTML = Object.entries(fields).map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`).join('');
     incidentSaveMessage.textContent = json.can_update ? '' : 'Tenés acceso de consulta; no podés modificar esta incidencia.';
+    try {
+      const location = await incidentApi({ view: 'location', id }, { signal: request.signal });
+      if (request.signal.aborted) return;
+      document.getElementById('incidentLocationMessage').textContent = location.message;
+      document.getElementById('incidentViewMap').hidden = !location.data;
+      if (location.data) locationIncidentId = id;
+    } catch (error) {
+      if (request.signal.aborted) return;
+      document.getElementById('incidentLocationMessage').textContent = 'No se pudo consultar la ubicación.';
+    }
     if (!json.can_update) return;
     incidentForm.hidden = false;
     for (const name of ['id_incidencia', 'estado', 'prioridad']) incidentForm.elements[name].value = item[name];
@@ -963,6 +980,27 @@ async function mostrarIncidencia(id) {
     if (error.name !== 'AbortError') incidentSaveMessage.textContent = error.message;
   }
 }
+
+document.getElementById('incidentViewMap').addEventListener('click', async () => {
+  const id = locationIncidentId;
+  if (!id) return;
+  const button = document.getElementById('incidentViewMap');
+  button.disabled = true;
+  try {
+    const result = await incidentApi({ view: 'location', id });
+    if (id !== locationIncidentId || incidentDetail.hidden) return;
+    if (!result.data) {
+      button.hidden = true;
+      document.getElementById('incidentLocationMessage').textContent = 'Ubicación no disponible';
+      return;
+    }
+    await abrirMapaOperativo();
+    if (id !== locationIncidentId || incidentDetail.hidden) return;
+    if (operationalMap?.focusIncident(result.data)) document.getElementById('operationalMapPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (error) {
+    document.getElementById('incidentLocationMessage').textContent = error.message;
+  } finally { button.disabled = false; }
+});
 
 incidentForm.addEventListener('submit', async event => {
   event.preventDefault();

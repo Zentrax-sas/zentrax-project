@@ -18,11 +18,18 @@ switch ($method) {
             'prioridad' => $_GET['prioridad'] ?? null,
         ];
 
-        if (($_GET['view'] ?? null) !== 'map' && array_key_exists('tracking_number', $_GET) && !array_key_exists('admin', $_GET)) {
+        if (!in_array($_GET['view'] ?? null, ['map', 'report', 'location'], true) && array_key_exists('tracking_number', $_GET) && !array_key_exists('admin', $_GET)) {
             $response = $controller->getPublicByTracking($filters['tracking_number']);
+        } elseif (($_GET['view'] ?? null) === 'location') {
+            requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
+            $response = $controller->getLocation($_GET['id'] ?? null);
+        } elseif (($_GET['view'] ?? null) === 'report') {
+            requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
+            $response = $controller->getReport($_GET);
         } elseif (($_GET['view'] ?? null) === 'map') {
             if (array_key_exists('admin', $_GET)) {
                 requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
+                $_GET['activas'] = '1';
             }
             $response = $controller->getMap($_GET);
         } else {

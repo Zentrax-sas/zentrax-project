@@ -407,6 +407,7 @@ CREATE TABLE incidencia (
     tracking_number VARCHAR(20) NOT NULL,
     descripcion TEXT NOT NULL,
     fecha_reporte DATETIME NOT NULL,
+    fecha_resolucion DATETIME NULL DEFAULT NULL,
 
     estado ENUM(
         'Pendiente',
