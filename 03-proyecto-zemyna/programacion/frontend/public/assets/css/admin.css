@@ -484,3 +484,12 @@ td strong { color: var(--text); font-size: 10px; }
 #view-informe-incidencias button, #reportGroup { min-height: 44px; }
 #reportGroup { padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: inherit; }
 #reportTotals, #reportMessage { margin: 14px 0; }
+
+.crew-report fieldset { border: 0; padding: 0; min-width: 0; }
+.crew-report label { display: grid; gap: 7px; margin: 14px 0; }
+.crew-report p { margin: 12px 0; overflow-wrap: anywhere; }
+.crew-report input, .crew-report textarea, .crew-report select { width: 100%; min-width: 0; padding: 11px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); background: var(--surface); font: inherit; }
+.crew-report button { min-height: 44px; padding: 10px 14px; margin: 6px 8px 6px 0; }
+#crewMap { height: 360px; width: 100%; z-index: 0; border-radius: 8px; }
+#crewForm[hidden], #crewConfirmation[hidden], #crewNew[hidden] { display: none; }
+@media (max-width: 600px) { #crewMap { height: 300px; } .crew-report .form-grid { grid-template-columns: 1fr; } }

@@ -7,3 +7,6 @@
 .incident-map-symbol.priority-medium { background: #fbbf24; color: #111827; }
 .incident-map-symbol.priority-high { background: #b91c1c; color: white; }
 .incident-map-symbol.priority-resolved { background: #334155; color: white; border-style: dashed; }
+
+.incident-map-symbol.point-location { transform: none; border-radius: 0; border-style: double; border-width: 4px; }
+.incident-map-symbol.point-location b { transform: none; }

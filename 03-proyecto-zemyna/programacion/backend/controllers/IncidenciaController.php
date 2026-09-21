@@ -3,6 +3,7 @@ require_once __DIR__ . '/../models/Incidencia.php';
 require_once __DIR__ . '/../models/Solicitud.php';
 
 class IncidenciaController {
+    private const PROBLEM_TYPES = ['Contenedor Desbordado', 'Contenedor Roto/Dañado', 'Obstruido por Vehículo', 'Incendio/Vandalismo'];
     private const MAP_MIN_ZOOM = 13;
     private const MAP_MAX_ZOOM = 19;
     private const MAP_LIMIT = 300;
@@ -49,7 +50,7 @@ class IncidenciaController {
         ];
     }
 
-    private function validateIncidenciaPayload($data, $isUpdate = false) {
+    private function validateIncidenciaPayload($data, $isUpdate = false, bool $allowPoint = false) {
         $errors = [];
 
         $descripcion = $this->normalizeString($data['descripcion'] ?? null);
@@ -92,12 +93,7 @@ class IncidenciaController {
             $errors[] = 'La prioridad debe ser Baja, Media o Alta.';
         }
 
-        $tiposProblema = [
-            'Contenedor Desbordado',
-            'Contenedor Roto/Dañado',
-            'Obstruido por Vehículo',
-            'Incendio/Vandalismo'
-        ];
+        $tiposProblema = self::PROBLEM_TYPES;
 
         if ($tipoProblema === null || $tipoProblema === '') {
             $errors[] = 'El tipo de problema es obligatorio.';
@@ -112,7 +108,7 @@ class IncidenciaController {
             $errors[] = 'La incidencia no puede estar asociada simultáneamente a un contenedor y una ruta.';
         }
 
-        if (!$tieneContenedor && !$tieneRuta) {
+        if (!$tieneContenedor && !$tieneRuta && !($allowPoint && $this->validPoint($data))) {
             $errors[] = 'La incidencia debe estar asociada a un contenedor o a una ruta.';
         }
 
@@ -149,6 +145,41 @@ class IncidenciaController {
         return ['success' => false, 'data' => [], 'message' => $message, 'errors' => [], 'statusCode' => $status];
     }
 
+    private function validPoint(array $data): bool {
+        foreach (['latitud' => 90, 'longitud' => 180] as $key => $max) {
+            $value = $data[$key] ?? null;
+            if ((!is_int($value) && !is_float($value) && !is_string($value)) || !is_numeric($value)
+                || !is_finite((float)$value) || abs((float)$value) > $max) return false;
+        }
+        return true;
+    }
+
+    public function getCrewOptions(): array {
+        return ['success' => true, 'statusCode' => 200, 'data' => ['tipos' => self::PROBLEM_TYPES]];
+    }
+
+    public function createCrew(array $data, $sessionUserId): array {
+        if (!$this->positiveInteger($sessionUserId)) return $this->managementError(401, 'Sesión inválida.');
+        $container = $data['id_contenedor'] ?? null;
+        if ($container === '') return $this->managementError(400, 'Contenedor inválido.');
+        $hasPoint = array_key_exists('latitud', $data) || array_key_exists('longitud', $data);
+        if ($hasPoint && !$this->validPoint($data)) return $this->managementError(400, 'Marcá una ubicación válida: latitud entre -90 y 90 y longitud entre -180 y 180.');
+        if ($container === null && !$hasPoint) return $this->managementError(400, 'Sin contenedor debés marcar la ubicación del problema.');
+        try {
+            if ($container !== null && (!$this->positiveInteger($container) || !$this->incidencia->containerExists((int)$container))) {
+                return $this->managementError(400, 'El contenedor no existe o está inactivo.');
+            }
+        } catch (PDOException | PersistenceException $exception) {
+            return $this->managementError(500, 'No se pudo validar el contenedor.');
+        }
+        // No existe relación usuario-cuadrilla vigente en el esquema. No inferir asignaciones.
+        $payload = ['descripcion' => $data['descripcion'] ?? null, 'tipo_problema' => $data['tipo_problema'] ?? null,
+            'id_contenedor' => $container, 'estado' => 'Pendiente', 'prioridad' => 'Media',
+            'fecha_reporte' => (new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d H:i:s')];
+        if ($hasPoint) { $payload['latitud'] = (float)$data['latitud']; $payload['longitud'] = (float)$data['longitud']; }
+        return $this->create($payload, (int)$sessionUserId);
+    }
+
     public function getLocation($id): array {
         if (!$this->positiveInteger($id)) return $this->managementError(400, 'ID inválido.');
         try {
@@ -157,7 +188,7 @@ class IncidenciaController {
             $valid = is_numeric($row['latitud']) && is_numeric($row['longitud'])
                 && abs((float)$row['latitud']) <= 90 && abs((float)$row['longitud']) <= 180;
             return ['success' => true, 'statusCode' => 200, 'data' => $valid ? $row : null,
-                'message' => $valid ? 'Ubicación del contenedor relacionado.' : 'Ubicación no disponible'];
+                'message' => $valid ? (($row['ubicacion_origen'] ?? '') === 'problema' ? 'Ubicación marcada del problema.' : 'Ubicación del contenedor relacionado.') : 'Ubicación no disponible'];
         } catch (PDOException | PersistenceException $exception) {
             return $this->managementError(500, 'No se pudo consultar la ubicación.');
         }
@@ -226,7 +257,11 @@ class IncidenciaController {
                 return $this->managementError(400, 'La cuadrilla seleccionada no existe.');
             }
             // Mantiene compatibles los clientes anteriores que envían el registro completo.
-            if (array_key_exists('descripcion', $data)) return $this->update($data);
+            if (array_key_exists('descripcion', $data)) {
+                $data['latitud'] = $existing['data'][0]['latitud'] ?? null;
+                $data['longitud'] = $existing['data'][0]['longitud'] ?? null;
+                return $this->update($data);
+            }
             if (!$this->incidencia->updateManagement((int)$data['id_incidencia'], $changes)) {
                 return $this->managementError(500, 'No se pudo actualizar la incidencia.');
             }
@@ -332,7 +367,8 @@ class IncidenciaController {
                 $limit + 1,
                 $filters['estado'] ?? null,
                 $filters['prioridad'] ?? null,
-                ($filters['activas'] ?? null) === '1'
+                ($filters['activas'] ?? null) === '1',
+                array_key_exists('admin', $filters)
             );
             if (!$stmt) {
                 throw new PDOException('No hay conexión disponible.');
@@ -351,6 +387,7 @@ class IncidenciaController {
 
         $hasMore = count($rows) > $limit;
         $publicFields = array_flip(['id_incidencia', 'estado', 'prioridad', 'tipo_problema', 'fecha_reporte', 'latitud', 'longitud', 'contenedor_codigo']);
+        if (array_key_exists('admin', $filters)) $publicFields['ubicacion_origen'] = true;
         $rows = array_map(
             static fn(array $row): array => array_intersect_key($row, $publicFields),
             array_slice($rows, 0, $limit)
@@ -358,7 +395,7 @@ class IncidenciaController {
 
         // tipo_problema es VARCHAR: no difundir texto libre importado por clientes antiguos.
         foreach ($rows as &$row) {
-            if (!in_array($row['tipo_problema'] ?? null, ['Contenedor Desbordado', 'Contenedor Roto/Dañado', 'Obstruido por Vehículo', 'Incendio/Vandalismo'], true)) {
+            if (!in_array($row['tipo_problema'] ?? null, self::PROBLEM_TYPES, true)) {
                 $row['tipo_problema'] = null;
             }
         }
@@ -523,15 +560,16 @@ class IncidenciaController {
         ];
     }
 
-    public function create($data) {
+    public function create($data, ?int $trustedUserId = null) {
         $data = $data ?? [];
 
         $data['fecha_reporte'] = $data['fecha_reporte'] ?? date('Y-m-d H:i:s');
         $data['estado'] = $data['estado'] ?? 'Pendiente';
         $data['prioridad'] = $data['prioridad'] ?? 'Media';
         unset($data['id_usuario']);
+        if ($trustedUserId === null) unset($data['latitud'], $data['longitud']);
 
-        $errors = $this->validateIncidenciaPayload($data, false);
+        $errors = $this->validateIncidenciaPayload($data, false, $trustedUserId !== null);
 
         if ($errors) {
             return [
@@ -560,7 +598,9 @@ class IncidenciaController {
                 : null;
 
         $this->incidencia->id_cuadrilla = !empty($data['id_cuadrilla']) ? (int)$data['id_cuadrilla'] : null;
-        $this->incidencia->id_usuario = null;
+        $this->incidencia->id_usuario = $trustedUserId;
+        $this->incidencia->latitud = $data['latitud'] ?? null;
+        $this->incidencia->longitud = $data['longitud'] ?? null;
 
         $attemptedTrackingNumbers = [];
         for ($attempt = 1; $attempt <= 3; $attempt++) {
@@ -606,7 +646,7 @@ class IncidenciaController {
     public function update($data) {
         $data = $data ?? [];
 
-        $errors = $this->validateIncidenciaPayload($data, true);
+        $errors = $this->validateIncidenciaPayload($data, true, true);
 
         if ($errors) {
             return [
@@ -618,6 +658,8 @@ class IncidenciaController {
             ];
         }
 
+        $this->incidencia->latitud = $data['latitud'] ?? null;
+        $this->incidencia->longitud = $data['longitud'] ?? null;
         $this->incidencia->id_incidencia = (int)$data['id_incidencia'];
         $this->incidencia->descripcion = $this->normalizeString($data['descripcion']);
         $this->incidencia->fecha_reporte = $data['fecha_reporte'];

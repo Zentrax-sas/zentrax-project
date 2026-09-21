@@ -408,6 +408,8 @@ CREATE TABLE incidencia (
     descripcion TEXT NOT NULL,
     fecha_reporte DATETIME NOT NULL,
     fecha_resolucion DATETIME NULL DEFAULT NULL,
+    latitud DECIMAL(10,7) NULL DEFAULT NULL,
+    longitud DECIMAL(10,7) NULL DEFAULT NULL,
 
     estado ENUM(
         'Pendiente',
@@ -447,11 +449,17 @@ CREATE TABLE incidencia (
         FOREIGN KEY (id_usuario)
         REFERENCES usuario(id_usuario),
 
+    CONSTRAINT chk_incidencia_coordenadas
+        CHECK ((latitud IS NULL AND longitud IS NULL) OR
+               (latitud IS NOT NULL AND longitud IS NOT NULL AND latitud BETWEEN -90 AND 90 AND longitud BETWEEN -180 AND 180)),
+
     CONSTRAINT chk_incidencia_ambito
         CHECK (
             (id_contenedor IS NOT NULL AND id_ruta IS NULL)
             OR
             (id_contenedor IS NULL AND id_ruta IS NOT NULL)
+            OR
+            (id_contenedor IS NULL AND id_ruta IS NULL AND latitud IS NOT NULL AND longitud IS NOT NULL)
         )
 );
 

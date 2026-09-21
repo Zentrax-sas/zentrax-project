@@ -17,6 +17,7 @@ class Element {
   reset() {}
   replaceChildren(...nodes) { this.children = nodes; }
   appendChild(node) { this.children.push(node); }
+  add(node) { this.children.push(node); }
   addEventListener(name, fn) { this.listeners[name] = fn; }
   append(...nodes) { this.children.push(...nodes); }
   change() { this.listeners.change?.(); }
@@ -28,16 +29,17 @@ function harness(administrative = false, callbacks = {}, bootPublic = false) {
   for (const match of html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*\bid="([^"]+)"[^>]*)>/g)) {
     const element = new Element(match[1]); element.checked = /\bchecked\b/.test(match[2]); elements.set(match[3], element);
   }
-  const groups = [], requests = [], timers = new Map(); let timerId = 0, zoom = 14;
+  const groups = [], requests = [], layers = new Set(), views = [], timers = new Map(); let timerId = 0, zoom = 14;
   const events = new Map();
   const bounds = { getSouthWest: () => ({ lat: -35, lng: -56.3 }), getNorthEast: () => ({ lat: -34.8, lng: -56 }), contains: () => true };
-  const map = { setView() { return this; }, getZoom: () => zoom, getBounds: () => bounds, addLayer() {}, removeLayer() {}, invalidateSize() {},
+  const map = { setView(coords, level) { views.push({ coords, level }); return this; }, getZoom: () => zoom, getBounds: () => bounds, addLayer(layer) { layers.add(layer); }, removeLayer(layer) { layers.delete(layer); }, invalidateSize() {},
     on(names, fn) { for (const name of names.split(' ')) { if (!events.has(name)) events.set(name, []); events.get(name).push(fn); } } };
   const marker = (coords, options) => ({ coords, options, events: {}, bindPopup(popup) { this.popup = popup; return this; }, setPopupContent(popup) { this.popup = popup; },
-    setLatLng(coords) { this.coords = coords; }, getLatLng() { return this.coords; }, setStyle() {}, on(event, fn) { this.events[event] = fn; } });
+    setLatLng(coords) { this.coords = coords; }, addTo(target) { target.addLayer(this); return this; }, getLatLng() { return { lat: this.coords[0], lng: this.coords[1] }; }, setStyle() {}, on(event, fn) { this.events[event] = fn; } });
   const L = { Control: { extend: () => class { addTo() {} } }, control: {}, map: () => map, marker, circleMarker: marker, divIcon: options => options, tileLayer: () => ({ addTo() {} }),
     markerClusterGroup() { const group = { markers: new Set(), addTo() { return this; }, addLayer(m) { this.markers.add(m); }, removeLayer(m) { this.markers.delete(m); }, clearLayers() { this.markers.clear(); } }; groups.push(group); return group; } };
-  const context = vm.createContext({ window: { location: { protocol: 'http:' } }, navigator: {}, L, console, Map, Set, URLSearchParams, AbortController,
+  L.layerGroup = L.markerClusterGroup;
+  const context = vm.createContext({ window: { location: { protocol: 'http:' } }, navigator: {}, L, console, Map, Set, URLSearchParams, AbortController, Option: function (text, value) { const e = new Element('option'); e.textContent = text; e.value = value; return e; },
     document: { getElementById: id => elements.get(id) || null, createElement: tag => new Element(tag), createTextNode: value => ({ textContent: value }) },
     buildApiUrl: value => value, setTimeout: fn => { timers.set(++timerId, fn); return timerId; }, clearTimeout: id => timers.delete(id),
     fetch: (url, options) => new Promise((resolve, reject) => requests.push({ url, options, resolve, reject })) });
@@ -61,8 +63,8 @@ function harness(administrative = false, callbacks = {}, bootPublic = false) {
     vm.runInContext(fs.readFileSync(path.join(publicDir, 'mapa.js'), 'utf8'), context);
     instance = vm.runInContext('citizenMap', context);
   } else instance = context.window.ZemynaMap.create({ administrative, ...callbacks });
-  return { instance, html, elements, groups, requests, run: code => vm.runInContext(code, context), zoom: value => { zoom = value; },
-    emit: name => { for (const fn of events.get(name) || []) fn(); },
+  return { instance, html, elements, groups, requests, layers, views, run: code => vm.runInContext(code, context), zoom: value => { zoom = value; },
+    emit: (name, event) => { for (const fn of events.get(name) || []) fn(event); },
     flush: () => { const batch = [...timers.values()]; timers.clear(); for (const fn of batch) fn(); },
     incidents: () => requests.filter(r => r.url.includes('/incidencias.php')), containers: () => requests.filter(r => r.url.includes('/contenedores.php')) };
 }
@@ -301,4 +303,85 @@ test('detalle muestra resolucion historica desconocida y oculta mapa sin ubicaci
   respond(h.requests.at(-1), item(9, 'Resuelta')); await located;
   assert.equal(h.elements.get('incidentViewMap').hidden, false);
   assert.match(h.elements.get('incidentDetailFields').innerHTML, /2026-09-19 13:00:00/);
+});
+
+
+async function crewHarness(status = 200) {
+  const h = harness(true, {}, 'admin');
+  h.run(fs.readFileSync(path.join(publicDir, 'assets/js/crew-report.js'), 'utf8'));
+  respond(h.requests[0], { nombre: 'Operario', roles: ['OPERARIO'] });
+  const opening = h.run('window.CrewReport.open()'); await tick();
+  respond(h.requests.at(-1), { tipos: ['Contenedor Desbordado', 'Obstruido por Vehículo'] }, status);
+  await opening;
+  return h;
+}
+
+test('reporte de cuadrilla exige permiso antes de mostrar formulario y mapa', async () => {
+  const h = await crewHarness(403);
+  assert.equal(h.elements.get('crewForm').hidden, true);
+  assert.equal(h.groups.length, 0);
+  assert.match(h.elements.get('crewStatus').textContent, /No se pudo/);
+});
+
+test('cuadrilla marca punto manual recibe tracking y no envia identidad ni duplicados', async () => {
+  const h = await crewHarness();
+  assert.equal(h.elements.get('crewForm').hidden, false);
+  const submit = () => h.elements.get('crewForm').listeners.submit({ preventDefault() {} });
+  await submit(); assert.match(h.elements.get('crewStatus').textContent, /Sin contenedor/);
+  h.elements.get('crewLatitude').value = '-34.91'; h.elements.get('crewLongitude').value = '-56.15';
+  h.elements.get('crewApplyPoint').listeners.click();
+  assert.match(h.elements.get('crewLocation').textContent, /Ubicación marcada del problema/);
+  h.elements.get('crewType').value = 'Obstruido por Vehículo'; h.elements.get('crewDescription').value = 'Problema observado';
+  const saving = submit(); const request = h.requests.at(-1);
+  assert.equal(request.options.method, 'POST'); assert.match(request.url, /view=crew/);
+  assert.deepEqual(JSON.parse(request.options.body), { tipo_problema: 'Obstruido por Vehículo', descripcion: 'Problema observado', latitud: -34.91, longitud: -56.15 });
+  const count = h.requests.length; await submit(); assert.equal(h.requests.length, count);
+  respond(request, { tracking_number: 'INC-2026-ABCDE', id_incidencia: 23 }, 201); await saving;
+  assert.match(h.elements.get('crewConfirmation').textContent, /INC-2026-ABCDE/);
+  assert.equal(h.elements.get('crewFields').disabled, true);
+  await submit(); assert.equal(h.requests.length, count);
+});
+
+test('cuadrilla selecciona contenedor sin inventar punto y conserva formulario ante fallo', async () => {
+  const h = await crewHarness();
+  respond(h.containers().at(-1), [{ id_contenedor: 9, codigo: 'C-9', latitud: -34.91, longitud: -56.15 }]); await tick();
+  [...h.groups[0].markers][0].events.click();
+  assert.match(h.elements.get('crewLocation').textContent, /ubicación del contenedor/);
+  h.elements.get('crewType').value = 'Contenedor Desbordado'; h.elements.get('crewDescription').value = 'Desborde';
+  const saving = h.elements.get('crewForm').listeners.submit({ preventDefault() {} });
+  const body = JSON.parse(h.requests.at(-1).options.body);
+  assert.equal(body.id_contenedor, 9); assert.equal('latitud' in body, false);
+  h.requests.at(-1).reject(new Error('Error de red')); await saving;
+  assert.equal(h.elements.get('crewFields').disabled, false);
+  assert.equal(h.elements.get('crewDescription').value, 'Desborde');
+  assert.match(h.elements.get('crewStatus').textContent, /Error de red/);
+});
+
+test('ubicacion del dispositivo es opcional y respuesta tardia no pisa seleccion manual', async () => {
+  const h = await crewHarness();
+  h.run('navigator.geolocation = { getCurrentPosition(success, error, options) { window.geoSuccess = success; window.geoError = error; window.geoOptions = options; } }');
+  assert.equal(h.run('window.geoSuccess'), undefined);
+  h.elements.get('crewDevice').listeners.click();
+  assert.equal(h.run('window.geoOptions.timeout'), 8000);
+  h.run('window.geoError({ code: 1 })');
+  assert.match(h.elements.get('crewGeoStatus').textContent, /manualmente/);
+  h.elements.get('crewDevice').listeners.click();
+  h.emit('click', { latlng: { lat: -34.9, lng: -56.1 } });
+  h.run('window.geoSuccess({ coords: { latitude: 10, longitude: 20 } })');
+  assert.equal(h.elements.get('crewLatitude').value, '-34.9');
+  h.elements.get('crewDevice').listeners.click(); h.flush();
+  assert.match(h.elements.get('crewGeoStatus').textContent, /manualmente/);
+  h.elements.get('crewDevice').listeners.click();
+  h.run('window.geoSuccess({ coords: { latitude: -34.92, longitude: -56.12 } })');
+  assert.equal(h.elements.get('crewLatitude').value, '-34.92');
+  assert.equal(h.views.at(-1).level, 17);
+});
+
+test('punto propio administrativo tiene forma y texto diferentes sin publicar prioridad ciudadana', async () => {
+  const h = harness(true);
+  respond(h.incidents()[0], [{ ...item(), ubicacion_origen: 'problema', contenedor_codigo: null }]); await tick();
+  const marker = [...h.groups[1].markers][0];
+  assert.match(marker.options.icon.html, /point-location/);
+  assert.match(text(marker.popup), /Ubicación marcada del problema/);
+  assert.doesNotMatch(text(marker.popup), /Ubicación del contenedor relacionado/);
 });

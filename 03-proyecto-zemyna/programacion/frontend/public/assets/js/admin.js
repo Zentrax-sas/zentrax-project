@@ -95,7 +95,7 @@ menuButton.addEventListener('click', () => {
   menuButton.setAttribute('aria-expanded', String(opened));
 });
 
-const titles = { 'informe-incidencias': 'Informe de incidencias', incidencias: 'Incidencias', resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', centros: 'Centros', maquinaria: 'Maquinaria', usuarios: 'Usuarios y roles' };
+const titles = { 'reportar-problema': 'Reportar problema', 'informe-incidencias': 'Informe de incidencias', incidencias: 'Incidencias', resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', centros: 'Centros', maquinaria: 'Maquinaria', usuarios: 'Usuarios y roles' };
 function openView(viewName) {
   if (!titles[viewName]) return;
   document.querySelectorAll('.nav-link').forEach(item => item.classList.toggle('active', item.dataset.view === viewName));
@@ -104,6 +104,8 @@ function openView(viewName) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   operationalMapVersion++;
   operationalMap?.pause();
+  window.CrewReport?.pause();
+  if (viewName === 'reportar-problema') window.CrewReport?.open();
   window.IncidenceReport?.pause();
   if (viewName === 'informe-incidencias') window.IncidenceReport?.load();
   if (viewName === 'incidencias') {
@@ -888,7 +890,7 @@ async function cargarIncidenciasAdmin() {
       <td>#${escapeHtml(item.id_incidencia)}<br>${escapeHtml(item.tracking_number)}</td>
       <td>${escapeHtml(item.fecha_reporte)}</td>
       <td><strong>${escapeHtml(item.tipo_problema)}</strong><div class="incident-summary">${escapeHtml(String(item.descripcion || '').slice(0, 120))}</div></td>
-      <td>${escapeHtml(item.contenedor_codigo ? `Contenedor ${item.contenedor_codigo}` : item.ruta_nombre ? `Ruta ${item.ruta_nombre}` : 'Sin ubicación asociada')}</td>
+      <td>${escapeHtml(item.latitud != null && item.longitud != null ? 'Ubicación marcada del problema' : item.contenedor_codigo ? `Contenedor ${item.contenedor_codigo}` : item.ruta_nombre ? `Ruta ${item.ruta_nombre}` : 'Sin ubicación asociada')}</td>
       <td>${escapeHtml(item.estado)}</td><td>${escapeHtml(item.prioridad)}</td>
       <td><button class="link-button" type="button" data-incident-id="${escapeHtml(item.id_incidencia)}">Ver detalle</button></td>
     </tr>`).join('');
@@ -941,6 +943,7 @@ async function mostrarIncidencia(id) {
     if (request.signal.aborted) return;
     const item = json.data[0];
     const fields = { ID: item.id_incidencia, Seguimiento: item.tracking_number, Fecha: item.fecha_reporte,
+      'Ubicación propia': item.latitud != null && item.longitud != null ? `${item.latitud}, ${item.longitud} (marcada para el problema)` : 'Sin punto propio',
       Problema: item.tipo_problema, Descripción: item.descripcion, Contenedor: item.contenedor_codigo || item.id_contenedor || 'Sin contenedor',
       'Resolución (America/Montevideo)': item.fecha_resolucion || (item.estado === 'Resuelta' ? 'Fecha de resolución no registrada' : 'No resuelta'),
       Ruta: item.ruta_nombre || item.id_ruta || 'Sin ruta', Estado: item.estado, Prioridad: item.prioridad,

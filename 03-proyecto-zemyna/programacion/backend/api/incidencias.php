@@ -18,8 +18,11 @@ switch ($method) {
             'prioridad' => $_GET['prioridad'] ?? null,
         ];
 
-        if (!in_array($_GET['view'] ?? null, ['map', 'report', 'location'], true) && array_key_exists('tracking_number', $_GET) && !array_key_exists('admin', $_GET)) {
+        if (!in_array($_GET['view'] ?? null, ['map', 'report', 'location', 'crew'], true) && array_key_exists('tracking_number', $_GET) && !array_key_exists('admin', $_GET)) {
             $response = $controller->getPublicByTracking($filters['tracking_number']);
+        } elseif (($_GET['view'] ?? null) === 'crew') {
+            requirePermission('incidencia.crear', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
+            $response = $controller->getCrewOptions();
         } elseif (($_GET['view'] ?? null) === 'location') {
             requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
             $response = $controller->getLocation($_GET['id'] ?? null);
@@ -43,6 +46,8 @@ switch ($method) {
         break;
 
     case "POST":
+        $crew = ($_GET['view'] ?? null) === 'crew';
+        if ($crew) requirePermission('incidencia.crear', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
         $data = json_decode(file_get_contents("php://input"), true);
 
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
@@ -55,7 +60,7 @@ switch ($method) {
             break;
         }
 
-        $response = $controller->create($data ?? []);
+        $response = $crew ? $controller->createCrew($data, $_SESSION['usuario']['id_usuario'] ?? null) : $controller->create($data);
         http_response_code($response['statusCode'] ?? ($response['success'] ? 201 : 400));
         echo json_encode($response);
         break;

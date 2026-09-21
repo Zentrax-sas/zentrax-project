@@ -31,6 +31,7 @@ final class IncidenciaAdminTest extends TestCase
             INSERT INTO incidencia VALUES(1,'INC-2026-ABCDE','Descripción original','2026-08-20 10:00:00','Pendiente','Media','Contenedor Desbordado',1,NULL,NULL,NULL);
             INSERT INTO incidencia VALUES(2,'INC-2026-ABCDF','Otro reporte','2026-08-20 11:00:00','Resuelta','Alta','Contenedor Desbordado',1,NULL,1,NULL);");
         $this->db->exec('ALTER TABLE incidencia ADD COLUMN fecha_resolucion TEXT DEFAULT NULL; ALTER TABLE contenedor ADD COLUMN latitud NUMERIC; ALTER TABLE contenedor ADD COLUMN longitud NUMERIC');
+        $this->db->exec('ALTER TABLE incidencia ADD COLUMN latitud NUMERIC; ALTER TABLE incidencia ADD COLUMN longitud NUMERIC; ALTER TABLE contenedor ADD COLUMN activo INTEGER DEFAULT 1');
         $this->controller = new IncidenciaController($this->db);
     }
 
@@ -333,5 +334,76 @@ final class IncidenciaAdminTest extends TestCase
         $this->assertNull($this->controller->getLocation(2)['data']);
         $this->assertSame(404, $this->controller->getLocation(999)['statusCode']);
         $this->assertSame(400, $this->controller->getLocation([])['statusCode']);
+    }
+    public function testReporteCuadrillaConContenedorUsaIdentidadDelServidor(): void
+    {
+        $this->db->exec("INSERT INTO usuario VALUES(1,'Prueba','Operario')");
+        $result = $this->controller->createCrew(['descripcion' => 'Problema durante trabajo', 'tipo_problema' => 'Contenedor Roto/Dañado',
+            'id_contenedor' => 1, 'id_usuario' => 999, 'id_ruta' => 999, 'id_cuadrilla' => 999, 'estado' => 'Resuelta', 'prioridad' => 'Alta'], 1);
+        $this->assertSame(201, $result['statusCode']);
+        $row = $this->controller->getAll(['id' => $result['data']['id_incidencia']])['data'][0];
+        $this->assertSame(1, $row['id_usuario']);
+        $this->assertSame(1, $row['id_contenedor']);
+        $this->assertSame('Pendiente', $row['estado']);
+        $this->assertSame('Media', $row['prioridad']);
+        foreach (['id_ruta', 'id_cuadrilla', 'latitud', 'longitud'] as $key) $this->assertNull($row[$key]);
+    }
+
+    public function testReporteCuadrillaConPuntoSePersisteYSeUbicaSinContenedor(): void
+    {
+        $this->db->exec("INSERT INTO usuario VALUES(1,'Prueba','Operario')");
+        $payload = ['descripcion' => 'Obstrucción observada', 'tipo_problema' => 'Obstruido por Vehículo', 'latitud' => -34.9123456, 'longitud' => -56.15];
+        $result = $this->controller->createCrew($payload, 1);
+        $this->assertSame(201, $result['statusCode']);
+        $id = $result['data']['id_incidencia'];
+        $row = $this->controller->getAll(['id' => $id])['data'][0];
+        $this->assertSame($payload['descripcion'], $row['descripcion']);
+        $this->assertEquals($payload['latitud'], $row['latitud']);
+        $this->assertNull($row['id_contenedor']);
+        $this->assertNull($row['id_ruta']);
+        $this->assertSame('problema', $this->controller->getLocation($id)['data']['ubicacion_origen']);
+        $this->assertSame(200, $this->controller->updateAdministrative($row)['statusCode']);
+        $this->assertEquals($payload['latitud'], $this->controller->getAll(['id' => $id])['data'][0]['latitud']);
+        $tracking = $this->controller->getPublicByTracking($result['data']['tracking_number']);
+        $this->assertSame(['tracking_number', 'estado', 'fecha_reporte', 'tipo_problema'], array_keys($tracking['data']));
+        $this->assertSame(400, $this->controller->create($payload)['statusCode']);
+        $this->assertSame(401, $this->controller->createCrew($payload, null)['statusCode']);
+    }
+
+    /** @dataProvider invalidCrewPayloads */
+    public function testReporteCuadrillaRechazaDatosInvalidos(array $payload): void
+    {
+        $before = $this->controller->getAll()['data'];
+        $result = $this->controller->createCrew($payload + ['descripcion' => 'Prueba', 'tipo_problema' => 'Contenedor Desbordado'], 1);
+        $this->assertSame(400, $result['statusCode']);
+        $this->assertSame($before, $this->controller->getAll()['data']);
+    }
+
+    public static function invalidCrewPayloads(): array
+    {
+        return array_map(fn($data) => [$data], [[], ['id_contenedor' => ''], ['id_contenedor' => 999], ['id_contenedor' => []],
+            ['latitud' => 91, 'longitud' => 0], ['latitud' => 0, 'longitud' => -181], ['latitud' => 'NaN', 'longitud' => 0],
+            ['latitud' => '', 'longitud' => 0], ['latitud' => 0], ['latitud' => null, 'longitud' => null],
+            ['latitud' => [], 'longitud' => 0], ['latitud' => true, 'longitud' => 0],
+            ['id_contenedor' => 1, 'tipo_problema' => 'Inventado'], ['id_contenedor' => 1, 'descripcion' => '   '],
+            ['id_contenedor' => 1, 'descripcion' => str_repeat('ñ', 501)],
+        ]);
+    }
+
+    public function testContenedorConPuntoPropioYPrivacidadDelMapa(): void
+    {
+        $this->db->exec("INSERT INTO usuario VALUES(1,'Prueba','Operario'); UPDATE contenedor SET latitud=-34.92,longitud=-56.16");
+        $result = $this->controller->createCrew(['descripcion' => 'Punto observado cerca del contenedor', 'tipo_problema' => 'Contenedor Desbordado',
+            'id_contenedor' => 1, 'latitud' => -34.91, 'longitud' => -56.15], 1);
+        $this->assertSame(201, $result['statusCode']);
+        $id = $result['data']['id_incidencia'];
+        $viewport = ['south' => -35, 'north' => -34.8, 'west' => -56.3, 'east' => -56, 'zoom' => 14];
+        $this->assertNotContains($id, array_column($this->controller->getMap($viewport)['data'], 'id_incidencia'));
+        $admin = $this->controller->getMap($viewport + ['admin' => '1', 'activas' => '1']);
+        $byId = array_column($admin['data'], null, 'id_incidencia');
+        $this->assertSame('problema', $byId[$id]['ubicacion_origen']);
+        $this->assertEquals(-34.91, $byId[$id]['latitud']);
+        $this->assertArrayNotHasKey('id_usuario', $byId[$id]);
+        $this->assertSame('problema', $this->controller->getLocation($id)['data']['ubicacion_origen']);
     }
 }

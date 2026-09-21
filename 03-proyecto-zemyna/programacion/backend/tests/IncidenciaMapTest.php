@@ -23,12 +23,13 @@ final class IncidenciaMapTest extends TestCase
         foreach ([3 => 2, 4 => 3, 5 => 4, 6 => 5, 7 => 6, 8 => null, 9 => 999] as $id => $container) {
             $this->insert($id, $container);
         }
+        $this->db->exec('ALTER TABLE incidencia ADD COLUMN latitud NUMERIC; ALTER TABLE incidencia ADD COLUMN longitud NUMERIC');
         $this->controller = new IncidenciaController($this->db);
     }
 
     private function insert(int $id, ?int $container, string $state = 'Pendiente', string $priority = 'Media'): void
     {
-        $stmt = $this->db->prepare('INSERT INTO incidencia VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt = $this->db->prepare('INSERT INTO incidencia (id_incidencia,tracking_number,descripcion,fecha_reporte,estado,prioridad,tipo_problema,id_contenedor,id_ruta,id_usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
         $stmt->execute([$id, 'INC-2026-' . strtoupper(str_pad(dechex($id), 5, '0', STR_PAD_LEFT)), 'Descripción privada con datos personales',
             '2026-09-01 10:00:00', $state, $priority, 'Contenedor Desbordado', $container, $container === null ? 1 : null, 7]);
     }

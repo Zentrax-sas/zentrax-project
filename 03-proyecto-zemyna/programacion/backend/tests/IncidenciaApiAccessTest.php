@@ -19,6 +19,7 @@ session_start();
 putenv('DB_HOST=127.0.0.1;port=1');
 class IncidenciaController {
     public function __construct($db) {}
+    public function getCrewOptions() { return ['success' => true, 'statusCode' => 200, 'operation' => 'crew', 'data' => []]; }
     public function getLocation($id) { return ['success' => true, 'statusCode' => 200, 'operation' => 'location', 'data' => []]; }
     public function getReport($filters) { return ['success' => true, 'statusCode' => 200, 'operation' => 'report', 'data' => []]; }
     public function getMap($filters) { return ['success' => true, 'statusCode' => 200, 'operation' => 'map', 'data' => []]; }
@@ -64,7 +65,14 @@ PHP;
         $writer = ['usuario' => ['roles' => [], 'autorizaciones' => [['permiso' => 'incidencia.modificar', 'sector' => 'OPERACIONES']]]];
         $none = ['usuario' => ['roles' => ['OPERARIO'], 'autorizaciones' => []]];
         $wrongSector = ['usuario' => ['roles' => [], 'autorizaciones' => [['permiso' => 'incidencia.consultar', 'sector' => 'LOGISTICA']]]];
+        $creator = ['usuario' => ['id_usuario' => 7, 'roles' => ['OPERARIO'], 'autorizaciones' => [['permiso' => 'incidencia.crear', 'sector' => 'OPERACIONES']]]];
         return [
+            'cuadrilla registro sin sesión' => ['POST', ['view' => 'crew'], [], 401, null],
+            'cuadrilla registro sin permiso' => ['POST', ['view' => 'crew'], $reader, 403, null],
+            'cuadrilla consulta opciones sin sesión' => ['GET', ['view' => 'crew', 'tracking_number' => 'INC-2026-ABCDE'], [], 401, null],
+            'cuadrilla opciones sin permiso' => ['GET', ['view' => 'crew'], $none, 403, null],
+            'cuadrilla opciones autorizadas' => ['GET', ['view' => 'crew'], $creator, 200, 'crew'],
+            'cuadrilla alcanza validación JSON' => ['POST', ['view' => 'crew'], $creator, 400, null],
             'ubicación sin sesión' => ['GET', ['view' => 'location', 'id' => 2, 'tracking_number' => 'INC-2026-ABCDF'], [], 401, null],
             'ubicación sin permiso' => ['GET', ['view' => 'location', 'id' => 2], $none, 403, null],
             'ubicación autorizada' => ['GET', ['view' => 'location', 'id' => 2], $reader, 200, 'location'],

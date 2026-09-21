@@ -109,7 +109,9 @@ final class Utf8HttpIntegrationTest extends TestCase
                 $matches = array_values(array_filter($map['data'], fn($row) => (int)$row['id_incidencia'] === (int)$id));
                 $this->assertCount(1, $matches);
                 $this->assertSame($type, $matches[0]['tipo_problema']);
-                $this->assertSame(['id_incidencia', 'estado', 'prioridad', 'tipo_problema', 'fecha_reporte', 'latitud', 'longitud', 'contenedor_codigo'], array_keys($matches[0]));
+                $fields = ['id_incidencia', 'estado', 'prioridad', 'tipo_problema', 'fecha_reporte', 'latitud', 'longitud', 'contenedor_codigo'];
+                if ($session) { $fields[] = 'ubicacion_origen'; $this->assertSame('contenedor', $matches[0]['ubicacion_origen']); }
+                $this->assertSame($fields, array_keys($matches[0]));
             }
             $this->request('backend/api/incidencias.php', 403, 'PUT', ['id_incidencia' => $id, 'estado' => 'Resuelta'], 'reader');
             $this->request('backend/api/incidencias.php', 200, 'PUT', ['id_incidencia' => $id, 'estado' => 'Resuelta'], 'admin');

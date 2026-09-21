@@ -19,7 +19,7 @@
       const result = await incidentApi({ view: 'report', ...query, page, limit: 20 }, { signal });
       if (current !== version) return;
       get('reportRows').innerHTML = result.data.map(row => {
-        const location = row.contenedor_codigo ? `Contenedor ${row.contenedor_codigo}` : row.ruta_nombre ? `Ruta ${row.ruta_nombre}` : 'Sin ubicación asociada';
+        const location = row.latitud != null && row.longitud != null ? 'Ubicación marcada del problema' : row.contenedor_codigo ? `Contenedor ${row.contenedor_codigo}` : row.ruta_nombre ? `Ruta ${row.ruta_nombre}` : 'Sin ubicación asociada';
         return '<tr>' + [row.tracking_number, row.fecha_reporte, row.tipo_problema, row.estado, row.prioridad, location, row.fecha_resolucion || (row.estado === 'Resuelta' ? 'Fecha de resolución no registrada' : 'No resuelta')].map(value => `<td>${escapeHtml(value)}</td>`).join('') + '</tr>';
       }).join('');
       get('reportTotals').textContent = `Abiertas: ${result.totals.abiertas} · Cerradas: ${result.totals.cerradas} · Total: ${result.totals.total}`;

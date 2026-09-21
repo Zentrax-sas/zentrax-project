@@ -27,6 +27,7 @@
         <a class="nav-link" href="#rutas"><span class="nav-icon">⌁</span>Rutas y recorridos</a>
         <a class="nav-link" href="#camiones" data-view="camiones"><span class="nav-icon">▱</span>Camiones</a>
         <a class="nav-link" href="#informe-incidencias" data-view="informe-incidencias"><span class="nav-icon">≡</span>Informe de incidencias</a>
+        <a class="nav-link" href="#reportar-problema" data-view="reportar-problema"><span class="nav-icon">＋</span>Reportar problema</a>
         <a class="nav-link" href="#incidencias" data-view="incidencias"><span class="nav-icon">!</span>Incidencias</a>
         <a class="nav-link" href="#contenedores" data-view="contenedores"><span class="nav-icon">□</span>Contenedores</a>
         <a class="nav-link" href="#centros" data-view="centros"><span class="nav-icon">⌂</span>Centros</a>
@@ -143,6 +144,39 @@
 
         </section>
 
+        <section class="view" id="view-reportar-problema">
+          <section class="card panel crew-report">
+            <h2 class="panel-title">Reportar problema</h2>
+            <p>Registrá un problema observado durante tu trabajo. Al enviarlo correctamente quedará disponible para administración.</p>
+            <p id="crewStatus" role="status" aria-live="polite"></p>
+            <form id="crewForm" hidden>
+              <fieldset id="crewFields">
+                <legend>Datos del problema</legend>
+                <label>Tipo de problema<select id="crewType" required></select></label>
+                <label>Descripción breve<textarea id="crewDescription" maxlength="500" rows="4" required></textarea></label>
+                <p>Elegí un contenedor del mapa si corresponde. Para otro lugar, tocá el mapa y ajustá el punto. Sin contenedor, el punto es obligatorio.</p>
+                <p id="crewContainer">Sin contenedor asociado.</p>
+                <button id="crewClearContainer" type="button" class="secondary-button">Quitar contenedor</button>
+                <button id="crewDevice" type="button" class="secondary-button">Usar ubicación del dispositivo</button>
+                <p id="crewGeoStatus" role="status" aria-live="polite"></p>
+                <div id="crewMap" aria-label="Mapa para elegir contenedor o marcar el problema"></div>
+                <p id="crewMapStatus" role="status"></p>
+                <p id="crewLocation" role="status" aria-live="polite">Ubicación sin seleccionar.</p>
+                <div class="form-grid">
+                  <label>Latitud del problema<input id="crewLatitude" type="number" step="any" min="-90" max="90" inputmode="decimal"></label>
+                  <label>Longitud del problema<input id="crewLongitude" type="number" step="any" min="-180" max="180" inputmode="decimal"></label>
+                </div>
+                <button id="crewApplyPoint" type="button" class="secondary-button">Ajustar punto con estas coordenadas</button>
+                <button id="crewClearPoint" type="button" class="secondary-button">Quitar punto propio</button>
+                <p>La ubicación del dispositivo es opcional y se consulta solo al pulsar el botón. Podés ajustar el punto antes de enviar. No se sigue al camión ni se asigna una ruta automáticamente.</p>
+                <button id="crewSubmit" type="submit" class="primary-button">Enviar reporte</button>
+              </fieldset>
+            </form>
+            <p id="crewConfirmation" role="status" aria-live="polite" hidden></p>
+            <button id="crewNew" type="button" class="secondary-button" hidden>Reportar otro problema</button>
+          </section>
+        </section>
+
         <section class="view" id="view-incidencias">
           <section class="card panel incidents" id="incidencias">
             <div class="panel-head"><div><h2 class="panel-title">Gestión de incidencias</h2><p class="panel-subtitle">Consultá reportes y actualizá su atención.</p></div></div>
@@ -155,7 +189,7 @@
                 <label>Estado<select id="map-incident-state"><option value="">Activas</option><option>Pendiente</option><option>En Proceso</option></select></label>
                 <label>Prioridad<select id="map-incident-priority"><option value="">Todas</option><option>Baja</option><option>Media</option><option>Alta</option></select></label>
               </fieldset>
-              <p class="operational-map-legend">Círculo: contenedor. Rombo: incidencia. Prioridades: Baja (gris), Media (ámbar), Alta (rojo). R = resuelta en consulta individual. Los grupos numerados reúnen marcadores cercanos. Abrí una incidencia para consultar su detalle.</p>
+              <p class="operational-map-legend">Círculo: contenedor. Rombo: incidencia ubicada por su contenedor. Cuadrado de borde doble: ubicación marcada del problema. Prioridades: Baja (gris), Media (ámbar), Alta (rojo). R = resuelta en consulta individual. Los grupos numerados reúnen marcadores cercanos. Abrí una incidencia para consultar su detalle.</p>
               <button id="map-active-view" type="button" class="link-button" hidden>Volver a incidencias activas</button>
               <div id="operationalMap"></div>
               <p id="mapa-status" role="status" aria-live="polite"></p>
@@ -345,5 +379,6 @@
   <script src="assets/js/zemyna-map.js"></script>
   <script src="assets/js/admin.js"></script>
   <script src="assets/js/incidence-report.js"></script>
+  <script src="assets/js/crew-report.js"></script>
 </body>
 </html>

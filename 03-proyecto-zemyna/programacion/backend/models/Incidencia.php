@@ -15,6 +15,8 @@ class Incidencia {
     public $id_ruta;
     public $id_cuadrilla;
     public $id_usuario;
+    public $latitud;
+    public $longitud;
 
     public function __construct($db) {
         $this->conn = $db;
@@ -79,7 +81,7 @@ class Incidencia {
         if (!$count->execute($params)) throw new PDOException('Error al contar.');
         $totals = array_map('intval', $count->fetch(PDO::FETCH_ASSOC));
         $stmt = $this->conn->prepare('SELECT i.id_incidencia, i.tracking_number, i.fecha_reporte,
-            i.tipo_problema, i.estado, i.prioridad, i.fecha_resolucion, c.codigo AS contenedor_codigo, r.nombre AS ruta_nombre
+            i.tipo_problema, i.estado, i.prioridad, i.fecha_resolucion, i.latitud, i.longitud, c.codigo AS contenedor_codigo, r.nombre AS ruta_nombre
             FROM incidencia i LEFT JOIN contenedor c ON c.id_contenedor = i.id_contenedor
             LEFT JOIN ruta r ON r.id_ruta = i.id_ruta' . $where . '
             ORDER BY i.fecha_reporte DESC, i.id_incidencia DESC LIMIT :limit OFFSET :offset');
@@ -92,18 +94,22 @@ class Incidencia {
                 'pages' => (int)ceil($totals['total'] / $limit)]];
     }
 
-    public function readForMap(float $south, float $north, float $west, float $east, int $limit, ?string $estado = null, ?string $prioridad = null, bool $activeOnly = false) {
+    public function readForMap(float $south, float $north, float $west, float $east, int $limit, ?string $estado = null, ?string $prioridad = null, bool $activeOnly = false, bool $administrative = false) {
         if (!$this->conn) return null;
-        // La incidencia no tiene coordenadas propias. No se infiere una ubicación de la ruta.
+        // Expresiones seleccionadas exclusivamente por el modo autorizado, nunca por texto del cliente.
+        $lat = $administrative ? 'CAST(COALESCE(i.latitud, c.latitud) AS DECIMAL(10,7))' : 'c.latitud';
+        $lng = $administrative ? 'CAST(COALESCE(i.longitud, c.longitud) AS DECIMAL(10,7))' : 'c.longitud';
+        $source = $administrative ? ", CASE WHEN i.latitud IS NOT NULL THEN 'problema' ELSE 'contenedor' END AS ubicacion_origen" : '';
+        $scope = $administrative ? '(i.latitud IS NOT NULL OR c.activo = 1)' : 'c.activo = 1 AND i.latitud IS NULL AND i.longitud IS NULL';
         $query = "SELECT i.id_incidencia, i.estado, i.prioridad, i.tipo_problema, i.fecha_reporte,
-                         c.latitud, c.longitud, c.codigo AS contenedor_codigo
+                         $lat AS latitud, $lng AS longitud, c.codigo AS contenedor_codigo $source
                   FROM incidencia i
-                  INNER JOIN contenedor c ON c.id_contenedor = i.id_contenedor
-                  WHERE c.activo = 1
-                    AND c.latitud BETWEEN -90 AND 90
-                    AND c.longitud BETWEEN -180 AND 180
-                    AND c.latitud BETWEEN :south AND :north
-                    AND c.longitud BETWEEN :west AND :east";
+                  LEFT JOIN contenedor c ON c.id_contenedor = i.id_contenedor
+                  WHERE $scope
+                    AND $lat BETWEEN -90 AND 90
+                    AND $lng BETWEEN -180 AND 180
+                    AND $lat BETWEEN :south AND :north
+                    AND $lng BETWEEN :west AND :east";
         if ($activeOnly) $query .= " AND i.estado IN ('Pendiente', 'En Proceso')";
         if ($estado !== null) $query .= ' AND i.estado = :estado';
         if ($prioridad !== null) $query .= ' AND i.prioridad = :prioridad';
@@ -122,7 +128,8 @@ class Incidencia {
     public function location(int $id): ?array {
         if (!$this->conn) throw new PDOException('Sin conexión.');
         $stmt = $this->conn->prepare('SELECT i.id_incidencia, i.estado, i.prioridad, i.tipo_problema,
-            i.fecha_reporte, c.codigo AS contenedor_codigo, c.latitud, c.longitud
+            i.fecha_reporte, c.codigo AS contenedor_codigo, COALESCE(i.latitud, c.latitud) AS latitud, COALESCE(i.longitud, c.longitud) AS longitud,
+            CASE WHEN i.latitud IS NOT NULL THEN \'problema\' ELSE \'contenedor\' END AS ubicacion_origen
             FROM incidencia i LEFT JOIN contenedor c ON c.id_contenedor = i.id_contenedor
             WHERE i.id_incidencia = :id');
         if (!$stmt->execute([':id' => $id])) throw new PDOException('Error de consulta.');
@@ -137,6 +144,13 @@ class Incidencia {
 
     private function resolutionNow(): string {
         return (new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d H:i:s');
+    }
+
+    public function containerExists(int $id): bool {
+        if (!$this->conn) throw new PDOException('Sin conexión.');
+        $stmt = $this->conn->prepare('SELECT id_contenedor FROM contenedor WHERE id_contenedor = :id AND activo = 1');
+        if (!$stmt->execute([':id' => $id])) throw new PDOException('Error al consultar contenedor.');
+        return $stmt->fetchColumn() !== false;
     }
 
     public function cuadrillas(): array {
@@ -185,15 +199,15 @@ class Incidencia {
         $tieneContenedor = !empty($this->id_contenedor);
         $tieneRuta = !empty($this->id_ruta);
 
-        if ($tieneContenedor === $tieneRuta) {
+        if (($tieneContenedor && $tieneRuta) || (!$tieneContenedor && !$tieneRuta && ($this->latitud === null || $this->longitud === null))) {
             return false;
         }
 
         $query = "INSERT INTO " . $this->table_name . "
                    (tracking_number, descripcion, fecha_reporte, estado, prioridad, tipo_problema,
-                   id_contenedor, id_ruta, id_cuadrilla, id_usuario)
+                   id_contenedor, id_ruta, id_cuadrilla, id_usuario, latitud, longitud)
                   VALUES (:tracking_number, :descripcion, :fecha_reporte, :estado, :prioridad, :tipo_problema,
-                          :id_contenedor, :id_ruta, :id_cuadrilla, :id_usuario)";
+                          :id_contenedor, :id_ruta, :id_cuadrilla, :id_usuario, :latitud, :longitud)";
 
         $stmt = $this->conn->prepare($query);
 
@@ -207,6 +221,8 @@ class Incidencia {
         $stmt->bindParam(':id_ruta', $this->id_ruta);
         $stmt->bindParam(':id_cuadrilla', $this->id_cuadrilla);
         $stmt->bindParam(':id_usuario', $this->id_usuario);
+        $stmt->bindParam(':latitud', $this->latitud);
+        $stmt->bindParam(':longitud', $this->longitud);
 
         if ($stmt->execute()) {
             $this->id_incidencia = (int)$this->conn->lastInsertId();
@@ -222,7 +238,7 @@ class Incidencia {
         $tieneContenedor = !empty($this->id_contenedor);
         $tieneRuta = !empty($this->id_ruta);
 
-        if ($tieneContenedor === $tieneRuta) {
+        if (($tieneContenedor && $tieneRuta) || (!$tieneContenedor && !$tieneRuta && ($this->latitud === null || $this->longitud === null))) {
             return false;
         }
 

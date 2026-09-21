@@ -214,7 +214,7 @@ function incidentPopup(item) {
     title.textContent = item.tipo_problema || 'Tipo no disponible';
     popup.append(title);
     const fields = [['Estado', item.estado], ['Fecha', item.fecha_reporte], ['Contenedor', item.contenedor_codigo]];
-    if (administrative) fields.push(['Ubicación', 'Ubicación del contenedor relacionado; no son coordenadas propias del reclamo.']);
+    if (administrative) fields.push(['Ubicación', item.ubicacion_origen === 'problema' ? 'Ubicación marcada del problema.' : 'Ubicación del contenedor relacionado; no son coordenadas propias del reclamo.']);
     if (administrative) fields.splice(1, 0, ['Prioridad', item.prioridad]);
     for (const [label, value] of fields) {
         const line = document.createElement('p');
@@ -247,9 +247,10 @@ function reconcileIncidentMarkers(items) {
         }
         const priority = administrative ? ({ Baja: ['', 'low'], Media: ['', 'medium'], Alta: ['', 'high'] }[item.prioridad] || ['?', 'low']) : ['!', ''];
         if (administrative && item.estado === 'Resuelta') { priority[0] = 'R'; priority[1] = 'resolved'; }
-        const label = administrative ? `Incidencia ${item.estado}; prioridad ${item.prioridad}. Ubicación del contenedor relacionado.` : 'Incidencia: consultar reporte';
+        const locationLabel = item.ubicacion_origen === 'problema' ? 'Ubicación marcada del problema.' : 'Ubicación del contenedor relacionado.';
+        const label = administrative ? `Incidencia ${item.estado}; prioridad ${item.prioridad}. ${locationLabel}` : 'Incidencia: consultar reporte';
         const marker = L.marker([Number(item.latitud), Number(item.longitud)], {
-            icon: L.divIcon({ html: `<span class="incident-map-symbol priority-${priority[1]}"><b>${priority[0]}</b></span>`, className: 'incident-map-icon', iconSize: [30, 30], iconAnchor: [-8, 30] }),
+            icon: L.divIcon({ html: `<span class="incident-map-symbol priority-${priority[1]}${administrative && item.ubicacion_origen === 'problema' ? ' point-location' : ''}"><b>${priority[0]}</b></span>`, className: 'incident-map-icon', iconSize: [30, 30], iconAnchor: [-8, 30] }),
             title: label, alt: label, keyboard: true
         }).bindPopup(incidentPopup(item));
         // No tiene handler de selección: abrir una incidencia nunca cambia el formulario.
@@ -279,7 +280,7 @@ async function cargarIncidenciasMapa() {
     if (!active) return;
     if (focusedIncident) {
         reconcileIncidentMarkers([focusedIncident]);
-        setIncidentMapStatus('Consulta individual: ubicación del contenedor relacionado. Volvé a incidencias activas para continuar.', 'success');
+        setIncidentMapStatus(`Consulta individual: ${focusedIncident.ubicacion_origen === 'problema' ? 'ubicación marcada del problema' : 'ubicación del contenedor relacionado'}. Volvé a incidencias activas para continuar.`, 'success');
         return;
     }
     incidentsRequestController?.abort();
