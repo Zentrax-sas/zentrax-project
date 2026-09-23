@@ -12,7 +12,10 @@ class Element {
   querySelector() { return new Element(); }
   querySelectorAll() { return []; }
   reportValidity() { return true; }
-  focus() {}
+  setAttribute(name, value) { this[name] = value; }
+  showModal() { this.open = true; }
+  close() { this.open = false; this.listeners.close?.(); }
+  focus() { this.focused = true; }
   scrollIntoView() {}
   reset() {}
   replaceChildren(...nodes) { this.children = nodes; }
@@ -23,8 +26,8 @@ class Element {
   change() { this.listeners.change?.(); }
 }
 function text(node) { return node.textContent + (node.children || []).map(text).join(' '); }
-function harness(administrative = false, callbacks = {}, bootPublic = false) {
-  const html = fs.readFileSync(path.join(publicDir, administrative ? 'admin.html' : 'index.html'), 'utf8');
+function harness(administrative = false, callbacks = {}, bootPublic = false, page = null) {
+  const html = fs.readFileSync(path.join(publicDir, page || (administrative ? 'admin.html' : 'index.html')), 'utf8');
   const elements = new Map();
   for (const match of html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*\bid="([^"]+)"[^>]*)>/g)) {
     const element = new Element(match[1]); element.checked = /\bchecked\b/.test(match[2]); elements.set(match[3], element);
@@ -58,6 +61,8 @@ function harness(administrative = false, callbacks = {}, bootPublic = false) {
     context.document.addEventListener = () => {};
     context.buildFrontendUrl = value => value;
     vm.runInContext(fs.readFileSync(path.join(publicDir, 'assets/js/admin.js'), 'utf8'), context);
+  } else if (bootPublic === 'standalone') {
+    context.buildFrontendUrl = value => value;
   } else if (bootPublic) {
     context.ZemynaMap = context.window.ZemynaMap;
     vm.runInContext(fs.readFileSync(path.join(publicDir, 'mapa.js'), 'utf8'), context);
@@ -384,4 +389,227 @@ test('punto propio administrativo tiene forma y texto diferentes sin publicar pr
   assert.match(marker.options.icon.html, /point-location/);
   assert.match(text(marker.popup), /Ubicación marcada del problema/);
   assert.doesNotMatch(text(marker.popup), /Ubicación del contenedor relacionado/);
+});
+
+function collectionHarness(admin = false) {
+  const html = fs.readFileSync(path.join(publicDir, admin ? 'admin.html' : 'recoleccion.html'), 'utf8');
+  const elements = new Map([...html.matchAll(/id="([^"]+)"/g)].map(m => [m[1], new Element()]));
+  const requests = [], redirects = [], navigations = []; let confirmation = true;
+  const allButtons = () => { const result = []; const visit = n => { if (n.tag === 'button') result.push(n); (n.children || []).forEach(visit); }; [...elements.values()].forEach(visit); return result; };
+  const context = vm.createContext({ URL, URLSearchParams, AbortController, Number, String, console,
+    document: { getElementById: id => elements.get(id), createElement: tag => new Element(tag), querySelectorAll: allButtons },
+    window: { confirm: () => confirmation, addEventListener() {}, location: { href: `http://localhost/zentrax-project/03-proyecto-zemyna/programacion/frontend/public/${admin ? 'admin' : 'recoleccion'}.html`, replace: value => redirects.push(value) } },
+    history: { replaceState() {} }, openView: name => navigations.push(name), adminSessionReady: Promise.resolve(true),
+    fetch: (url, options) => new Promise((resolve, reject) => requests.push({ url, options, resolve, reject })) });
+  vm.runInContext(fs.readFileSync(path.join(publicDir, 'config.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(path.join(publicDir, `assets/js/${admin ? 'cuadrillas' : 'recoleccion'}.js`), 'utf8'), context);
+  const reply = (index, status, body) => requests[index].resolve({ status, ok: status >= 200 && status < 300, json: async () => body });
+  return { elements, requests, redirects, navigations, reply, html, run: code => vm.runInContext(code, context), open: () => context.window.SquadAdmin.open(), confirm: value => { confirmation = value; }, click: id => elements.get(id).listeners.click({ currentTarget: elements.get(id), preventDefault() {} }) };
+}
+const descendants = node => [node, ...(node.children || []).flatMap(descendants)];
+const actionIn = (h, id, label) => descendants(h.elements.get(id)).find(n => n.tag === 'button' && n.textContent === label);
+const ownTrip = (estado = 'Pendiente', attended = false) => ({ success: true, puede_operar: true, data: {
+  pertenencia: { nombre: 'Cuadrilla propia', turno: 'Matutino' }, recorrido: {
+    id_recorrido: 8, ruta_nombre: 'Ruta propia', estado, fecha_inicio: '2026-09-21 08:00:00', fecha_fin: estado === 'Finalizado' ? '2026-09-21 09:00:00' : null,
+    id_usuario_inicio: 3, id_usuario_fin: estado === 'Finalizado' ? 3 : null, autores: [{ id_usuario: 3, nombre: 'Operario', apellido: 'Prueba' }], vehiculos: [],
+    progreso: { total: 1, atendidos: attended ? 1 : 0, pendientes: attended ? 0 : 1 },
+    contenedores: [{ id_contenedor: 5, codigo: 'C5', latitud: -34.9, longitud: -56.1, fecha_atencion: attended ? '2026-09-21 08:30:00' : null, autor_nombre: 'Operario', autor_apellido: 'Prueba' }]
+  }
+} });
+const findAction = (h, label) => h.elements.get('collectionItems').children.flatMap(c => c.children).find(n => n.tag === 'button' && n.textContent === label);
+
+test('operario no presenta administración ni consulta otras cuadrillas aunque cambie el hash', async () => {
+  const h=collectionHarness(); h.run("window.location.hash='#cuadrillas'");
+  assert.equal(h.elements.has('collectionAdmin'),false); assert.equal(h.elements.has('squadEligible'),false);
+  assert.equal(new URL(h.requests[0].url).search,'');
+  h.reply(0,409,{code:'sin_pertenencia',message:'Sin pertenencia',puede_consultar_administracion:true}); await tick();
+  assert.equal(h.elements.get('collectionPanel').hidden,true);
+  assert.equal(h.elements.get('collectionStatus').textContent,'No tenés una cuadrilla asignada actualmente. Contactá a un administrador.');
+  assert.equal(h.requests.length,1);
+});
+test('contrato real config.js: consulta propia sin identidad ni timestamp automático', () => {
+  const h=collectionHarness(), r=h.requests[0]; assert.equal(new URL(r.url).search,''); assert.equal(r.options.body,undefined); assert.equal(r.options.cache,'no-store');
+});
+test('operario distingue sesión vencida, permisos, falta de recorrido, ambigüedad y servidor', async () => {
+  const h=collectionHarness(); h.reply(0,401,{}); await tick(); assert.match(h.redirects[0],/login.html$/);
+  h.click('collectionRetry'); h.reply(1,403,{}); await tick(); assert.match(h.elements.get('collectionStatus').textContent,/no está habilitada/);
+  h.click('collectionRetry'); h.reply(2,409,{code:'sin_recorrido',data:{pertenencia:{nombre:'Propia'},recorrido:null}}); await tick(); assert.equal(h.elements.get('collectionStatus').textContent,''); assert.match(text(h.elements.get('collectionItems')),/Sin recorrido asignado/);
+  h.click('collectionRetry'); h.reply(3,409,{code:'recorrido_ambiguo'}); await tick(); assert.match(h.elements.get('collectionStatus').textContent,/compartido o ambiguo/);
+  h.click('collectionRetry'); h.reply(4,400,{message:'Inválido'}); await tick(); assert.match(h.elements.get('collectionStatus').textContent,/Solicitud inválida/);
+  h.click('collectionRetry'); h.reply(5,503,{}); await tick(); assert.match(h.elements.get('collectionStatus').textContent,/Error del servidor/);
+});
+test('operario cancela consultas y descarta respuestas antiguas', async () => {
+  const h=collectionHarness(); h.click('collectionRetry'); assert.equal(h.requests[0].options.signal.aborted,true);
+  h.reply(1,200,ownTrip()); await tick(); h.reply(0,409,{code:'sin_pertenencia',message:'Obsoleto'}); await tick();
+  assert.match(text(h.elements.get('collectionItems')),/Ruta propia/); assert.doesNotMatch(h.elements.get('collectionStatus').textContent,/Obsoleto/);
+});
+test('operario renderiza texto seguro, coordenadas válidas y autoría propia', async () => {
+  const h=collectionHarness(),body=ownTrip(); body.data.recorrido.ruta_nombre='<img onerror=alert(1)>'; h.reply(0,200,body); await tick();
+  const nodes=descendants(h.elements.get('collectionItems')); assert.ok(nodes.some(n=>n.textContent.includes('<img onerror=alert(1)>'))); assert.ok(nodes.every(n=>n.innerHTML===undefined));
+  assert.ok(nodes.some(n=>n.tag==='a' && n.href.startsWith('https://www.openstreetmap.org/')));
+  assert.match(text(h.elements.get('collectionItems')),/Operario Prueba/);
+});
+test('recolección propia confirma inicio, bloquea doble envío y muestra resultado real', async () => {
+  const h=collectionHarness();h.reply(0,200,ownTrip());await tick();const start=findAction(h,'Iniciar recorrido');
+  h.confirm(false);start.listeners.click();assert.equal(h.requests.length,1);h.confirm(true);start.listeners.click();start.listeners.click();assert.equal(h.requests.length,2);assert.equal(start.disabled,true);
+  assert.deepEqual(JSON.parse(h.requests[1].options.body),{accion:'iniciar',id_recorrido:8});
+  h.reply(1,200,ownTrip('En Proceso'));await tick();h.reply(2,200,ownTrip('En Proceso'));await tick();assert.equal(findAction(h,'Iniciar recorrido'),undefined);assert.ok(findAction(h,'Marcar como atendido'));
+});
+test('atención conserva identidad de sesión y finalización requiere confirmación', async () => {
+  const h=collectionHarness();h.reply(0,200,ownTrip('En Proceso'));await tick();findAction(h,'Marcar como atendido').listeners.click();
+  assert.deepEqual(JSON.parse(h.requests[1].options.body),{accion:'atender',id_recorrido:8,id_contenedor:5});
+  h.reply(1,200,ownTrip('En Proceso',true));await tick();h.reply(2,200,ownTrip('En Proceso',true));await tick();assert.equal(findAction(h,'Marcar como atendido'),undefined);assert.match(text(h.elements.get('collectionItems')),/1 de 1 contenedores atendidos/);
+  const finish=findAction(h,'Finalizar recorrido');h.confirm(false);finish.listeners.click();assert.equal(h.requests.length,3);h.confirm(true);finish.listeners.click();h.reply(3,200,ownTrip('Finalizado',true));await tick();h.reply(4,200,ownTrip('Finalizado',true));await tick();assert.equal(findAction(h,'Finalizar recorrido'),undefined);
+});
+test('solo lectura no muestra acciones y un conflicto no inventa éxito', async () => {
+  const h=collectionHarness(),body=ownTrip();body.puede_operar=false;h.reply(0,200,body);await tick();assert.equal(findAction(h,'Iniciar recorrido'),undefined);
+  h.click('collectionRetry');h.reply(1,200,ownTrip());await tick();findAction(h,'Iniciar recorrido').listeners.click();h.reply(2,409,{message:'Ya fue iniciado'});await tick();assert.equal(h.elements.get('collectionStatus').textContent,'Ya fue iniciado');
+});
+const catalogBody=()=>({success:true,data:{tipo:'cuadrillas',lista:{items:[{id_cuadrilla:2,nombre:'Destino',turno:'Matutino',integrantes_activos:1,recorrido_actual:ownTrip().data.recorrido}],page:1,page_size:25,total:1}}});
+const detailBody=()=>({success:true,data:{cuadrilla:{id_cuadrilla:2,nombre:'Destino',turno:'Matutino'},integrantes_activos:1,vehiculos:[],recorrido_actual:ownTrip().data.recorrido,lista:{items:[ownTrip().data.recorrido],page:1,page_size:25,total:1}}});
+const membersBody=()=>({success:true,puede_gestionar:true,data:{historial:[{id_usuario:3,id_usuario_cuadrilla:7,nombre:'Operario',apellido:'Prueba',fecha_inicio:'2026-01-01',fecha_fin:null,asignador_nombre:'Ana',asignador_apellido:'Gestión'},{id_usuario:4,nombre:'Anterior',apellido:'Prueba',fecha_inicio:'2025-01-01',fecha_fin:'2025-02-01'}],elegibles:[{id_usuario:3,nombre:'Operario',apellido:'Prueba',pertenencia:{nombre:'Origen',id_cuadrilla:1,id_usuario_cuadrilla:7}},{id_usuario:4,nombre:'Nuevo',apellido:'Prueba',pertenencia:null},{id_usuario:5,nombre:'Actual',apellido:'Prueba',pertenencia:{nombre:'Destino',id_cuadrilla:2,id_usuario_cuadrilla:8}}]}});
+async function adminReady(){const h=collectionHarness(true);await tick();h.reply(0,200,{success:true,data:{administracion:true,integrantes:true,modificar_integrantes:true,usuarios:true,asignar_recorridos:true,crear_recorridos:true}});await tick();h.open();await tick();h.reply(1,200,catalogBody());await tick();return h;}
+async function adminMembers(){const h=await adminReady();actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(2,200,detailBody());await tick();h.click('squadMembersTab');h.reply(3,200,membersBody());await tick();return h;}
+test('administración oculta menú y rechaza acceso por hash sin autorización',async()=>{
+  const h=collectionHarness(true);await tick();h.reply(0,200,{success:true,data:{administracion:false}});await tick();await h.open();assert.equal(h.elements.get('squadNav').hidden,true);assert.equal(h.requests.length,1);assert.match(h.elements.get('squadStatus').textContent,/No tenés permiso/);
+});
+test('cuadrillas navega listado resumen integrantes e historial con autores legibles',async()=>{
+  const h=await adminMembers();assert.equal(h.elements.get('squadNav').hidden,false);assert.equal(h.elements.get('squadName').textContent,'Destino');
+  assert.match(text(h.elements.get('squadActiveMembers')),/Ana Gestión/);assert.match(text(h.elements.get('squadHistory')),/Anterior/);assert.doesNotMatch(text(h.elements.get('squadActiveMembers')),/Anterior/);
+  h.click('squadTripsTab');assert.equal(h.elements.get('squadTrips').hidden,false);assert.match(text(h.elements.get('squadTripRows')),/Ruta propia/);
+});
+test('asignación y traslado tienen confirmaciones específicas y bloquean pertenencia redundante',async()=>{
+  const h=await adminMembers();h.click('squadAdd');assert.equal(h.elements.get('squadDialog').open,true);assert.match(h.elements.get('squadDialogTitle').textContent,/Agregar operario a Destino/);assert.match(h.elements.get('squadConfirmText').textContent,/Origen.*trasladarlo a Destino/);assert.equal(h.elements.get('squadConfirm').textContent,'Confirmar traslado');
+  h.elements.get('squadEligible').value=5;h.elements.get('squadEligible').change();assert.equal(h.elements.get('squadConfirm').disabled,true);assert.match(h.elements.get('squadConfirmText').textContent,/ya pertenece/);
+  h.elements.get('squadEligible').value=4;h.elements.get('squadEligible').change();assert.equal(h.elements.get('squadConfirm').textContent,'Confirmar asignación');assert.equal(h.elements.get('squadConfirm').disabled,false);
+  h.elements.get('squadEligible').value=3;h.elements.get('squadEligible').change();h.elements.get('squadAssignment').listeners.submit({preventDefault(){}});assert.deepEqual(JSON.parse(h.requests[4].options.body),{accion:'trasladar',integrante:3,destino:2,pertenencia:7});assert.equal(h.elements.get('squadConfirm').disabled,true);
+  h.reply(4,200,{success:true});await tick();h.reply(5,200,membersBody());await tick();assert.equal(h.elements.get('squadDialog').open,false);
+});
+test('finalizar pertenencia identifica persona y cuadrilla y conserva historial',async()=>{
+  const h=await adminMembers(),finish=actionIn(h,'squadActiveMembers','Finalizar pertenencia');finish.listeners.click({currentTarget:finish});assert.match(h.elements.get('squadConfirmText').textContent,/Operario Prueba.*Destino.*historial/);h.click('squadCancel');assert.equal(h.requests.length,4);assert.equal(finish.focused,true);
+  finish.listeners.click({currentTarget:finish});h.elements.get('squadAssignment').listeners.submit({preventDefault(){}});assert.deepEqual(JSON.parse(h.requests[4].options.body),{accion:'finalizar_pertenencia',integrante:3,pertenencia:7});
+});
+test('administración filtra y pagina recorridos sin perder cuadrilla; escapa valores',async()=>{
+  const h=await adminReady();const malicious=catalogBody();malicious.data.lista.items[0].nombre='<img onerror=alert(1)>';h.click('squadRefresh');h.reply(2,200,malicious);await tick();assert.match(text(h.elements.get('squadList')),/<img onerror=alert/);assert.ok(descendants(h.elements.get('squadList')).every(n=>n.innerHTML===undefined));
+  actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(3,200,detailBody());await tick();h.click('squadTripsTab');h.elements.get('squadState').value='En Proceso';h.elements.get('squadState').change();let params=new URL(h.requests[4].url).searchParams;assert.equal(params.get('id_cuadrilla'),'2');assert.equal(params.get('estado'),'En Proceso');
+  const body=detailBody();body.data.lista.total=30;h.reply(4,200,body);await tick();h.click('squadTripNext');params=new URL(h.requests[5].url).searchParams;assert.equal(params.get('page'),'2');assert.equal(params.get('estado'),'En Proceso');
+});
+test('administración controla error vacío y respuestas obsoletas',async()=>{
+  const h=await adminReady();h.click('squadRefresh');h.click('squadRefresh');assert.equal(h.requests[2].options.signal.aborted,true);const empty=catalogBody();empty.data.lista.items=[];empty.data.lista.total=0;h.reply(3,200,empty);await tick();h.reply(2,403,{message:'Obsoleto'});await tick();assert.match(h.elements.get('squadStatus').textContent,/No hay cuadrillas/);
+  h.click('squadRefresh');h.reply(4,403,{});await tick();assert.equal(h.elements.get('squadList').hidden,true);assert.match(h.elements.get('squadStatus').textContent,/No tenés permiso/);
+});
+
+test('operario abre reporte reutilizado sin navegación administrativa y lo pausa al cerrar',async()=>{
+  const h=collectionHarness(); h.run("window.CrewReport={open(){window.reportOpen=true;},pause(){window.reportPaused=true;}}");
+  h.run(fs.readFileSync(path.join(publicDir,'assets/js/recoleccion-report.js'),'utf8'));
+  h.elements.get('collectionReport').hidden=true;h.click('collectionReportButton');assert.equal(h.elements.get('collectionReport').hidden,false);assert.equal(h.run('window.reportOpen'),true);
+  h.click('collectionReportButton');assert.equal(h.run('window.reportPaused'),true);assert.equal(h.elements.has('squadNav'),false);
+});
+test('modal conserva foco y bloquea Escape mientras guarda; finalizar no valida selector oculto',async()=>{
+  const h=await adminMembers();h.click('squadAdd');h.click('squadCancel');assert.equal(h.elements.get('squadAdd').focused,true);
+  const finish=actionIn(h,'squadActiveMembers','Finalizar pertenencia');finish.listeners.click({currentTarget:finish});assert.equal(h.elements.get('squadEligible').disabled,true);
+  h.elements.get('squadAssignment').listeners.submit({preventDefault(){}});let prevented=false;h.elements.get('squadDialog').listeners.cancel({preventDefault(){prevented=true;}});assert.equal(prevented,true);
+});
+
+
+test('Mi recolección vuelve al panel y presenta tarjeta sin fechas con acciones disponibles', async () => {
+  const h=collectionHarness();
+  const target=h.html.match(/id="collectionBack" href="([^"]+)"/)[1];
+  assert.equal(new URL(target,'http://localhost/app/recoleccion.html').href,'http://localhost/app/admin.html');
+  h.reply(0,409,{code:'sin_recorrido',data:{pertenencia:{nombre:'Cuadrilla Alpha',turno:'Matutino'},recorrido:null}}); await tick();
+  assert.equal(h.elements.get('collectionHeading').textContent,'Cuadrilla Alpha · Matutino');
+  assert.match(text(h.elements.get('collectionItems')),/Sin recorrido asignado.*Tu cuadrilla todavía no tiene un recorrido disponible/);
+  assert.equal(h.elements.get('collectionTimezone').hidden,true);
+  assert.equal(findAction(h,'Iniciar recorrido'),undefined);
+  h.click('collectionRetry');assert.equal(h.requests.length,2);assert.equal(new URL(h.requests[1].url).search,'');
+  h.reply(1,200,ownTrip());await tick();assert.equal(h.elements.get('collectionTimezone').hidden,false);
+  assert.ok(findAction(h,'Iniciar recorrido'));
+});
+
+test('HTML real de Mi recolección permite reportar sin recorrido usando el módulo compartido', async () => {
+  const h=harness(false,{},'standalone','recoleccion.html');
+  h.elements.get('collectionReport').hidden=true;
+  h.run(fs.readFileSync(path.join(publicDir,'assets/js/recoleccion-report.js'),'utf8'));
+  h.run(fs.readFileSync(path.join(publicDir,'assets/js/crew-report.js'),'utf8'));
+  h.elements.get('collectionReportButton').listeners.click();await tick();
+  respond(h.requests[0],{tipos:['Contenedor Desbordado']});await tick();
+  assert.equal(h.elements.get('crewForm').hidden,false);assert.equal(h.groups.length,1);
+  h.elements.get('crewLatitude').value='-34.9';h.elements.get('crewLongitude').value='-56.1';h.elements.get('crewApplyPoint').listeners.click();
+  h.elements.get('crewType').value='Contenedor Desbordado';h.elements.get('crewDescription').value='Prueba sin recorrido';
+  const pending=h.elements.get('crewForm').listeners.submit({preventDefault(){}});
+  assert.deepEqual(JSON.parse(h.requests.at(-1).options.body),{tipo_problema:'Contenedor Desbordado',descripcion:'Prueba sin recorrido',latitud:-34.9,longitud:-56.1});
+  respond(h.requests.at(-1),{tracking_number:'INC-TEST'},201);await pending;assert.match(h.elements.get('crewConfirmation').textContent,/INC-TEST/);
+});
+
+test('Cuadrillas conserva nombre accesible e icono del catálogo Bootstrap del proyecto',async()=>{
+  const h=await adminReady();assert.equal(h.elements.get('squadNav').hidden,false);
+  assert.match(h.html, /id="squadNav"[^>]*><i class="nav-icon bi bi-people" aria-hidden="true"><\/i>Cuadrillas<\/a>/);
+  assert.match(h.html,/bootstrap-icons@1\.11\.0/);
+});
+
+test('Usuarios sugiere Operaciones por permisos sin imponer sector ni nombre del rol',()=>{
+  const fields=Object.fromEntries(['id_rol','sector','fecha_desde','fecha_hasta'].map(n=>[n,new Element()]));
+  const form={querySelector:selector=>fields[selector.match(/name="([^"]+)"/)[1]]}, message=new Element();
+  const context=vm.createContext({window:{},Intl,Date});vm.runInContext(fs.readFileSync(path.join(publicDir,'assets/js/user-eligibility.js'),'utf8'),context);
+  const roles=[{id_rol:7,nombre:'Rol configurable',permisos_recorrido:['recorrido.consultar','recorrido.operar']},{id_rol:8,nombre:'OPERARIO',permisos_recorrido:[]}];
+  const render=context.window.UserEligibility.bind(form,message,()=>roles);
+  fields.fecha_desde.value='2020-01-01';fields.id_rol.value=7;fields.id_rol.change();
+  assert.equal(fields.sector.value,'OPERACIONES');assert.equal(message.hidden,true);
+  fields.sector.value='PUNTOS_Y_DESTINOS';fields.sector.change();assert.equal(message.hidden,false);assert.match(message.textContent,/podrá guardarse.*no será elegible/);
+  fields.id_rol.change();assert.equal(fields.sector.value,'PUNTOS_Y_DESTINOS');
+  fields.id_rol.value=8;fields.sector.value='';fields.id_rol.change();assert.equal(fields.sector.value,'');assert.equal(message.hidden,false);
+  fields.id_rol.value=7;fields.sector.value='OPERACIONES';fields.fecha_hasta.value='2020-02-01';render();assert.equal(message.hidden,false);
+  fields.fecha_hasta.value='';fields.fecha_desde.value='2099-01-01';render();assert.equal(message.hidden,false);
+});
+
+test('Agregar operario explica exclusiones sin HTML y ofrece Gestionar usuarios',async()=>{
+  const h=await adminMembers();h.click('squadMembersTab');const body=membersBody();body.data.elegibles=[];body.data.no_elegibles=[{nombre:'Luis',apellido:'Suárez',motivo:'Sector Puntos y destinos'},{nombre:'<img>',apellido:'X',motivo:'Cuenta inactiva'}];
+  h.reply(4,200,body);await tick();h.click('squadAdd');
+  assert.match(h.html,/Seleccionar operario/);assert.match(h.html,/Se pueden asignar usuarios activos con permisos vigentes/);
+  assert.match(text(h.elements.get('squadExcluded')),/Luis Suárez — Sector Puntos y destinos/);
+  assert.ok(descendants(h.elements.get('squadExcluded')).every(n=>n.innerHTML===undefined));
+  assert.equal(h.elements.get('squadConfirm').disabled,true);assert.match(h.elements.get('squadUserState').textContent,/No hay operarios disponibles para asignar/);
+  h.click('squadDialogUsers');assert.deepEqual(h.navigations,['usuarios']);assert.equal(h.elements.get('squadDialog').open,false);
+});
+const availableBody=()=>({success:true,data:{items:[{id_recorrido:21,ruta_nombre:'Ruta disponible',estado:'Pendiente',fecha_inicio:'2026-09-22 09:00:00',fecha_fin:null}],vehiculos:[{id_usa:9,matricula:'TEST1',estado:'Disponible'}],total:1,page:1,page_size:25,conflicto:null}});
+async function tripDialog(){const h=await adminReady();actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(2,200,detailBody());await tick();h.click('squadTripsTab');h.click('squadAssignTrip');return h;}
+
+test('Asignar recorrido confirma destino y vehículo, bloquea doble envío y actualiza resumen y tabla',async()=>{
+  const h=await tripDialog();assert.equal(h.elements.get('squadTripDialog').open,true);assert.match(h.elements.get('squadTripDialogTitle').textContent,/Asignar recorrido a Destino/);assert.match(h.elements.get('squadTripDialogStatus').textContent,/Cargando/);
+  assert.equal(new URL(h.requests[3].url).searchParams.get('view'),'asignables');
+  h.reply(3,200,availableBody());await tick();assert.equal(h.elements.get('squadTripConfirm').disabled,false);assert.match(h.elements.get('squadTripPreview').textContent,/Sin cuadrilla asignada/);
+  const submit=()=>h.elements.get('squadTripAssignment').listeners.submit({preventDefault(){}});
+  const saving=submit();submit();assert.equal(h.requests.length,5);assert.deepEqual(JSON.parse(h.requests[4].options.body),{accion:'asignar_recorrido',destino:2,id_recorrido:21,id_usa:9});
+  let prevented=false;h.elements.get('squadTripDialog').listeners.cancel({preventDefault(){prevented=true;}});assert.equal(prevented,true);
+  h.reply(4,200,{success:true});await tick();const updated=detailBody();updated.data.recorrido_actual.ruta_nombre='Nueva ruta';updated.data.lista.items[0].ruta_nombre='Nueva ruta';h.reply(5,200,updated);await saving;
+  assert.equal(h.elements.get('squadTripDialog').open,false);assert.equal(h.elements.get('squadAssignTrip').focused,true);
+  assert.match(text(h.elements.get('squadSummary')),/Nueva ruta/);assert.match(text(h.elements.get('squadTripRows')),/Nueva ruta/);assert.match(h.elements.get('squadStatus').textContent,/Recorrido asignado/);
+});
+
+test('Asignación de recorridos controla vacío, vehículo ausente, conflicto y error del servidor',async()=>{
+  for(const kind of ['empty','vehicle','conflict','error']){
+    const h=await tripDialog(),body=availableBody();
+    if(kind==='empty'){body.data.items=[];body.data.total=0;}if(kind==='vehicle')body.data.vehiculos=[];if(kind==='conflict')body.data.conflicto='La cuadrilla ya tiene recorrido';
+    h.reply(3,kind==='error'?503:200,kind==='error'?{message:'No disponible'}:body);await tick();
+    assert.equal(h.elements.get('squadTripConfirm').disabled,true);assert.notEqual(h.elements.get('squadTripDialogStatus').textContent,'');
+    h.click('squadTripCancel');assert.equal(h.elements.get('squadTripDialog').open,false);
+  }
+  const h=await tripDialog();h.reply(3,200,availableBody());await tick();const saving=h.elements.get('squadTripAssignment').listeners.submit({preventDefault(){}});
+  h.reply(4,409,{message:'El recorrido ya tiene una asignación'});await saving;assert.equal(h.elements.get('squadTripDialog').open,true);assert.match(h.elements.get('squadTripDialogStatus').textContent,/ya tiene una asignación/);assert.equal(h.requests.length,5);
+});
+
+test('Cerrar modal cancela consulta y descarta respuestas obsoletas; paginación conserva destino',async()=>{
+  const h=await tripDialog();h.click('squadTripCancel');assert.equal(h.requests[3].options.signal.aborted,true);h.reply(3,200,availableBody());await tick();assert.equal(h.elements.get('squadTripConfirm').disabled,true);
+  h.click('squadAssignTrip');const body=availableBody();body.data.total=30;h.reply(4,200,body);await tick();h.click('squadAvailableNext');
+  const params=new URL(h.requests[5].url).searchParams;assert.equal(params.get('page'),'2');assert.equal(params.get('id_cuadrilla'),'2');
+});
+
+test('Creación de recorrido usa CRUD existente y luego recarga opciones para asignarlo',async()=>{
+  const h=await tripDialog();h.reply(3,200,availableBody());await tick();h.click('squadManageTrips');assert.match(h.requests[4].url,/rutas.php/);
+  h.reply(4,200,{success:true,data:[{id_ruta:6,nombre:'Ruta real',zona:'Centro'}]});await tick();
+  h.elements.get('squadCreateRoute').value=6;h.elements.get('squadCreateDate').value='2026-09-22T09:30';
+  const saving=h.elements.get('squadCreateTripForm').listeners.submit({preventDefault(){}});
+  assert.match(h.requests[5].url,/recorridos.php$/);assert.deepEqual(JSON.parse(h.requests[5].options.body),{id_ruta:6,fecha_inicio:'2026-09-22 09:30:00',estado:'Pendiente'});
+  h.reply(5,201,{success:true,data:{id_recorrido:21}});await tick();h.reply(6,200,availableBody());await saving;
+  assert.match(h.elements.get('squadCreateStatus').textContent,/Recorrido creado/);assert.equal(h.elements.get('squadTripConfirm').disabled,false);
 });

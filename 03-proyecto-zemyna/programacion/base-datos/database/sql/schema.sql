@@ -3,8 +3,8 @@
 -- Este archivo debe usarse como base para una instalación nueva.
 
 -- Schema oficial Zemyna — DER v0.9 (ZTX-DOC-ISW-001 / ZTX-DOC-ISW-003)
--- MySQL 8 compatible — 26 tablas
--- ADVERTENCIA: este archivo elimina y recrea las 26 tablas de la base
+-- MariaDB 10.4 compatible — 28 tablas (v17)
+-- ADVERTENCIA: este archivo elimina y recrea las 28 tablas de la base
 -- seleccionada. No crea, elimina ni selecciona una base por nombre. El operador
 -- debe elegir el destino expresamente mediante la opcion --database del cliente.
 -- No ejecutar sobre una base que contenga datos que deban conservarse.
@@ -28,7 +28,7 @@ ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS
     sesion, mantenimiento, solicitud, maquinaria, vertedero, acopio, foto,
-    denuncia, incidencia, participa, recorrido, usa, cuadrilla, vehiculo,
+    denuncia, incidencia, atencion_contenedor, usuario_cuadrilla, participa, recorrido, usa, cuadrilla, vehiculo,
     geocodificacion_cache, contenedor, usuario_rol, rol_permiso, permiso,
     sector, rol, usuario, ruta, tipo_residuo, centro, vecino;
 SET FOREIGN_KEY_CHECKS = 1;
@@ -352,8 +352,13 @@ CREATE TABLE recorrido (
     ) NOT NULL,
 
     id_ruta INT NOT NULL,
+    id_usuario_inicio INT DEFAULT NULL,
+    id_usuario_fin INT DEFAULT NULL,
 
     PRIMARY KEY (id_recorrido),
+
+    CONSTRAINT fk_recorrido_usuario_inicio FOREIGN KEY (id_usuario_inicio) REFERENCES usuario(id_usuario),
+    CONSTRAINT fk_recorrido_usuario_fin FOREIGN KEY (id_usuario_fin) REFERENCES usuario(id_usuario),
 
     CONSTRAINT fk_recorrido_ruta
         FOREIGN KEY (id_ruta)
@@ -702,3 +707,35 @@ CREATE INDEX idx_recorrido_ruta
 
 CREATE INDEX idx_participa_recorrido
     ON participa(id_recorrido);
+
+-- Pertenencias y atención operativa (v17)
+CREATE TABLE IF NOT EXISTS usuario_cuadrilla (
+    id_usuario_cuadrilla INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    id_cuadrilla INT NOT NULL,
+    fecha_inicio DATETIME NOT NULL,
+    fecha_fin DATETIME DEFAULT NULL,
+    id_usuario_asigna INT NOT NULL,
+    id_usuario_finaliza INT DEFAULT NULL,
+    usuario_vigente INT GENERATED ALWAYS AS (IF(fecha_fin IS NULL, id_usuario, NULL)) PERSISTENT,
+    UNIQUE KEY uq_usuario_cuadrilla_vigente (usuario_vigente),
+    KEY idx_usuario_cuadrilla_historial (id_cuadrilla, fecha_fin, id_usuario),
+    CONSTRAINT fk_uc_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
+    CONSTRAINT fk_uc_cuadrilla FOREIGN KEY (id_cuadrilla) REFERENCES cuadrilla(id_cuadrilla),
+    CONSTRAINT fk_uc_asigna FOREIGN KEY (id_usuario_asigna) REFERENCES usuario(id_usuario),
+    CONSTRAINT fk_uc_finaliza FOREIGN KEY (id_usuario_finaliza) REFERENCES usuario(id_usuario),
+    CONSTRAINT chk_uc_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio),
+    CONSTRAINT chk_uc_cierre CHECK ((fecha_fin IS NULL AND id_usuario_finaliza IS NULL) OR (fecha_fin IS NOT NULL AND id_usuario_finaliza IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS atencion_contenedor (
+    id_atencion_contenedor INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_recorrido INT NOT NULL,
+    id_contenedor INT NOT NULL,
+    id_usuario INT NOT NULL,
+    fecha_atencion DATETIME NOT NULL,
+    UNIQUE KEY uq_atencion_recorrido_contenedor (id_recorrido, id_contenedor),
+    CONSTRAINT fk_atencion_recorrido FOREIGN KEY (id_recorrido) REFERENCES recorrido(id_recorrido),
+    CONSTRAINT fk_atencion_contenedor FOREIGN KEY (id_contenedor) REFERENCES contenedor(id_contenedor),
+    CONSTRAINT fk_atencion_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

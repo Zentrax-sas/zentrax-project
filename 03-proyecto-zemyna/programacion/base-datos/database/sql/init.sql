@@ -569,3 +569,12 @@ VALUES
     NULL,
     1
 );
+
+-- Permiso operativo limitado a pertenencia propia (v17)
+INSERT INTO permiso (nombre, descripcion)
+SELECT 'recorrido.operar', 'Iniciar, atender y finalizar recorridos de la cuadrilla vigente'
+WHERE NOT EXISTS (SELECT 1 FROM permiso WHERE nombre = 'recorrido.operar');
+INSERT IGNORE INTO rol_permiso (id_rol, id_permiso)
+SELECT r.id_rol, p.id_permiso FROM rol r CROSS JOIN permiso p
+WHERE r.nombre IN ('OPERARIO', 'ADMINISTRADOR_TI', 'RESPONSABLE_SECTORIAL', 'ADMINISTRATIVO_OPERATIVO') AND p.nombre = 'recorrido.operar';
+-- El endpoint exige sector OPERACIONES y pertenencia vigente incluso para administradores.

@@ -95,7 +95,7 @@ menuButton.addEventListener('click', () => {
   menuButton.setAttribute('aria-expanded', String(opened));
 });
 
-const titles = { 'reportar-problema': 'Reportar problema', 'informe-incidencias': 'Informe de incidencias', incidencias: 'Incidencias', resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', centros: 'Centros', maquinaria: 'Maquinaria', usuarios: 'Usuarios y roles' };
+const titles = { cuadrillas: 'Cuadrillas', 'reportar-problema': 'Reportar problema', 'informe-incidencias': 'Informe de incidencias', incidencias: 'Incidencias', resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', centros: 'Centros', maquinaria: 'Maquinaria', usuarios: 'Usuarios y roles' };
 function openView(viewName) {
   if (!titles[viewName]) return;
   document.querySelectorAll('.nav-link').forEach(item => item.classList.toggle('active', item.dataset.view === viewName));
@@ -104,6 +104,8 @@ function openView(viewName) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   operationalMapVersion++;
   operationalMap?.pause();
+  window.SquadAdmin?.pause();
+  if (viewName === 'cuadrillas') window.SquadAdmin?.open();
   window.CrewReport?.pause();
   if (viewName === 'reportar-problema') window.CrewReport?.open();
   window.IncidenceReport?.pause();
@@ -477,6 +479,7 @@ document.addEventListener('click', async event => {
       fecha_desde: assignment.fecha_desde || '',
       fecha_hasta: assignment.fecha_hasta || ''
     });
+    renderUserEligibility();
     userForm.querySelector('button[type="submit"]').textContent = 'Actualizar usuario';
     userForm.querySelector('[name="nombre"]').focus();
     return;
@@ -657,6 +660,8 @@ const cancelUserButton = document.getElementById('cancelUserButton');
 const userForm = document.getElementById('userForm');
 const userFormMessage = document.getElementById('userFormMessage');
 const userRoleFields = document.getElementById('userRoleFields');
+let userRoleOptions = [];
+const renderUserEligibility = window.UserEligibility?.bind(userForm, document.getElementById('userEligibilityWarning'), () => userRoleOptions) || (() => {});
 
 function localIsoDate() {
   const today = new Date();
@@ -694,7 +699,8 @@ async function cargarOpcionesRol() {
     if (response.status === 401) return redirectToLogin();
     const json = await readJsonResponse(response);
     if (!response.ok || !json.success) throw new Error(json.message || 'No se pudieron cargar roles y sectores.');
-    replaceSelectOptions(userForm.querySelector('[name="id_rol"]'), json.data.roles || [], 'id_rol', 'nombre');
+    userRoleOptions = json.data.roles || [];
+    replaceSelectOptions(userForm.querySelector('[name="id_rol"]'), userRoleOptions, 'id_rol', 'nombre');
     replaceSelectOptions(userForm.querySelector('[name="sector"]'), json.data.sectores || [], 'nombre', 'nombre');
   } catch (error) {
     userFormMessage.textContent = error.message;
@@ -707,6 +713,7 @@ newUserButton?.addEventListener('click', async () => {
   userForm.querySelector('[name="id_usuario"]').value = '';
   userForm.querySelector('[name="fecha_desde"]').value = localIsoDate();
   delete userForm.dataset.originalAssignment;
+  renderUserEligibility();
   setRoleFieldsEnabled(true);
   userForm.querySelector('[name="contrasena"]').required = true;
   userForm.querySelector('button[type="submit"]').textContent = 'Guardar usuario';

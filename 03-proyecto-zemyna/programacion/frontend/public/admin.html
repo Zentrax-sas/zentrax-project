@@ -6,10 +6,12 @@
   <meta name="description" content="Panel operativo interno de Zemyna - Sistema de Gestión de Residuos Urbanos">
   <title>Resumen operativo | Zemyna</title>
   <link rel="stylesheet" href="assets/css/admin.css">
+  <link rel="stylesheet" href="assets/css/recoleccion.css?v=4">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
   <link rel="stylesheet" href="assets/css/zemyna-map.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
   <div class="app" id="app">
@@ -24,7 +26,8 @@
       <div class="menu-caption">Operaciones</div>
       <nav class="nav">
         <a class="nav-link active" href="#resumen" data-view="resumen"><span class="nav-icon">⌂</span>Resumen operativo</a>
-        <a class="nav-link" href="#rutas"><span class="nav-icon">⌁</span>Rutas y recorridos</a>
+        <a class="nav-link" id="squadNav" href="#cuadrillas" data-view="cuadrillas" hidden><i class="nav-icon bi bi-people" aria-hidden="true"></i>Cuadrillas</a>
+        <a class="nav-link" href="recoleccion.html"><span class="nav-icon">⌁</span>Mi recolección</a>
         <a class="nav-link" href="#camiones" data-view="camiones"><span class="nav-icon">▱</span>Camiones</a>
         <a class="nav-link" href="#informe-incidencias" data-view="informe-incidencias"><span class="nav-icon">≡</span>Informe de incidencias</a>
         <a class="nav-link" href="#reportar-problema" data-view="reportar-problema"><span class="nav-icon">＋</span>Reportar problema</a>
@@ -344,6 +347,52 @@
           <article class="card data-panel"><div class="table-wrap"><table><thead><tr><th>Recurso</th><th>Tipo</th><th>Centro</th><th>Estado</th><th></th></tr></thead><tbody id="machineRows"></tbody></table></div><div class="empty-state" id="machineEmpty" hidden>No se pudo cargar maquinaria.</div></article>
         </section>
 
+        <section class="view squad-module" id="view-cuadrillas">
+          <div class="view-heading"><div><h2>Cuadrillas</h2><p>Organizá integrantes y consultá sus recorridos.</p></div><button class="primary-button" id="squadRefresh" type="button">Actualizar</button></div>
+          <p id="squadStatus" role="status" aria-live="polite"></p>
+          <div id="squadList" hidden></div>
+          <nav id="squadPaging" hidden aria-label="Páginas de cuadrillas"><button id="squadPrev" type="button">Anterior</button><span id="squadPage"></span><button id="squadNext" type="button">Siguiente</button></nav>
+          <section id="squadDetail" hidden aria-labelledby="squadName">
+            <button id="squadBack" type="button" class="link-button">Volver a cuadrillas</button><h2 id="squadName"></h2>
+            <nav class="squad-tabs" aria-label="Secciones de la cuadrilla">
+              <button id="squadSummaryTab" type="button" aria-pressed="true">Resumen</button><button id="squadMembersTab" type="button" aria-pressed="false" hidden>Integrantes</button><button id="squadTripsTab" type="button" aria-pressed="false">Recorridos</button>
+            </nav>
+            <div id="squadSummary"></div>
+            <section id="squadMembers" hidden><div class="view-heading"><h3>Integrantes activos</h3><button class="primary-button" id="squadAdd" type="button" hidden>Agregar operario</button></div>
+              <a href="#usuarios" id="squadUsers" hidden>Gestionar usuarios</a><div id="squadActiveMembers"></div>
+              <details><summary>Historial de integrantes</summary><div id="squadHistory"></div></details>
+            </section>
+            <section id="squadTrips" hidden><div class="view-heading"><h3>Recorridos</h3><button id="squadAssignTrip" type="button" class="primary-button" hidden>Asignar recorrido</button></div><label for="squadState">Estado del recorrido</label><select id="squadState"><option value="">Todos</option><option>Pendiente</option><option>En Proceso</option><option>Finalizado</option><option>Cancelado</option></select><div id="squadTripRows"></div>
+              <nav aria-label="Páginas de recorridos"><button id="squadTripPrev" type="button">Anterior</button><span id="squadTripPage"></span><button id="squadTripNext" type="button">Siguiente</button></nav><div id="squadTripDetail"></div>
+            </section>
+            <details class="squad-help"><summary>Acerca de las asignaciones</summary><p>Los vehículos relacionados no tienen fechas de vigencia. Los recorridos pueden ser históricos. El estado mostrado corresponde al recorrido; la cuadrilla no tiene un estado operativo propio.</p></details>
+          </section>
+          <dialog id="squadTripDialog" aria-labelledby="squadTripDialogTitle">
+            <h2 id="squadTripDialogTitle"></h2><p id="squadTripDialogStatus" role="status" aria-live="polite"></p>
+            <p>Se muestran ejecuciones pendientes sin cuadrilla asignada ni actividad previa. Horarios de Montevideo.</p>
+            <form id="squadTripAssignment">
+              <label for="squadAvailableTrip">Recorrido</label><select id="squadAvailableTrip" required></select>
+              <p id="squadTripPreview"></p>
+              <nav aria-label="Páginas de recorridos disponibles"><button id="squadAvailablePrev" type="button">Anterior</button><span id="squadAvailablePage"></span><button id="squadAvailableNext" type="button">Siguiente</button></nav>
+              <label for="squadTripVehicle">Vehículo relacionado con la cuadrilla</label><select id="squadTripVehicle" required></select>
+              <p>La asignación conserva la hora de inicio prevista. El inicio real se registra al comenzar el recorrido.</p>
+              <div class="form-actions"><button id="squadTripCancel" type="button">Cancelar</button><button id="squadTripConfirm" type="submit" class="primary-button" disabled>Confirmar asignación</button></div>
+            </form>
+            <a id="squadManageTrips" href="#squadCreateTrip" hidden>Crear o gestionar recorridos</a>
+            <section id="squadCreateTrip" hidden aria-labelledby="squadCreateTitle">
+              <h3 id="squadCreateTitle">Crear recorrido pendiente</h3><p>Seleccioná una ruta existente y su inicio previsto. Después podrás asignarlo a esta cuadrilla.</p>
+              <form id="squadCreateTripForm"><label for="squadCreateRoute">Ruta</label><select id="squadCreateRoute" required></select>
+                <label for="squadCreateDate">Inicio previsto · Hora de Montevideo</label><input id="squadCreateDate" type="datetime-local" required>
+                <button id="squadCreateSubmit" type="submit" class="primary-button">Crear recorrido</button>
+              </form><p id="squadCreateStatus" role="status"></p>
+            </section>
+          </dialog>
+          <dialog id="squadDialog" aria-labelledby="squadDialogTitle"><form id="squadAssignment"><h2 id="squadDialogTitle"></h2>
+            <div id="squadSelectGroup"><label for="squadEligible">Seleccionar operario</label><p id="squadEligibilityHelp">Se pueden asignar usuarios activos con permisos vigentes para consultar y operar recorridos en el sector Operaciones.</p><select id="squadEligible" aria-describedby="squadEligibilityHelp" required></select><p id="squadUserState"></p><details><summary>Usuarios no elegibles</summary><ul id="squadExcluded"></ul></details><a id="squadDialogUsers" href="admin.html#usuarios">Gestionar usuarios</a></div>
+            <p id="squadConfirmText"></p><p id="squadDialogStatus" role="status"></p>
+            <div class="form-actions"><button id="squadCancel" type="button">Cancelar</button><button class="primary-button" id="squadConfirm" type="submit">Confirmar asignación</button></div>
+          </form></dialog>
+        </section>
         <section class="view" id="view-usuarios">
           <div class="view-heading"><div><h2>Usuarios y roles</h2><p>Vista administrativa de cuentas internas y permisos asignados.</p></div><button class="primary-button" id="newUserButton" type="button">＋ Registrar usuario</button></div>
           <form class="resource-form" id="userForm" hidden>
@@ -363,6 +412,7 @@
               </div>
             </div>
             <div class="form-actions"><button class="primary-button" type="submit">Guardar usuario</button><button class="link-button" id="cancelUserButton" type="button">Cancelar</button></div>
+            <p id="userEligibilityWarning" role="status" hidden></p>
             <p class="form-message" id="userFormMessage" role="status"></p>
           </form>
           <p class="result-count" id="userCount">Cargando usuarios...</p>
@@ -373,11 +423,13 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"><strong>Información actualizada.</strong> Los indicadores corresponden al último registro operativo.</div>
-  <script src="config.js?v=2"></script>
+  <script src="config.js?v=3"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="assets/js/zemyna-map.js"></script>
-  <script src="assets/js/admin.js"></script>
+  <script src="assets/js/user-eligibility.js"></script>
+  <script src="assets/js/admin.js?v=4"></script>
+  <script src="assets/js/cuadrillas.js?v=2"></script>
   <script src="assets/js/incidence-report.js"></script>
   <script src="assets/js/crew-report.js"></script>
 </body>

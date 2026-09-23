@@ -1,0 +1,58 @@
+/* Vista acotada: no incorpora navegación administrativa al puesto de cuadrilla. */
+.collection-shell { max-width: 960px; margin: 0 auto; padding: 24px; }
+.collection-shell button, .collection-shell select, .collection-shell a { min-height: 44px; padding: 10px 14px; }
+.collection-shell button, .collection-shell select { margin: 4px; border: 1px solid var(--muted); border-radius: 8px; background: var(--surface-2); color: var(--text); cursor: pointer; }
+.collection-shell button:disabled { opacity: .55; cursor: default; }
+.collection-shell [hidden] { display: none !important; }
+.collection-shell article { padding: 16px; margin: 12px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow-wrap: anywhere; }
+.collection-shell nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.collection-shell label { display: block; }
+.collection-shell a { display: inline-block; color: var(--violet-light); }
+.collection-shell p { line-height: 1.6; }
+.collection-shell :focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+@media (max-width: 600px) { .collection-shell { padding: 16px; } .collection-shell select { max-width: 100%; } }
+
+/* Extiende los componentes del panel; conserva sus variables y superficies. */
+.squad-module [hidden], #squadNav[hidden] { display: none !important; }
+.squad-module { min-width: 0; }
+.squad-module p, .collection-shell p { color: var(--text); }
+.squad-module button, .squad-module select, .squad-module a { min-height: 44px; font: inherit; }
+.squad-module button:not(.primary-button) { padding: 10px 14px; border: 1px solid var(--muted); border-radius: 8px; background: var(--surface-2); color: var(--text); cursor: pointer; }
+.squad-module button:disabled { opacity: .55; cursor: default; }
+.squad-module a, .squad-module .link-button { color: #e2bdff; font-size: 14px; }
+.squad-module :focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.squad-module nav, .squad-module .form-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 16px 0; }
+.squad-tabs button[aria-pressed="true"] { border-color: var(--green); box-shadow: inset 0 -3px var(--green); font-weight: 700; }
+.squad-module table { width: 100%; table-layout: fixed; }
+.squad-module th, .squad-module td { overflow-wrap: anywhere; white-space: normal; padding: 12px; }
+.squad-module label { display: block; margin: 12px 0 6px; }
+.squad-module select { width: 100%; max-width: 440px; padding: 10px; background: var(--surface-2); color: var(--text); border: 1px solid var(--muted); border-radius: 8px; }
+.squad-summary { padding: 20px; margin: 16px 0; }
+.squad-help, .squad-module details { margin: 20px 0; }
+.squad-module summary { cursor: pointer; min-height: 44px; padding: 12px 0; color: var(--text); }
+.squad-module dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; background: var(--surface-2); color: var(--text); border: 1px solid var(--muted); border-radius: var(--radius); padding: 24px; }
+.squad-module dialog::backdrop { background: rgba(0,0,0,.7); }
+.collection-shell .view-heading { gap: 16px; flex-wrap: wrap; }
+.collection-shell .secondary-button { font-weight: 600; }
+.collection-shell .crew-report { min-width: 0; }
+@media (max-width: 900px) {
+  .squad-module table, .squad-module tbody, .squad-module tr, .squad-module td { display: block; width: 100%; }
+  .squad-module thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .squad-module tr { padding: 12px; border-bottom: 1px solid var(--line); }
+  .squad-module td { padding: 6px 0; }
+  .squad-module td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 700; color: #d7cfe3; margin-bottom: 3px; }
+  .squad-module .view-heading { flex-wrap: wrap; gap: 12px; }
+}
+
+.collection-shell .view-heading { margin-bottom: 12px; }
+.collection-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.collection-empty p { max-width: 65ch; }
+#collectionVehicles:empty, #collectionStatus:empty { display: none; }
+#squadNav .bi { font-size: 18px; line-height: 1; }
+#userEligibilityWarning { color: #f5d58c; padding: 12px; border-left: 3px solid currentColor; line-height: 1.5; }
+#squadExcluded { padding-left: 22px; line-height: 1.8; }
+#squadCreateTrip { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 16px; }
+#squadCreateDate { width: 100%; padding: 10px; min-height: 44px; color: var(--text); background: var(--surface); border: 1px solid var(--muted); border-radius: 8px; }
+#squadTripDialog form { min-width: 0; }
+#squadTripDialog select { max-width: 100%; }
+@media (max-width: 600px) { .collection-actions > button { flex: 1 1 180px; } .squad-module dialog { padding: 16px; } }

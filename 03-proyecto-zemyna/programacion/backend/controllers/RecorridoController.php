@@ -142,7 +142,9 @@ class RecorridoController {
             ];
         }
 
-        if ($this->recorrido->update()) {
+        try { $ok = $this->recorrido->update(); }
+        catch (DomainException $e) { return ['success' => false, 'statusCode' => 409, 'message' => $e->getMessage(), 'data' => null, 'errors' => []]; }
+        if ($ok) {
             return [
                 "success" => true,
                 "data" => null,
@@ -164,7 +166,9 @@ class RecorridoController {
     public function delete($id) {
         $this->recorrido->id_recorrido = (int)$id;
 
-        if ($this->recorrido->delete()) {
+        try { $ok = $this->recorrido->delete(); }
+        catch (DomainException $e) { return ['success' => false, 'statusCode' => 409, 'message' => $e->getMessage(), 'data' => null, 'errors' => []]; }
+        if ($ok) {
             return [
                 "success" => true,
                 "data" => null,

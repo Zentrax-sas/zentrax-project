@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi recolección | Zemyna</title>
+<link rel="stylesheet" href="assets/css/admin.css"><link rel="stylesheet" href="assets/css/recoleccion.css?v=4">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+</head>
+<body><main class="collection-shell">
+<a id="collectionBack" href="admin.html">← Volver al panel</a>
+<header class="view-heading"><div><h1>Mi recolección</h1><p>Tu cuadrilla, tu recorrido y los contenedores por atender.</p></div>
+</header>
+<p class="result-count" id="collectionTimezone" hidden>Horarios de Montevideo</p>
+<p id="collectionStatus" role="status" aria-live="polite">Cargando tu recolección…</p>
+<a id="collectionLogin" href="login.html" hidden>Iniciar sesión</a>
+<section id="collectionPanel" hidden aria-label="Tu recorrido"><h2 id="collectionHeading"></h2><p id="collectionVehicles"></p><div id="collectionItems"></div></section>
+<div class="collection-actions"><button class="secondary-button" type="button" id="collectionRetry">Actualizar información</button><button class="secondary-button" type="button" id="collectionReportButton">Reportar problema</button></div>
+        <section id="collectionReport" hidden>
+          <section class="card panel crew-report">
+            <h2 class="panel-title">Reportar problema</h2>
+            <p>Registrá un problema observado durante tu trabajo. Al enviarlo correctamente quedará disponible para administración.</p>
+            <p id="crewStatus" role="status" aria-live="polite"></p>
+            <form id="crewForm" hidden>
+              <fieldset id="crewFields">
+                <legend>Datos del problema</legend>
+                <label>Tipo de problema<select id="crewType" required></select></label>
+                <label>Descripción breve<textarea id="crewDescription" maxlength="500" rows="4" required></textarea></label>
+                <p>Elegí un contenedor del mapa si corresponde. Para otro lugar, tocá el mapa y ajustá el punto. Sin contenedor, el punto es obligatorio.</p>
+                <p id="crewContainer">Sin contenedor asociado.</p>
+                <button id="crewClearContainer" type="button" class="secondary-button">Quitar contenedor</button>
+                <button id="crewDevice" type="button" class="secondary-button">Usar ubicación del dispositivo</button>
+                <p id="crewGeoStatus" role="status" aria-live="polite"></p>
+                <div id="crewMap" aria-label="Mapa para elegir contenedor o marcar el problema"></div>
+                <p id="crewMapStatus" role="status"></p>
+                <p id="crewLocation" role="status" aria-live="polite">Ubicación sin seleccionar.</p>
+                <div class="form-grid">
+                  <label>Latitud del problema<input id="crewLatitude" type="number" step="any" min="-90" max="90" inputmode="decimal"></label>
+                  <label>Longitud del problema<input id="crewLongitude" type="number" step="any" min="-180" max="180" inputmode="decimal"></label>
+                </div>
+                <button id="crewApplyPoint" type="button" class="secondary-button">Ajustar punto con estas coordenadas</button>
+                <button id="crewClearPoint" type="button" class="secondary-button">Quitar punto propio</button>
+                <p>La ubicación del dispositivo es opcional y se consulta solo al pulsar el botón. Podés ajustar el punto antes de enviar. No se sigue al camión ni se asigna una ruta automáticamente.</p>
+                <button id="crewSubmit" type="submit" class="primary-button">Enviar reporte</button>
+              </fieldset>
+            </form>
+            <p id="crewConfirmation" role="status" aria-live="polite" hidden></p>
+            <button id="crewNew" type="button" class="secondary-button" hidden>Reportar otro problema</button>
+          </section>
+        </section>
+</main><script src="config.js?v=3"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="assets/js/recoleccion.js?v=4"></script>
+<script src="assets/js/recoleccion-report.js"></script><script src="assets/js/crew-report.js"></script>
+</body></html>

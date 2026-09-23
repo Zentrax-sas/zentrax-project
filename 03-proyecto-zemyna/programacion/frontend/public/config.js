@@ -8,8 +8,9 @@ const BACKEND_BASE_URL = (() => {
     return base.toString().replace(/\/$/, '');
 })();
 
-function buildApiUrl(path) {
+function buildApiUrl(path, { cacheBust = true } = {}) {
     const normalizedPath = `/${String(path).replace(/^\/+/, '')}`.replace(/^\/(?:backend\/)+/, '/');
+    if (!cacheBust) return `${BACKEND_BASE_URL}${normalizedPath}`;
     const separator = normalizedPath.includes('?') ? '&' : '?';
     return `${BACKEND_BASE_URL}${normalizedPath}${separator}t=${Date.now()}`;
 }

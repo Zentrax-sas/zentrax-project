@@ -83,7 +83,9 @@ class Recorrido {
                       fecha_fin = :fecha_fin,
                       estado = :estado,
                       id_ruta = :id_ruta
-                  WHERE id_recorrido = :id_recorrido";
+                  WHERE id_recorrido = :id_recorrido
+                  AND id_usuario_inicio IS NULL AND id_usuario_fin IS NULL
+                  AND NOT EXISTS (SELECT 1 FROM atencion_contenedor a WHERE a.id_recorrido = recorrido.id_recorrido)";
 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id_recorrido', $this->id_recorrido);
@@ -92,18 +94,34 @@ class Recorrido {
         $stmt->bindParam(':estado', $this->estado);
         $stmt->bindParam(':id_ruta', $this->id_ruta);
 
-        return $stmt->execute();
+        $ok = $stmt->execute();
+        if ($ok && $stmt->rowCount() === 0) {
+            $guard = $this->conn->prepare('SELECT id_recorrido FROM recorrido WHERE id_recorrido = ? AND
+                (id_usuario_inicio IS NOT NULL OR id_usuario_fin IS NOT NULL OR EXISTS (SELECT 1 FROM atencion_contenedor a WHERE a.id_recorrido = recorrido.id_recorrido))');
+            $guard->execute([$this->id_recorrido]);
+            if ($guard->fetchColumn() !== false) throw new DomainException('El recorrido tiene actividad registrada. No se puede alterar su historial desde el CRUD general.', 409);
+        }
+        return $ok;
     }
 
     public function delete() {
         if (!$this->conn) return false;
 
         $query = "DELETE FROM " . $this->table_name . "
-                  WHERE id_recorrido = :id_recorrido";
+                  WHERE id_recorrido = :id_recorrido
+                  AND id_usuario_inicio IS NULL AND id_usuario_fin IS NULL
+                  AND NOT EXISTS (SELECT 1 FROM atencion_contenedor a WHERE a.id_recorrido = recorrido.id_recorrido)";
 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id_recorrido', $this->id_recorrido);
 
-        return $stmt->execute();
+        $ok = $stmt->execute();
+        if ($ok && $stmt->rowCount() === 0) {
+            $guard = $this->conn->prepare('SELECT id_recorrido FROM recorrido WHERE id_recorrido = ? AND
+                (id_usuario_inicio IS NOT NULL OR id_usuario_fin IS NOT NULL OR EXISTS (SELECT 1 FROM atencion_contenedor a WHERE a.id_recorrido = recorrido.id_recorrido))');
+            $guard->execute([$this->id_recorrido]);
+            if ($guard->fetchColumn() !== false) throw new DomainException('El recorrido tiene actividad registrada. No se puede alterar su historial desde el CRUD general.', 409);
+        }
+        return $ok;
     }
 }

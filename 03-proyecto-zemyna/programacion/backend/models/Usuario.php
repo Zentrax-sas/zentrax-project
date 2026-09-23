@@ -125,7 +125,13 @@ class Usuario {
         if (!$this->conn) return [];
         $stmt = $this->conn->prepare('SELECT id_rol, nombre, descripcion FROM rol ORDER BY nombre');
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $roles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $permissions = $this->conn->query("SELECT rp.id_rol, p.nombre FROM rol_permiso rp JOIN permiso p ON p.id_permiso = rp.id_permiso
+            WHERE p.nombre IN ('recorrido.consultar', 'recorrido.operar', 'recorrido.modificar')")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($roles as &$role) {
+            $role['permisos_recorrido'] = array_column(array_filter($permissions, fn($p) => (int) $p['id_rol'] === (int) $role['id_rol']), 'nombre');
+        }
+        return $roles;
     }
 
     public function getSectoresDisponibles(): array {
