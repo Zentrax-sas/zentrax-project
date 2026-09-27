@@ -493,3 +493,5 @@ td strong { color: var(--text); font-size: 10px; }
 #crewMap { height: 360px; width: 100%; z-index: 0; border-radius: 8px; }
 #crewForm[hidden], #crewConfirmation[hidden], #crewNew[hidden] { display: none; }
 @media (max-width: 600px) { #crewMap { height: 300px; } .crew-report .form-grid { grid-template-columns: 1fr; } }
+
+.incident-evidence img { display: block; max-width: 100%; max-height: 320px; object-fit: contain; margin: 12px 0; }

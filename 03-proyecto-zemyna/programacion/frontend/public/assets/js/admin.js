@@ -113,6 +113,7 @@ function openView(viewName) {
   window.IncidenceReport?.pause();
   if (viewName === 'informe-incidencias') window.IncidenceReport?.load();
   if (viewName === 'incidencias') {
+    cargarFiltrosIncidencias();
     cargarIncidenciasAdmin();
     abrirMapaOperativo();
   }
@@ -861,7 +862,7 @@ let incidentPage = 1;
 let incidentRequest;
 let incidentDetailRequest;
 let incidentSaving = false;
-let incidentQuery = {};
+let incidentQuery = { activas: '1' };
 
 async function incidentApi(params = {}, options = {}) {
   const query = new URLSearchParams({ admin: '1', ...params });
@@ -875,6 +876,26 @@ async function incidentApi(params = {}, options = {}) {
     throw error;
   }
   return json;
+}
+
+async function cargarFiltrosIncidencias() {
+  const message = document.getElementById('incidentFilterMessage');
+  message.textContent = 'Cargando opciones de filtros…';
+  try {
+    const { data } = await incidentApi({ opciones: 'filtros' });
+    for (const [id, options] of [
+      ['incidentType', data.tipos.map(tipo => [tipo, tipo])],
+      ['incidentRoute', data.rutas.map(ruta => [String(ruta.id_ruta), `${ruta.nombre} — ${ruta.zona}`])],
+      ['incidentZone', [...new Set(data.rutas.map(ruta => ruta.zona))].map(zona => [zona, zona])]
+    ]) {
+      const select = document.getElementById(id);
+      const selected = select.value;
+      select.replaceChildren(new Option('Todas / Todos', ''));
+      options.forEach(([value, label]) => select.add(new Option(label, value)));
+      select.value = selected;
+    }
+    message.textContent = '';
+  } catch (error) { message.textContent = `No se pudieron cargar las opciones de tipo, ruta y zona. ${error.message}`; }
 }
 
 async function cargarIncidenciasAdmin() {
@@ -894,14 +915,14 @@ async function cargarIncidenciasAdmin() {
       <td>#${escapeHtml(item.id_incidencia)}<br>${escapeHtml(item.tracking_number)}</td>
       <td>${escapeHtml(item.fecha_reporte)}</td>
       <td><strong>${escapeHtml(item.tipo_problema)}</strong><div class="incident-summary">${escapeHtml(String(item.descripcion || '').slice(0, 120))}</div></td>
-      <td>${escapeHtml(item.latitud != null && item.longitud != null ? 'Ubicación marcada del problema' : item.contenedor_codigo ? `Contenedor ${item.contenedor_codigo}` : item.ruta_nombre ? `Ruta ${item.ruta_nombre}` : 'Sin ubicación asociada')}</td>
-      <td>${escapeHtml(item.estado)}</td><td>${escapeHtml(item.prioridad)}</td>
+      <td>${escapeHtml(item.latitud != null && item.longitud != null ? 'Ubicación marcada del problema' : item.contenedor_codigo ? `Contenedor ${item.contenedor_codigo}${item.contenedor_direccion ? ' — ' + item.contenedor_direccion : ''}` : item.ruta_nombre ? `Ruta ${item.ruta_nombre}` : 'Sin ubicación asociada')}</td>
+      <td>${escapeHtml(item.estado)}</td><td>${escapeHtml(item.prioridad)}</td><td>${escapeHtml(item.cuadrilla_nombre || 'Sin asignar')}</td>
       <td><button class="link-button" type="button" data-incident-id="${escapeHtml(item.id_incidencia)}">Ver detalle</button></td>
     </tr>`).join('');
     incidentMessage.textContent = rows.length ? `${rows.length} incidencias en esta página.` : 'No hay incidencias para estos filtros.';
     document.getElementById('incidentPage').textContent = `Página ${incidentPage}`;
     document.getElementById('incidentPrevious').disabled = incidentPage <= 1;
-    document.getElementById('incidentNext').disabled = rows.length < 20;
+    document.getElementById('incidentNext').disabled = json.meta?.has_more !== true;
     return true;
   } catch (error) {
     if (error.name === 'AbortError') return false;
@@ -914,6 +935,7 @@ async function cargarIncidenciasAdmin() {
 incidentFilters.addEventListener('submit', event => {
   event.preventDefault();
   incidentQuery = Object.fromEntries([...new FormData(incidentFilters)].map(([k, v]) => [k, v.trim()]).filter(([, v]) => v));
+  if (incidentQuery.estado === 'activas') { delete incidentQuery.estado; incidentQuery.activas = '1'; }
   incidentPage = 1;
   cargarIncidenciasAdmin();
 });
@@ -941,6 +963,7 @@ async function mostrarIncidencia(id) {
   incidentForm.hidden = true;
   incidentSaveMessage.textContent = 'Cargando detalle…';
   document.getElementById('incidentDetailFields').replaceChildren();
+  document.getElementById('incidentEvidence').replaceChildren();
   document.getElementById('incidentDetailTitle').focus();
   try {
     const json = await incidentApi({ id }, { signal: request.signal });
@@ -953,6 +976,21 @@ async function mostrarIncidencia(id) {
       Ruta: item.ruta_nombre || item.id_ruta || 'Sin ruta', Estado: item.estado, Prioridad: item.prioridad,
       Cuadrilla: item.cuadrilla_nombre || 'Sin asignar', Usuario: [item.usuario_nombre, item.usuario_apellido].filter(Boolean).join(' ') || 'Sin usuario asociado' };
     document.getElementById('incidentDetailFields').innerHTML = Object.entries(fields).map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`).join('');
+    const evidence = document.getElementById('incidentEvidence');
+    evidence.textContent = item.evidencias?.length ? 'Evidencia fotográfica' : 'Sin evidencia adjunta.';
+    for (const photo of item.evidencias || []) {
+      if (!/^[1-9][0-9]*$/.test(String(photo.id_foto))) continue;
+      const image = document.createElement('img');
+      image.alt = `Evidencia de la incidencia ${item.tracking_number}, ${photo.fecha}`;
+      image.loading = 'lazy';
+      image.src = buildApiUrl(`/backend/api/foto.php?id=${encodeURIComponent(photo.id_foto)}`);
+      image.addEventListener('error', () => {
+        const unavailable = document.createElement('p');
+        unavailable.textContent = 'La evidencia adjunta no está disponible.';
+        image.replaceWith(unavailable);
+      });
+      evidence.appendChild(image);
+    }
     incidentSaveMessage.textContent = json.can_update ? '' : 'Tenés acceso de consulta; no podés modificar esta incidencia.';
     try {
       const location = await incidentApi({ view: 'location', id }, { signal: request.signal });

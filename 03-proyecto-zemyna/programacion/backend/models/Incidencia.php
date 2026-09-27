@@ -22,7 +22,7 @@ class Incidencia {
         $this->conn = $db;
     }
 
-    public function read($id = null, $page = 1, $limit = 20, $trackingNumber = null, $estado = null, $prioridad = null) {
+    public function read($id = null, $page = 1, $limit = 20, $trackingNumber = null, $estado = null, $prioridad = null, array $filters = [], bool $lookahead = false) {
         if (!$this->conn) return null;
 
         $conditions = [];
@@ -34,23 +34,33 @@ class Incidencia {
                 $params[":$column"] = $value;
             }
         }
+        if (($filters['activas'] ?? null) === '1') $conditions[] = "i.estado IN ('Pendiente', 'En Proceso')";
+        foreach (['tipo_problema' => 'i.tipo_problema', 'id_ruta' => 'r.id_ruta', 'zona' => 'r.zona'] as $key => $column) {
+            if (isset($filters[$key])) { $conditions[] = "$column = :$key"; $params[":$key"] = $filters[$key]; }
+        }
+        foreach (['desde' => '>=', 'hasta' => '<='] as $key => $operator) {
+            if (isset($filters[$key])) {
+                $conditions[] = "i.fecha_reporte $operator :$key";
+                $params[":$key"] = $filters[$key] . ($key === 'desde' ? ' 00:00:00' : ' 23:59:59');
+            }
+        }
         $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
 
         $offset = ($page - 1) * $limit;
 
         $query = "SELECT i.*,
-                         c.codigo AS contenedor_codigo,
+                         c.codigo AS contenedor_codigo, c.direccion AS contenedor_direccion,
                          r.nombre AS ruta_nombre,
                          q.nombre AS cuadrilla_nombre,
                          u.nombre AS usuario_nombre,
                          u.apellido AS usuario_apellido
                   FROM " . $this->table_name . " i
                   LEFT JOIN contenedor c ON c.id_contenedor = i.id_contenedor
-                  LEFT JOIN ruta r ON r.id_ruta = i.id_ruta
+                  LEFT JOIN ruta r ON r.id_ruta = COALESCE(i.id_ruta, c.id_ruta)
                   LEFT JOIN cuadrilla q ON q.id_cuadrilla = i.id_cuadrilla
                   LEFT JOIN usuario u ON u.id_usuario = i.id_usuario"
                   . $where . "
-                  ORDER BY i.id_incidencia ASC
+                  ORDER BY CASE i.prioridad WHEN 'Alta' THEN 1 WHEN 'Media' THEN 2 WHEN 'Baja' THEN 3 ELSE 4 END, i.fecha_reporte ASC, i.id_incidencia ASC
                   LIMIT :limit OFFSET :offset";
 
         $stmt = $this->conn->prepare($query);
@@ -59,11 +69,24 @@ class Incidencia {
             $stmt->bindValue($name, $value, $name === ':id_incidencia' ? PDO::PARAM_INT : PDO::PARAM_STR);
         }
 
-        $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', (int)$limit + ($lookahead ? 1 : 0), PDO::PARAM_INT);
         $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
         if (!$stmt->execute()) return null;
 
         return $stmt;
+    }
+
+    public function inboxOptions(): array {
+        if (!$this->conn) throw new PDOException('Sin conexión.');
+        return ['rutas' => $this->conn->query('SELECT id_ruta, nombre, zona FROM ruta ORDER BY zona, nombre, id_ruta')->fetchAll(PDO::FETCH_ASSOC),
+            'tipos' => $this->conn->query('SELECT DISTINCT tipo_problema FROM incidencia ORDER BY tipo_problema')->fetchAll(PDO::FETCH_COLUMN)];
+    }
+
+    public function evidence(int $id): array {
+        if (!$this->conn) throw new PDOException('Sin conexión.');
+        $stmt = $this->conn->prepare('SELECT id_foto, fecha FROM foto WHERE id_incidencia = :id ORDER BY fecha, id_foto');
+        $stmt->execute([':id' => $id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function report(string $group, ?string $from, ?string $to, int $page, int $limit): array {

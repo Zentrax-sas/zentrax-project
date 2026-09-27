@@ -688,3 +688,54 @@ test('dashboard gráficos, situaciones y enlaces seguros conservan texto accesib
  const links=descendants(h.elements.get('dashboardCurrent')).filter(n=>n.tag==='a');assert.ok(links.every(n=>n.href.startsWith('#')));links[0].listeners.click({preventDefault(){}});assert.deepEqual(h.navigations,['incidencias']);
  assert.ok(descendants(h.elements.get('dashboardTop')).filter(n=>n.tag==='td').every(n=>n.dataset.label));
 });
+
+
+test('bandeja F2 carga activas, respeta has_more con veinte filas y muestra Sin asignar escapado', async () => {
+  const h = harness(true, {}, 'admin');
+  let loading = h.run('cargarIncidenciasAdmin()');
+  assert.equal(new URL(h.requests.at(-1).url, 'http://localhost').searchParams.get('activas'), '1');
+  const rows = Array.from({ length: 20 }, (_, i) => ({ ...item(i + 1), cuadrilla_nombre: null, contenedor_direccion: '<script>privado</script>' }));
+  respond(h.requests.at(-1), rows, 200, { has_more: false }); await loading;
+  assert.equal(h.elements.get('incidentNext').disabled, true);
+  assert.match(h.elements.get('incidentRows').innerHTML, /Sin asignar/);
+  assert.doesNotMatch(h.elements.get('incidentRows').innerHTML, /<script>/);
+  loading = h.run('cargarIncidenciasAdmin()');
+  respond(h.requests.at(-1), rows, 200, { has_more: true }); await loading;
+  assert.equal(h.elements.get('incidentNext').disabled, false);
+});
+
+test('bandeja F2 conserva filtros y pagina al abrir y cerrar detalle, evidencia usa endpoint protegido', async () => {
+  const h = harness(true, {}, 'admin');
+  h.run("incidentQuery = { estado: 'En Proceso', prioridad: 'Alta', tipo_problema: 'Contenedor Desbordado', id_ruta: '7', zona: 'Centro', desde: '2026-08-01', hasta: '2026-09-01' }; incidentPage = 2;");
+  const before = h.run('JSON.stringify(incidentQuery)');
+  const detail = h.run('mostrarIncidencia(1)');
+  respond(h.requests.at(-1), [{ ...item(1), evidencias: [{ id_foto: 5, fecha: '2026-08-20' }] }]); await tick();
+  respond(h.requests.at(-1), null); await detail;
+  assert.equal(h.elements.get('incidentEvidence').children[0].src, '/backend/api/foto.php?id=5');
+  h.elements.get('incidentClose').listeners.click();
+  assert.equal(h.run('JSON.stringify(incidentQuery)'), before);
+  assert.equal(h.run('incidentPage'), 2);
+  const loading = h.run('cargarIncidenciasAdmin()');
+  const query = new URL(h.requests.at(-1).url, 'http://localhost').searchParams;
+  for (const [key, value] of Object.entries(JSON.parse(before))) assert.equal(query.get(key), value);
+  assert.equal(query.get('page'), '2');
+  respond(h.requests.at(-1), [], 200, { has_more: false }); await loading;
+  assert.equal(h.elements.get('incidentNext').disabled, true);
+});
+
+
+test('bandeja F2 formulario combina filtros y opciones usan texto seguro de la API existente', async () => {
+  const h = harness(true, {}, 'admin');
+  const options = h.run('cargarFiltrosIncidencias()');
+  assert.equal(new URL(h.requests.at(-1).url, 'http://localhost').searchParams.get('opciones'), 'filtros');
+  respond(h.requests.at(-1), { tipos: ['Contenedor Desbordado'], rutas: [{ id_ruta: 7, nombre: '<script>ruta</script>', zona: 'Centro' }] }); await options;
+  assert.equal(h.elements.get('incidentRoute').children[1].textContent, '<script>ruta</script> — Centro');
+  assert.equal(h.elements.get('incidentZone').children[1].value, 'Centro');
+  h.run("globalThis.FormData = class { *[Symbol.iterator]() { yield ['estado', 'activas']; yield ['prioridad', 'Alta']; yield ['tipo_problema', 'Contenedor Desbordado']; yield ['id_ruta', '7']; yield ['zona', 'Centro']; yield ['desde', '2026-08-01']; yield ['hasta', '2026-08-31']; } };");
+  h.elements.get('incidentFilters').listeners.submit({ preventDefault() {} });
+  const query = new URL(h.requests.at(-1).url, 'http://localhost').searchParams;
+  assert.equal(query.get('activas'), '1'); assert.equal(query.has('estado'), false);
+  for (const [key, value] of Object.entries({ prioridad: 'Alta', tipo_problema: 'Contenedor Desbordado', id_ruta: '7', zona: 'Centro', desde: '2026-08-01', hasta: '2026-08-31', page: '1' })) assert.equal(query.get(key), value);
+  respond(h.requests.at(-1), [], 200, { has_more: false }); await tick();
+  assert.match(h.elements.get('incidentMessage').textContent, /No hay incidencias/);
+});

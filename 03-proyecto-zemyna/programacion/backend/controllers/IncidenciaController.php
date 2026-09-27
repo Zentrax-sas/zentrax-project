@@ -413,8 +413,16 @@ class IncidenciaController {
         ];
     }
 
+    public function getInboxOptions(): array {
+        try {
+            return ['success' => true, 'statusCode' => 200, 'data' => $this->incidencia->inboxOptions()];
+        } catch (PDOException | PersistenceException $exception) {
+            return $this->managementError(500, 'No se pudieron cargar los filtros.');
+        }
+    }
+
     public function getAll($filters = []) {
-        foreach (['id' => 2147483647, 'page' => 1000000, 'limit' => 100] as $field => $max) {
+        foreach (['id' => 2147483647, 'id_ruta' => 2147483647, 'page' => 1000000, 'limit' => 100] as $field => $max) {
             if (isset($filters[$field]) && !$this->positiveInteger($filters[$field], $max)) {
                 return $this->managementError(400, "El filtro $field no es válido.");
             }
@@ -424,6 +432,20 @@ class IncidenciaController {
                 return $this->managementError(400, "El filtro $field no es válido.");
             }
         }
+        if (isset($filters['activas']) && !in_array($filters['activas'], ['0', '1'], true)) return $this->managementError(400, 'Filtro de activas inválido.');
+        foreach (['tipo_problema' => 100, 'zona' => 100] as $field => $max) {
+            if (isset($filters[$field]) && (!is_string($filters[$field]) || trim($filters[$field]) === '' || mb_strlen($filters[$field]) > $max)) {
+                return $this->managementError(400, 'Tipo o zona inválidos.');
+            }
+        }
+        foreach (['desde', 'hasta'] as $field) {
+            if (!isset($filters[$field])) continue;
+            $value = $filters[$field];
+            if (!is_string($value) || !preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/D', $value)) return $this->managementError(400, 'Fecha inválida.');
+            [$year, $month, $day] = array_map('intval', explode('-', $value));
+            if ($year < 1000 || !checkdate($month, $day, $year)) return $this->managementError(400, 'Fecha inválida.');
+        }
+        if (isset($filters['desde'], $filters['hasta']) && $filters['desde'] > $filters['hasta']) return $this->managementError(400, 'Desde no puede ser posterior a hasta.');
         $trackingNumber = $filters['tracking_number'] ?? null;
         if ($trackingNumber !== null) {
             if (!is_string($trackingNumber)) return $this->managementError(400, 'Tracking inválido.');
@@ -436,8 +458,11 @@ class IncidenciaController {
         $page = (int)($filters['page'] ?? 1);
         $limit = (int)($filters['limit'] ?? 20);
         try {
-            $stmt = $this->incidencia->read($id, $page, $limit, $trackingNumber, $filters['estado'] ?? null, $filters['prioridad'] ?? null);
+            $stmt = $this->incidencia->read($id, $page, $limit, $trackingNumber, $filters['estado'] ?? null, $filters['prioridad'] ?? null, $filters, true);
             $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+            $hasMore = count($rows) > $limit;
+            $rows = array_slice($rows, 0, $limit);
+            if ($id !== null && $rows) $rows[0]['evidencias'] = $this->incidencia->evidence($id);
         } catch (PDOException | PersistenceException $exception) {
             return $this->managementError(500, 'No se pudieron cargar las incidencias.');
         }
@@ -463,6 +488,7 @@ class IncidenciaController {
         return [
             "success" => true,
             "data" => $rows,
+            "meta" => ["page" => $page, "limit" => $limit, "has_more" => $hasMore],
             "message" => "Incidencias cargadas correctamente.",
             "statusCode" => 200
         ];

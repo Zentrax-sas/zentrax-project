@@ -154,19 +154,26 @@
               <p id="mapa-incidencias-status" role="status" aria-live="polite"></p>
             </section>
             <form id="incidentFilters" class="incident-filters">
-              <label>Estado<select class="filter-select" name="estado"><option value="">Todos</option><option>Pendiente</option><option>En Proceso</option><option>Resuelta</option></select></label>
+              <label>Estado<select class="filter-select" name="estado"><option value="activas">Pendientes y en proceso</option><option value="">Todos</option><option>Pendiente</option><option>En Proceso</option><option>Resuelta</option></select></label>
               <label>Prioridad<select class="filter-select" name="prioridad"><option value="">Todas</option><option>Baja</option><option>Media</option><option>Alta</option></select></label>
               <label>Número de seguimiento<input name="tracking_number" placeholder="INC-2026-ABCDE" maxlength="20"></label>
+              <label>Tipo<select class="filter-select" name="tipo_problema" id="incidentType"><option value="">Todos</option></select></label>
+              <label>Ruta<select class="filter-select" name="id_ruta" id="incidentRoute"><option value="">Todas</option></select></label>
+              <label>Zona<select class="filter-select" name="zona" id="incidentZone"><option value="">Todas</option></select></label>
+              <label>Desde<input type="date" name="desde"></label>
+              <label>Hasta<input type="date" name="hasta"></label>
               <button class="primary-button" type="submit">Buscar</button>
             </form>
+            <p id="incidentFilterMessage" role="status"></p>
             <p id="incidentMessage" role="status" aria-live="polite"></p>
             <div class="table-wrap" tabindex="0" role="region" aria-label="Listado de incidencias">
-              <table class="incident-table"><thead><tr><th>ID / Seguimiento</th><th>Fecha</th><th>Problema / Descripción</th><th>Ubicación</th><th>Estado</th><th>Prioridad</th><th>Acciones</th></tr></thead><tbody id="incidentRows"></tbody></table>
+              <table class="incident-table"><thead><tr><th>ID / Seguimiento</th><th>Fecha</th><th>Problema / Descripción</th><th>Ubicación</th><th>Estado</th><th>Prioridad</th><th>Cuadrilla actual</th><th>Acciones</th></tr></thead><tbody id="incidentRows"></tbody></table>
             </div>
             <div class="incident-pagination"><button class="link-button" id="incidentPrevious" type="button" disabled>← Anterior</button><span id="incidentPage"></span><button class="link-button" id="incidentNext" type="button" disabled>Siguiente →</button></div>
             <section id="incidentDetail" hidden aria-labelledby="incidentDetailTitle">
               <h3 id="incidentDetailTitle" tabindex="-1">Detalle de incidencia</h3>
               <dl id="incidentDetailFields" class="incident-detail-fields"></dl>
+              <div id="incidentEvidence" class="incident-evidence"></div>
               <p id="incidentLocationMessage" role="status"></p>
               <button id="incidentViewMap" type="button" class="link-button" hidden>Ver en mapa</button>
               <p>La fecha de resolución corresponde al ciclo actual (America/Montevideo); al reabrir se borra. No representa un historial de resoluciones.</p>
@@ -383,7 +390,7 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="assets/js/zemyna-map.js"></script>
   <script src="assets/js/user-eligibility.js"></script>
-  <script src="assets/js/admin.js?v=5"></script>
+  <script src="assets/js/admin.js?v=6"></script>
   <script src="assets/js/dashboard.js"></script>
   <script src="assets/js/cuadrillas.js?v=2"></script>
   <script src="assets/js/incidence-report.js"></script>

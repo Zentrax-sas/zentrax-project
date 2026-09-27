@@ -32,7 +32,67 @@ final class IncidenciaAdminTest extends TestCase
             INSERT INTO incidencia VALUES(2,'INC-2026-ABCDF','Otro reporte','2026-08-20 11:00:00','Resuelta','Alta','Contenedor Desbordado',1,NULL,1,NULL);");
         $this->db->exec('ALTER TABLE incidencia ADD COLUMN fecha_resolucion TEXT DEFAULT NULL; ALTER TABLE contenedor ADD COLUMN latitud NUMERIC; ALTER TABLE contenedor ADD COLUMN longitud NUMERIC');
         $this->db->exec('ALTER TABLE incidencia ADD COLUMN latitud NUMERIC; ALTER TABLE incidencia ADD COLUMN longitud NUMERIC; ALTER TABLE contenedor ADD COLUMN activo INTEGER DEFAULT 1');
+        $this->db->exec("ALTER TABLE contenedor ADD COLUMN direccion TEXT; ALTER TABLE contenedor ADD COLUMN id_ruta INTEGER;
+            ALTER TABLE ruta ADD COLUMN zona TEXT;
+            CREATE TABLE foto (id_foto INTEGER PRIMARY KEY, fecha TEXT, url TEXT, id_incidencia INTEGER);");
         $this->controller = new IncidenciaController($this->db);
+    }
+
+    public function testBandejaOrdenaPrioridadAntiguedadYDesempate(): void {
+        $this->db->exec("UPDATE incidencia SET estado = 'Pendiente';
+            INSERT INTO incidencia (tracking_number,descripcion,fecha_reporte,estado,prioridad,tipo_problema) VALUES
+            ('INC-2026-00003','x','2026-08-19 10:00:00','En Proceso','Alta','Contenedor Desbordado'),
+            ('INC-2026-00004','x','2026-08-19 10:00:00','Pendiente','Alta','Contenedor Desbordado'),
+            ('INC-2026-00005','x','2026-08-01 10:00:00','Pendiente','Baja','Contenedor Desbordado'),
+            ('INC-2026-00006','x','2026-08-01 10:00:00','Resuelta','Alta','Contenedor Desbordado')");
+        $result = $this->controller->getAll(['activas' => '1']);
+        $this->assertSame(200, $result['statusCode']);
+        $this->assertSame([3, 4, 2, 1, 5], array_column($result['data'], 'id_incidencia'));
+    }
+
+    public function testBandejaCombinaRutaDelContenedorZonaTipoEstadoPrioridadYFechas(): void {
+        $this->db->exec("INSERT INTO ruta VALUES (7, 'Ruta siete', 'Centro'); UPDATE contenedor SET id_ruta=7, direccion='Calle prueba';");
+        $filters = ['estado' => 'Pendiente', 'prioridad' => 'Media', 'tipo_problema' => 'Contenedor Desbordado',
+            'id_ruta' => '7', 'zona' => 'Centro', 'desde' => '2026-08-20', 'hasta' => '2026-08-20'];
+        $result = $this->controller->getAll($filters);
+        $this->assertSame([1], array_column($result['data'], 'id_incidencia'));
+        $this->assertSame('Calle prueba', $result['data'][0]['contenedor_direccion']);
+        $this->assertNull($result['data'][0]['cuadrilla_nombre']);
+        $this->assertSame([], $this->controller->getAll(array_replace($filters, ['zona' => 'Otra']))['data']);
+        $this->db->exec('UPDATE incidencia SET id_contenedor=NULL, id_ruta=7 WHERE id_incidencia=1');
+        $this->assertSame([1], array_column($this->controller->getAll($filters)['data'], 'id_incidencia'));
+        $this->assertSame('Centro', $this->controller->getInboxOptions()['data']['rutas'][0]['zona']);
+        $this->assertSame(['Contenedor Desbordado'], $this->controller->getInboxOptions()['data']['tipos']);
+    }
+
+    public function testBandejaPaginaExactaVeinteYRegistroAdicional(): void {
+        for ($id = 3; $id <= 20; $id++) {
+            $this->db->exec("INSERT INTO incidencia (tracking_number,descripcion,fecha_reporte,estado,prioridad,tipo_problema)
+                VALUES ('INC-MIG-$id','x','2026-08-20 12:00:00','Pendiente','Media','Contenedor Desbordado')");
+        }
+        $first = $this->controller->getAll();
+        $this->assertCount(20, $first['data']);
+        $this->assertFalse($first['meta']['has_more']);
+        $this->db->exec("INSERT INTO incidencia (tracking_number,descripcion,fecha_reporte,estado,prioridad,tipo_problema)
+            VALUES ('INC-MIG-21','x','2026-08-20 12:00:00','Pendiente','Media','Contenedor Desbordado')");
+        $first = $this->controller->getAll();
+        $last = $this->controller->getAll(['page' => 2]);
+        $this->assertTrue($first['meta']['has_more']);
+        $this->assertCount(20, $first['data']);
+        $this->assertCount(1, $last['data']);
+        $this->assertFalse($last['meta']['has_more']);
+        $this->assertCount(21, array_unique(array_merge(array_column($first['data'], 'id_incidencia'), array_column($last['data'], 'id_incidencia'))));
+        $empty = $this->controller->getAll(['page' => 3]);
+        $this->assertSame([], $empty['data']);
+        $this->assertFalse($empty['meta']['has_more']);
+    }
+
+    public function testEvidenciaSoloDelDetalleSinRutaInterna(): void {
+        $this->db->exec("INSERT INTO foto VALUES (1, '2026-08-20', '/ruta/interna/privada.jpg', 1), (2, '2026-08-20', 'otra.jpg', 2)");
+        $detail = $this->controller->getAll(['id' => 1]);
+        $this->assertSame([['id_foto' => 1, 'fecha' => '2026-08-20']], $detail['data'][0]['evidencias']);
+        $this->assertStringNotContainsString('/ruta/interna', json_encode($detail));
+        $this->assertArrayNotHasKey('evidencias', $this->controller->getPublicByTracking('INC-2026-ABCDE')['data']);
     }
 
     public function testListaRegistrosYRelacionesReales(): void
@@ -41,7 +101,7 @@ final class IncidenciaAdminTest extends TestCase
         $this->assertSame(200, $result['statusCode']);
         $this->assertCount(2, $result['data']);
         $this->assertSame('C-001', $result['data'][0]['contenedor_codigo']);
-        $this->assertSame('Cuadrilla prueba', $result['data'][1]['cuadrilla_nombre']);
+        $this->assertSame('Cuadrilla prueba', $result['data'][0]['cuadrilla_nombre']);
     }
 
     /** @dataProvider validFilters */
@@ -60,7 +120,7 @@ final class IncidenciaAdminTest extends TestCase
             'tracking' => [['tracking_number' => ' inc-2026-abcde '], [1]],
             'combinados' => [['estado' => 'Resuelta', 'prioridad' => 'Alta', 'tracking_number' => 'INC-2026-ABCDF'], [2]],
             'vacío' => [['estado' => 'Resuelta', 'prioridad' => 'Media'], []],
-            'paginación' => [['page' => 2, 'limit' => 1], [2]],
+            'paginación' => [['page' => 2, 'limit' => 1], [1]],
         ];
     }
 
@@ -73,6 +133,8 @@ final class IncidenciaAdminTest extends TestCase
     public static function invalidFilters(): array
     {
         return array_map(fn($item) => [$item], [
+            ['id_ruta' => '1 OR 1=1'], ['zona' => []], ['tipo_problema' => []], ['activas' => 'si'],
+            ['desde' => '2026-02-30'], ['hasta' => 'ayer'], ['desde' => '2026-09-01', 'hasta' => '2026-08-01'],
             ['estado' => 'Asignada'], ['prioridad' => 'Urgente'], ['estado' => []], ['tracking_number' => []],
             ['tracking_number' => "' OR 1=1 --"], ['id' => 0], ['id' => -1], ['id' => '1x'], ['id' => []],
             ['page' => 0], ['page' => 1000001], ['page' => '2.5'], ['limit' => 101], ['limit' => []], ['limit' => 0],

@@ -19,6 +19,7 @@ session_start();
 putenv('DB_HOST=127.0.0.1;port=1');
 class IncidenciaController {
     public function __construct($db) {}
+    public function getInboxOptions() { return ['success' => true, 'statusCode' => 200, 'operation' => 'filters', 'data' => []]; }
     public function getCrewOptions() { return ['success' => true, 'statusCode' => 200, 'operation' => 'crew', 'data' => []]; }
     public function getLocation($id) { return ['success' => true, 'statusCode' => 200, 'operation' => 'location', 'data' => []]; }
     public function getReport($filters) { return ['success' => true, 'statusCode' => 200, 'operation' => 'report', 'data' => []]; }
@@ -67,6 +68,9 @@ PHP;
         $wrongSector = ['usuario' => ['roles' => [], 'autorizaciones' => [['permiso' => 'incidencia.consultar', 'sector' => 'LOGISTICA']]]];
         $creator = ['usuario' => ['id_usuario' => 7, 'roles' => ['OPERARIO'], 'autorizaciones' => [['permiso' => 'incidencia.crear', 'sector' => 'OPERACIONES']]]];
         return [
+            'filtros sin sesión' => ['GET', ['opciones' => 'filtros'], [], 401, null],
+            'filtros sin permiso' => ['GET', ['opciones' => 'filtros'], $none, 403, null],
+            'filtros autorizados' => ['GET', ['opciones' => 'filtros'], $reader, 200, 'filters'],
             'cuadrilla registro sin sesión' => ['POST', ['view' => 'crew'], [], 401, null],
             'cuadrilla registro sin permiso' => ['POST', ['view' => 'crew'], $reader, 403, null],
             'cuadrilla consulta opciones sin sesión' => ['GET', ['view' => 'crew', 'tracking_number' => 'INC-2026-ABCDE'], [], 401, null],

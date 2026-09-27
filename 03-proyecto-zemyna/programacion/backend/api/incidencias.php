@@ -16,6 +16,13 @@ switch ($method) {
             'limit' => $_GET['limit'] ?? 20,
             'estado' => $_GET['estado'] ?? null,
             'prioridad' => $_GET['prioridad'] ?? null,
+            'activas' => $_GET['activas'] ?? null,
+            'tipo_problema' => $_GET['tipo_problema'] ?? null,
+            'id_ruta' => $_GET['id_ruta'] ?? null,
+            'zona' => $_GET['zona'] ?? null,
+            'desde' => $_GET['desde'] ?? null,
+            'hasta' => $_GET['hasta'] ?? null,
+
         ];
 
         if (!in_array($_GET['view'] ?? null, ['map', 'report', 'location', 'crew'], true) && array_key_exists('tracking_number', $_GET) && !array_key_exists('admin', $_GET)) {
@@ -38,7 +45,7 @@ switch ($method) {
         } else {
             requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
             $response = ($_GET['opciones'] ?? null) === 'cuadrillas'
-                ? $controller->getCuadrillas() : $controller->getAll($filters);
+                ? $controller->getCuadrillas() : (($_GET['opciones'] ?? null) === 'filtros' ? $controller->getInboxOptions() : $controller->getAll($filters));
             $response['can_update'] = hasEffectivePermission('incidencia.modificar', ['OPERACIONES', 'PUNTOS_Y_DESTINOS']);
         }
         http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));
