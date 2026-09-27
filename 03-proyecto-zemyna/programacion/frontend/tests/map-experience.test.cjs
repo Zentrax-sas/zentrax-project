@@ -613,3 +613,78 @@ test('Creación de recorrido usa CRUD existente y luego recarga opciones para as
   h.reply(5,201,{success:true,data:{id_recorrido:21}});await tick();h.reply(6,200,availableBody());await saving;
   assert.match(h.elements.get('squadCreateStatus').textContent,/Recorrido creado/);assert.equal(h.elements.get('squadTripConfirm').disabled,false);
 });
+
+
+function dashboardHarness(session = true) {
+  const html=fs.readFileSync(path.join(publicDir,'admin.html'),'utf8');
+  const elements=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Element()]));
+  const requests=[],redirects=[],navigations=[];
+  const context=vm.createContext({URLSearchParams,AbortController,console,TypeError,
+    document:{getElementById:id=>elements.get(id),createElement:tag=>new Element(tag)},
+    window:{location:{replace:url=>redirects.push(url)}},history:{replaceState(){}},openView:name=>navigations.push(name),
+    buildApiUrl:(url,options)=>{assert.equal(options.cacheBust,false);return url;},buildFrontendUrl:url=>url,adminSessionReady:Promise.resolve(session),
+    fetch:(url,options)=>new Promise((resolve,reject)=>requests.push({url,options,resolve,reject}))});
+  vm.runInContext(fs.readFileSync(path.join(publicDir,'assets/js/dashboard.js'),'utf8'),context);
+  const reply=(i,status,body)=>requests[i].resolve({status,ok:status>=200&&status<300,json:async()=>body});
+  return {html,elements,requests,redirects,navigations,reply,open:()=>context.window.Dashboard.open(),pause:()=>context.window.Dashboard.pause(),click:id=>elements.get(id).listeners.click({preventDefault(){}}),submit:()=>elements.get('dashboardFilters').listeners.submit({preventDefault(){}})};
+}
+const dashboardBody=()=>({success:true,data:{periodo:{descripcion:'Todos los registros'},sector:'OPERACIONES',generado_en:'2026-09-22 09:30:00',
+ actual:{incidencias_activas:0,recorridos_en_proceso:2,cuadrillas_sin_recorrido:1,camiones_disponibles:3,camiones_no_disponibles:1,contenedores_prioridad_alta:0},
+ periodo_resultados:{incidencias_reportadas:3,incidencias_resueltas:1,tiempo_promedio_resolucion_horas:null,resoluciones_con_duracion:0,recorridos_finalizados:1,contenedores_atendidos:4},
+ incidencias_por_estado_prioridad:[{estado:'Pendiente',prioridad:'Alta',cantidad:3}],contenedores_problematicos:[{codigo:'C-1',direccion:'Lugar público',cantidad:3}],
+ recorridos:{por_estado:{Pendiente:1,'En Proceso':2,Finalizado:1,Cancelado:0},contenedores_esperados:null,contenedores_pendientes:null,porcentaje_avance:null,motivo:'No hay instantánea histórica.'},
+ historicas_sin_fecha_resolucion:1,requiere_atencion:[],enlaces:{incidencias:'#incidencias',cuadrillas:'#cuadrillas',contenedores:'#contenedores',informe:'#informe-incidencias',camiones:'#camiones'}}});
+async function dashboardReady(){const h=dashboardHarness();await tick();h.reply(0,200,{success:true,data:{habilitado:true}});await tick();h.open();await tick();return h;}
+
+test('dashboard valida sesión y permiso antes de mostrar menú o consultar métricas',async()=>{
+ const denied=dashboardHarness(false);await denied.open();assert.equal(denied.requests.length,0);
+ const h=dashboardHarness();await tick();const opening=h.open();h.reply(0,403,{});await opening;
+ assert.equal(h.elements.get('dashboardNav').hidden,true);assert.equal(h.requests.length,1);assert.match(h.elements.get('dashboardStatus').textContent,/permisos/);
+ assert.match(h.html,/id="dashboardNav" hidden href="#resumen"/);
+});
+
+test('dashboard muestra seis tarjetas actuales, cero y ausencia de promedio sin inventar datos',async()=>{
+ const h=await dashboardReady();assert.match(h.elements.get('dashboardStatus').textContent,/Cargando/);h.reply(1,200,dashboardBody());await tick();
+ assert.equal(h.elements.get('dashboardCurrent').children.length,6);assert.equal(h.elements.get('dashboardNav').hidden,false);
+ assert.match(text(h.elements.get('dashboardCurrent').children[0]),/0/);assert.match(text(h.elements.get('dashboardResults')),/Sin datos/);
+ assert.match(h.elements.get('dashboardProgress').textContent,/Pendientes: Sin datos/);assert.match(h.elements.get('dashboardPeriod').textContent,/Hora de Montevideo/);
+});
+
+test('dashboard filtros y limpiar consultan agregados, actualizar conserva filtros aplicados',async()=>{
+ const h=await dashboardReady();h.reply(1,200,dashboardBody());await tick();h.elements.get('dashboardFrom').value='2026-01-01';h.elements.get('dashboardTo').value='2026-01-31';h.submit();
+ assert.match(h.requests[2].url,/fecha_desde=2026-01-01&fecha_hasta=2026-01-31/);h.reply(2,200,dashboardBody());await tick();
+ h.click('dashboardRefresh');assert.equal(h.requests[3].url,h.requests[2].url);h.reply(3,200,dashboardBody());await tick();
+ h.click('dashboardClear');assert.equal(h.requests[4].url,'/backend/api/dashboard.php');assert.equal(h.elements.get('dashboardFrom').value,'');
+});
+
+test('dashboard cancela filtros anteriores, ignora respuestas obsoletas y no duplica actualizaciones',async()=>{
+ const h=await dashboardReady();h.click('dashboardRefresh');h.click('dashboardRefresh');assert.equal(h.requests.length,2);
+ h.elements.get('dashboardFrom').value='2026-01-01';h.submit();h.submit();assert.equal(h.requests.length,3);assert.equal(h.requests[1].options.signal.aborted,true);
+ const latest=dashboardBody();latest.data.actual.incidencias_activas=17;h.reply(2,200,latest);await tick();h.reply(1,200,dashboardBody());await tick();
+ assert.match(text(h.elements.get('dashboardCurrent').children[0]),/17/);
+ h.click('dashboardRefresh');h.pause();assert.equal(h.requests[3].options.signal.aborted,true);h.reply(3,200,dashboardBody());await tick();assert.match(text(h.elements.get('dashboardCurrent').children[0]),/17/);
+});
+
+test('dashboard distingue 400 y error de servidor conservando último resultado válido',async()=>{
+ for(const status of [400,503]){const h=await dashboardReady();h.reply(1,200,dashboardBody());await tick();h.click('dashboardRefresh');h.reply(2,status,{message:'Rango inválido'});await tick();
+ assert.equal(h.elements.get('dashboardData').hidden,false);assert.match(h.elements.get('dashboardStatus').textContent,/último resultado válido/);assert.match(h.elements.get('dashboardStatus').textContent,status===400?/Filtros inválidos/:/Intentá nuevamente/);}
+});
+
+test('dashboard revocación 401 y 403 elimina datos y menú; error de red permite reintentar',async()=>{
+ for(const status of [401,403]){const h=await dashboardReady();h.reply(1,200,dashboardBody());await tick();h.click('dashboardRefresh');h.reply(2,status,{});await tick();assert.equal(h.elements.get('dashboardData').hidden,true);assert.equal(h.elements.get('dashboardNav').hidden,true);if(status===401)assert.deepEqual(h.redirects,['login.html']);}
+ const h=await dashboardReady();h.requests[1].reject(new TypeError('fetch failed'));await tick();assert.match(h.elements.get('dashboardStatus').textContent,/Error de red/);assert.equal(h.elements.get('dashboardRefresh').disabled,false);
+});
+
+test('dashboard dos gráficos tienen tabla accesible y estados vacíos explícitos',async()=>{
+ const h=await dashboardReady(),body=dashboardBody();body.data.incidencias_por_estado_prioridad=[];body.data.contenedores_problematicos=[];h.reply(1,200,body);await tick();
+ for(const id of ['dashboardChart','dashboardTop']){assert.ok(descendants(h.elements.get(id)).some(n=>n.tag==='table'));assert.ok(descendants(h.elements.get(id)).some(n=>n.tag==='caption'));}
+ assert.match(text(h.elements.get('dashboardChart')),/No hay incidencias/);assert.match(text(h.elements.get('dashboardTop')),/Sin contenedores/);assert.match(text(h.elements.get('dashboardAttention')),/No hay situaciones críticas/);
+});
+
+test('dashboard gráficos, situaciones y enlaces seguros conservan texto accesible y escape',async()=>{
+ const h=await dashboardReady(),body=dashboardBody();body.data.contenedores_problematicos[0].codigo='<img onerror=alert(1)>';body.data.requiere_atencion=[{tipo:'alta',nivel:'crítico',cantidad:3,descripcion:'Incidencias activas Alta',modulo:'incidencias'}];body.data.enlaces.camiones='https://example.invalid';h.reply(1,200,body);await tick();
+ assert.match(text(h.elements.get('dashboardChart')),/Pendiente.*3/);assert.match(text(h.elements.get('dashboardTop')),/<img onerror/);
+ assert.ok(descendants(h.elements.get('dashboardTop')).every(n=>n.innerHTML===undefined));assert.match(text(h.elements.get('dashboardAttention')),/crítico · 3.*Incidencias activas Alta/);
+ const links=descendants(h.elements.get('dashboardCurrent')).filter(n=>n.tag==='a');assert.ok(links.every(n=>n.href.startsWith('#')));links[0].listeners.click({preventDefault(){}});assert.deepEqual(h.navigations,['incidencias']);
+ assert.ok(descendants(h.elements.get('dashboardTop')).filter(n=>n.tag==='td').every(n=>n.dataset.label));
+});

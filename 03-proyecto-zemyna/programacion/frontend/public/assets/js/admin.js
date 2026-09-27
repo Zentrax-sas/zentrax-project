@@ -104,6 +104,8 @@ function openView(viewName) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   operationalMapVersion++;
   operationalMap?.pause();
+  window.Dashboard?.pause();
+  if (viewName === 'resumen') window.Dashboard?.open();
   window.SquadAdmin?.pause();
   if (viewName === 'cuadrillas') window.SquadAdmin?.open();
   window.CrewReport?.pause();
@@ -138,7 +140,7 @@ document.querySelectorAll('.nav-link').forEach(link => {
 });
 
 const initialView = location.hash.replace('#', '');
-window.addEventListener('DOMContentLoaded', () => { if (titles[initialView]) openView(initialView); });
+window.addEventListener('DOMContentLoaded', () => { if (titles[initialView]) openView(initialView); else if (!initialView) openView('resumen'); });
 
 function enableTableFilter(searchId, filterId, rowsId, countId, emptyId, itemName) {
   const search = document.getElementById(searchId);
@@ -844,11 +846,6 @@ function showToast(title, detail = '') {
   window.clearTimeout(window.toastTimer);
   window.toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2600);
 }
-
-document.getElementById('refreshButton').addEventListener('click', () => {
-  openView('incidencias');
-  history.replaceState(null, '', '#incidencias');
-});
 
 document.getElementById('notificationButton').addEventListener('click', () => {
   showToast('Notificaciones no disponibles.');

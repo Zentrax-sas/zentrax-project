@@ -6,6 +6,7 @@
   <meta name="description" content="Panel operativo interno de Zemyna - Sistema de Gestión de Residuos Urbanos">
   <title>Resumen operativo | Zemyna</title>
   <link rel="stylesheet" href="assets/css/admin.css">
+  <link rel="stylesheet" href="assets/css/dashboard.css">
   <link rel="stylesheet" href="assets/css/recoleccion.css?v=4">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -25,7 +26,7 @@
       <div class="sidebar-navigation">
       <div class="menu-caption">Operaciones</div>
       <nav class="nav">
-        <a class="nav-link active" href="#resumen" data-view="resumen"><span class="nav-icon">⌂</span>Resumen operativo</a>
+        <a class="nav-link active" id="dashboardNav" hidden href="#resumen" data-view="resumen"><span class="nav-icon">⌂</span>Resumen operativo</a>
         <a class="nav-link" id="squadNav" href="#cuadrillas" data-view="cuadrillas" hidden><i class="nav-icon bi bi-people" aria-hidden="true"></i>Cuadrillas</a>
         <a class="nav-link" href="recoleccion.html"><span class="nav-icon">⌁</span>Mi recolección</a>
         <a class="nav-link" href="#camiones" data-view="camiones"><span class="nav-icon">▱</span>Camiones</a>
@@ -78,73 +79,27 @@
       </header>
 
       <div class="content">
-        <section class="view active" id="view-resumen">
-        <section class="welcome">
-          <div>
-            <h2 id="welcomeGreeting">Cargando sesión…</h2>
-            <p>Visualizá el estado general de la operación y las incidencias que requieren atención.</p>
+        <section class="view active dashboard" id="view-resumen" aria-labelledby="dashboardHeading">
+          <p id="welcomeGreeting">Cargando sesión…</p>
+          <div class="view-heading"><div><h2 id="dashboardHeading">Resumen operativo</h2><p>Estado general de incidencias, recorridos y recursos de Zemyna.</p></div><button id="dashboardRefresh" type="button" class="primary-button" disabled>Actualizar</button></div>
+          <form id="dashboardFilters"><fieldset id="dashboardFilterFields" disabled><legend>Resultados del período · Hora de Montevideo</legend>
+            <label for="dashboardFrom">Fecha desde<input id="dashboardFrom" type="date" min="1000-01-01" max="9999-12-30"></label>
+            <label for="dashboardTo">Fecha hasta<input id="dashboardTo" type="date" min="1000-01-01" max="9999-12-30"></label>
+            <button type="submit" class="primary-button">Aplicar filtros</button><button id="dashboardClear" type="button" class="secondary-button">Limpiar</button>
+          </fieldset></form>
+          <p id="dashboardStatus" role="status" aria-live="polite">Validando acceso al resumen…</p>
+          <p id="dashboardPeriod" class="result-count"></p>
+          <div id="dashboardData" hidden>
+            <h3>Estado actual</h3><p>Situación vigente de Operaciones. No cambia con el filtro de fechas.</p>
+            <div id="dashboardCurrent" class="dashboard-cards"></div>
+            <h3>Resultados del período</h3><div id="dashboardResults" class="dashboard-cards"></div><p id="dashboardHistorical"></p>
+            <div class="dashboard-charts">
+              <section class="card panel"><h3>Incidencias por estado y prioridad</h3><p>Estado actual de las incidencias cuya fecha de reporte está en el período.</p><div id="dashboardChart"></div></section>
+              <section class="card panel"><h3>Contenedores con más incidencias</h3><p>Hasta cinco contenedores, por fecha de reporte. Los reportes sin contenedor se incluyen en los totales generales.</p><div id="dashboardTop"></div></section>
+            </div>
+            <section class="card panel"><h3>Recorridos y atención</h3><p>Recorridos por fecha de inicio: prevista si están pendientes; registrada para los demás estados. Las finalizaciones del indicador superior se filtran por fecha de fin.</p><div id="dashboardTrips"></div><p id="dashboardProgress"></p></section>
+            <section class="card panel" aria-labelledby="dashboardAttentionTitle"><h3 id="dashboardAttentionTitle">Requiere atención</h3><p>Situaciones actuales derivadas de registros existentes, independientes del período.</p><div id="dashboardAttention"></div></section>
           </div>
-          <button class="primary-button" id="refreshButton">Consultar incidencias</button>
-        </section>
-
-        <section class="stats" aria-label="Indicadores principales">
-          <article class="card stat-card" style="--glow:rgba(143,227,136,.22)">
-            <div class="stat-top"><span>Rutas activas</span><span class="stat-icon">⌁</span></div>
-            <div class="stat-value">12</div>
-            <div class="stat-footer"><span class="up">↑ 2</span><span>desde el último turno</span></div>
-          </article>
-          <article class="card stat-card">
-            <div class="stat-top"><span>Contenedores atendidos</span><span class="stat-icon">□</span></div>
-            <div class="stat-value">842</div>
-            <div class="stat-footer"><span class="up">68%</span><span>del objetivo diario</span></div>
-          </article>
-          <article class="card stat-card" style="--glow:rgba(102,224,111,.18)">
-            <div class="stat-top"><span>Flota disponible</span><span class="stat-icon" style="color:var(--green)">▱</span></div>
-            <div class="stat-value">18<span style="font-size:13px;color:var(--muted);letter-spacing:0"> / 21</span></div>
-            <div class="stat-footer"><span class="up">86%</span><span>de disponibilidad</span></div>
-          </article>
-        </section>
-
-        <section class="dashboard-grid">
-          <article class="card panel" id="rutas">
-            <div class="panel-head">
-              <div><h3 class="panel-title">Avance de rutas</h3><div class="panel-subtitle">Seguimiento del turno vespertino</div></div>
-              <button class="link-button">Ver todas →</button>
-            </div>
-            <div class="route-list">
-              <div>
-                <div class="route-info"><div><div class="route-name">Ruta CH-04 · Pocitos</div><div class="route-meta">Camión ZM-014 · 128 de 156 contenedores</div></div><div class="route-percent">82%</div></div>
-                <div class="progress"><div class="progress-fill" style="--value:82%"></div></div>
-              </div>
-              <div>
-                <div class="route-info"><div><div class="route-name">Ruta CH-07 · Punta Carretas</div><div class="route-meta">Camión ZM-008 · 91 de 142 contenedores</div></div><div class="route-percent">64%</div></div>
-                <div class="progress"><div class="progress-fill" style="--value:64%"></div></div>
-              </div>
-              <div>
-                <div class="route-info"><div><div class="route-name">Ruta CH-02 · Parque Batlle</div><div class="route-meta">Camión ZM-019 · 74 de 131 contenedores</div></div><div class="route-percent">56%</div></div>
-                <div class="progress"><div class="progress-fill" style="--value:56%"></div></div>
-              </div>
-              <div>
-                <div class="route-info"><div><div class="route-name">Ruta CH-09 · Buceo</div><div class="route-meta">Camión ZM-011 · 62 de 148 contenedores</div></div><div class="route-percent warning">42%</div></div>
-                <div class="progress"><div class="progress-fill" style="--value:42%;filter:saturate(.65)"></div></div>
-              </div>
-            </div>
-          </article>
-
-          <article class="card panel" id="flota">
-            <div class="panel-head">
-              <div><h3 class="panel-title">Estado de flota</h3><div class="panel-subtitle">Unidades destacadas</div></div>
-              <button class="link-button">Detalle →</button>
-            </div>
-            <div class="fleet">
-              <div class="fleet-item"><div class="truck-icon">▱</div><div><div class="fleet-name">ZM-014</div><div class="fleet-zone">Ruta CH-04 · En recorrido</div></div><span class="state">Activo</span></div>
-              <div class="fleet-item"><div class="truck-icon">▱</div><div><div class="fleet-name">ZM-008</div><div class="fleet-zone">Ruta CH-07 · En recorrido</div></div><span class="state">Activo</span></div>
-              <div class="fleet-item"><div class="truck-icon">▱</div><div><div class="fleet-name">ZM-021</div><div class="fleet-zone">Base operativa · Revisión</div></div><span class="state pause">Pausa</span></div>
-              <div class="fleet-item"><div class="truck-icon">▱</div><div><div class="fleet-name">ZM-019</div><div class="fleet-zone">Ruta CH-02 · En recorrido</div></div><span class="state">Activo</span></div>
-            </div>
-          </article>
-        </section>
-
         </section>
 
         <section class="view" id="view-reportar-problema">
@@ -428,7 +383,8 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="assets/js/zemyna-map.js"></script>
   <script src="assets/js/user-eligibility.js"></script>
-  <script src="assets/js/admin.js?v=4"></script>
+  <script src="assets/js/admin.js?v=5"></script>
+  <script src="assets/js/dashboard.js"></script>
   <script src="assets/js/cuadrillas.js?v=2"></script>
   <script src="assets/js/incidence-report.js"></script>
   <script src="assets/js/crew-report.js"></script>
