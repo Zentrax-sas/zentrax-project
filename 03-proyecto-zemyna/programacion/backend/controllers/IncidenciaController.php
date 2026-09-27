@@ -236,6 +236,35 @@ class IncidenciaController {
         }
     }
 
+    public function getAssignmentOptions(): array {
+        try { return ['success' => true, 'statusCode' => 200, 'data' => $this->incidencia->assignmentOptions()]; }
+        catch (PDOException | PersistenceException $e) { return $this->managementError(500, 'No se pudieron consultar las opciones operativas.'); }
+    }
+
+    public function assignAdministrative(array $data): array {
+        $allowed = ['accion', 'id_incidencia', 'id_cuadrilla', 'id_recorrido', 'id_usa', 'cuadrilla_esperada', 'estado_esperado'];
+        if (array_diff(array_keys($data), $allowed) || !$this->positiveInteger($data['id_incidencia'] ?? null)
+            || !array_key_exists('id_cuadrilla', $data) || !array_key_exists('cuadrilla_esperada', $data)
+            || !in_array($data['estado_esperado'] ?? null, ['Pendiente', 'En Proceso', 'Resuelta'], true)) {
+            return $this->managementError(400, 'Indicá la opción operativa y la asignación consultada.');
+        }
+        foreach (['id_cuadrilla', 'cuadrilla_esperada', 'id_recorrido', 'id_usa'] as $field) {
+            if (isset($data[$field]) && !$this->positiveInteger($data[$field])) return $this->managementError(400, 'Los IDs deben ser enteros positivos.');
+        }
+        if ($data['id_cuadrilla'] !== null && (!isset($data['id_recorrido'], $data['id_usa']))) return $this->managementError(400, 'Seleccioná un recorrido y vehículo relacionados.');
+        if ($data['id_cuadrilla'] === null && (isset($data['id_recorrido']) || isset($data['id_usa']))) return $this->managementError(400, 'La desasignación no admite recorrido ni vehículo.');
+        try {
+            $this->incidencia->assignOperational((int) $data['id_incidencia'], isset($data['id_cuadrilla']) ? (int) $data['id_cuadrilla'] : null,
+                isset($data['id_recorrido']) ? (int) $data['id_recorrido'] : null, isset($data['id_usa']) ? (int) $data['id_usa'] : null,
+                isset($data['cuadrilla_esperada']) ? (int) $data['cuadrilla_esperada'] : null, $data['estado_esperado']);
+            return ['success' => true, 'statusCode' => 200, 'data' => null, 'message' => 'Asignación actualizada correctamente.'];
+        } catch (DomainException $e) { return $this->managementError($e->getCode(), $e->getMessage()); }
+        catch (PDOException | PersistenceException $e) {
+            if ($e instanceof PDOException && in_array((int) ($e->errorInfo[1] ?? 0), [1062, 1205, 1213], true)) return $this->managementError(409, 'Conflicto concurrente. Volvé a consultar la incidencia.');
+            return $this->managementError(500, 'No se pudo guardar la asignación. No se aplicaron cambios parciales.');
+        }
+    }
+
     public function updateAdministrative($data): array {
         if (!is_array($data) || !$this->positiveInteger($data['id_incidencia'] ?? null)) {
             return $this->managementError(400, 'El id_incidencia debe ser un entero positivo.');
@@ -252,6 +281,12 @@ class IncidenciaController {
         if (!$changes) return $this->managementError(400, 'Indicá estado, prioridad o cuadrilla.');
         $existing = $this->getAll(['id' => $data['id_incidencia']]);
         if (!$existing['success']) return $existing;
+        if (array_key_exists('id_cuadrilla', $data)) {
+            $requested = $data['id_cuadrilla'] === null ? null : (int) $data['id_cuadrilla'];
+            $current = $existing['data'][0]['id_cuadrilla'] === null ? null : (int) $existing['data'][0]['id_cuadrilla'];
+            if ($requested !== $current) return $this->managementError(400, 'Usá la asignación operativa para cambiar la cuadrilla.');
+            unset($changes['id_cuadrilla']);
+        }
         try {
             if (isset($data['id_cuadrilla']) && !$this->incidencia->cuadrillaExists((int)$data['id_cuadrilla'])) {
                 return $this->managementError(400, 'La cuadrilla seleccionada no existe.');
@@ -262,7 +297,7 @@ class IncidenciaController {
                 $data['longitud'] = $existing['data'][0]['longitud'] ?? null;
                 return $this->update($data);
             }
-            if (!$this->incidencia->updateManagement((int)$data['id_incidencia'], $changes)) {
+            if ($changes && !$this->incidencia->updateManagement((int)$data['id_incidencia'], $changes)) {
                 return $this->managementError(500, 'No se pudo actualizar la incidencia.');
             }
             return ['success' => true, 'data' => null, 'message' => 'Incidencia actualizada correctamente.', 'errors' => [], 'statusCode' => 200];
@@ -592,7 +627,7 @@ class IncidenciaController {
         $data['fecha_reporte'] = $data['fecha_reporte'] ?? date('Y-m-d H:i:s');
         $data['estado'] = $data['estado'] ?? 'Pendiente';
         $data['prioridad'] = $data['prioridad'] ?? 'Media';
-        unset($data['id_usuario']);
+        unset($data['id_usuario'], $data['id_cuadrilla']);
         if ($trustedUserId === null) unset($data['latitud'], $data['longitud']);
 
         $errors = $this->validateIncidenciaPayload($data, false, $trustedUserId !== null);

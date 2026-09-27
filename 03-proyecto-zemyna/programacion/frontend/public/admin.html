@@ -182,10 +182,16 @@
                 <div class="form-grid">
                   <label>Estado<select name="estado" required><option>Pendiente</option><option>En Proceso</option><option>Resuelta</option></select></label>
                   <label>Prioridad<select name="prioridad" required><option>Baja</option><option>Media</option><option>Alta</option></select></label>
-                  <label>Cuadrilla<select name="id_cuadrilla" disabled><option value="">Sin asignar</option></select></label>
                 </div>
-                <p id="incidentSquadMessage" role="status"></p>
                 <button class="primary-button" type="submit">Guardar cambios</button>
+              </form>
+              <form id="incidentAssignmentForm" class="resource-form" hidden>
+                <h4>Asignación operativa</h4>
+                <p>Elegí una cuadrilla con integrantes habilitados y un recorrido operativo con vehículo disponible. La incidencia se vincula a la cuadrilla; no se guarda un historial de vehículos.</p>
+                <label>Cuadrilla · recorrido · vehículo<select id="incidentAssignmentOption" disabled><option value="">Sin asignar</option></select></label>
+                <p id="incidentSquadMessage" role="status" aria-live="polite"></p>
+                <button id="incidentAssignmentSave" class="primary-button" type="submit" disabled>Confirmar asignación</button>
+                <button id="incidentAssignmentReload" class="link-button" type="button">Actualizar detalle</button>
               </form>
               <p id="incidentSaveMessage" role="status" aria-live="polite"></p>
               <button class="link-button" id="incidentClose" type="button">Cerrar detalle</button>
@@ -390,7 +396,7 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="assets/js/zemyna-map.js"></script>
   <script src="assets/js/user-eligibility.js"></script>
-  <script src="assets/js/admin.js?v=6"></script>
+  <script src="assets/js/admin.js?v=7"></script>
   <script src="assets/js/dashboard.js"></script>
   <script src="assets/js/cuadrillas.js?v=2"></script>
   <script src="assets/js/incidence-report.js"></script>

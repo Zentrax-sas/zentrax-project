@@ -27,6 +27,10 @@ switch ($method) {
 
         if (!in_array($_GET['view'] ?? null, ['map', 'report', 'location', 'crew'], true) && array_key_exists('tracking_number', $_GET) && !array_key_exists('admin', $_GET)) {
             $response = $controller->getPublicByTracking($filters['tracking_number']);
+        } elseif (($_GET['opciones'] ?? null) === 'asignacion') {
+            requirePermission('incidencia.consultar', ['OPERACIONES']);
+            requirePermission('incidencia.modificar', ['OPERACIONES']);
+            $response = $controller->getAssignmentOptions();
         } elseif (($_GET['view'] ?? null) === 'crew') {
             requirePermission('incidencia.crear', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
             $response = $controller->getCrewOptions();
@@ -46,6 +50,7 @@ switch ($method) {
             requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
             $response = ($_GET['opciones'] ?? null) === 'cuadrillas'
                 ? $controller->getCuadrillas() : (($_GET['opciones'] ?? null) === 'filtros' ? $controller->getInboxOptions() : $controller->getAll($filters));
+            $response['can_assign'] = hasEffectivePermission('incidencia.consultar', ['OPERACIONES']) && hasEffectivePermission('incidencia.modificar', ['OPERACIONES']);
             $response['can_update'] = hasEffectivePermission('incidencia.modificar', ['OPERACIONES', 'PUNTOS_Y_DESTINOS']);
         }
         http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));
@@ -87,7 +92,13 @@ switch ($method) {
             break;
         }
 
-        $response = $controller->updateAdministrative($data ?? []);
+        if (($data['accion'] ?? null) === 'asignar') {
+            requirePermission('incidencia.consultar', ['OPERACIONES']);
+            requirePermission('incidencia.modificar', ['OPERACIONES']);
+            $response = $controller->assignAdministrative($data);
+        } elseif (isset($data['accion'])) {
+            $response = ['success' => false, 'statusCode' => 400, 'message' => 'Acción inválida.'];
+        } else $response = $controller->updateAdministrative($data ?? []);
         http_response_code($response['statusCode'] ?? ($response['success'] ? 200 : 400));
         echo json_encode($response);
         break;

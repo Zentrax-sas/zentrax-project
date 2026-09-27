@@ -27,6 +27,7 @@ class IncidenciaController {
     public function getAll($filters) { return ['success' => true, 'statusCode' => 200, 'operation' => 'list', 'data' => [$filters]]; }
     public function getPublicByTracking($tracking) { return ['success' => true, 'statusCode' => 200, 'operation' => 'public', 'data' => ['tracking_number' => $tracking]]; }
     public function getCuadrillas() { return ['success' => true, 'statusCode' => 200, 'operation' => 'cuadrillas', 'data' => []]; }
+    public function getAssignmentOptions() { return ['success' => true, 'statusCode' => 200, 'operation' => 'assignment-options', 'data' => []]; }
 }
 register_shutdown_function(function () {
     $body = ob_get_clean();
@@ -67,6 +68,16 @@ PHP;
         $none = ['usuario' => ['roles' => ['OPERARIO'], 'autorizaciones' => []]];
         $wrongSector = ['usuario' => ['roles' => [], 'autorizaciones' => [['permiso' => 'incidencia.consultar', 'sector' => 'LOGISTICA']]]];
         $creator = ['usuario' => ['id_usuario' => 7, 'roles' => ['OPERARIO'], 'autorizaciones' => [['permiso' => 'incidencia.crear', 'sector' => 'OPERACIONES']]]];
+        $opsReader = ['usuario' => ['roles' => ['OPERARIO'], 'autorizaciones' => [['permiso' => 'incidencia.consultar', 'sector' => 'OPERACIONES']]]];
+        $opsWriter = ['usuario' => ['roles' => ['OPERARIO'], 'autorizaciones' => [
+            ['permiso' => 'incidencia.consultar', 'sector' => 'OPERACIONES'],
+            ['permiso' => 'incidencia.modificar', 'sector' => 'OPERACIONES'],
+        ]]];
+        $pointsWriter = ['usuario' => ['roles' => ['RESPONSABLE_SECTORIAL'], 'autorizaciones' => [
+            ['permiso' => 'incidencia.consultar', 'sector' => 'PUNTOS_Y_DESTINOS'],
+            ['permiso' => 'incidencia.modificar', 'sector' => 'PUNTOS_Y_DESTINOS'],
+        ]]];
+        $tiAdmin = ['usuario' => ['roles' => ['ADMINISTRADOR_TI'], 'autorizaciones' => []]];
         return [
             'filtros sin sesión' => ['GET', ['opciones' => 'filtros'], [], 401, null],
             'filtros sin permiso' => ['GET', ['opciones' => 'filtros'], $none, 403, null],
@@ -99,11 +110,23 @@ PHP;
             'tracking administrativo autorizado' => ['GET', ['admin' => '1', 'tracking_number' => 'INC-2026-ABCDE'], $reader, 200, 'list'],
             'tracking administrativo privado' => ['GET', ['admin' => '1', 'tracking_number' => 'INC-2026-ABCDE'], [], 401, null],
             'seguimiento público' => ['GET', ['tracking_number' => 'INC-2026-ABCDE'], [], 200, 'public'],
+            'seguimiento público conserva prioridad ante opciones administrativas' => ['GET', ['tracking_number' => 'INC-2026-ABCDE', 'opciones' => 'asignacion'], [], 200, 'public'],
             'opciones privadas' => ['GET', ['opciones' => 'cuadrillas'], $none, 403, null],
             'opciones autorizadas' => ['GET', ['opciones' => 'cuadrillas'], $reader, 200, 'cuadrillas'],
+            'opciones de asignación sin sesión' => ['GET', ['opciones' => 'asignacion'], [], 401, null],
+            'opciones de asignación sin permiso' => ['GET', ['opciones' => 'asignacion'], $none, 403, null],
+            'opciones de asignación solo consulta' => ['GET', ['opciones' => 'asignacion'], $opsReader, 403, null],
+            'opciones de asignación sector incorrecto' => ['GET', ['opciones' => 'asignacion'], $pointsWriter, 403, null],
+            'opciones de asignación OPERACIONES' => ['GET', ['opciones' => 'asignacion'], $opsWriter, 200, 'assignment-options'],
+            'opciones de asignación administrador TI' => ['GET', ['opciones' => 'asignacion'], $tiAdmin, 200, 'assignment-options'],
             'actualización sin sesión' => ['PUT', [], [], 401, null],
             'actualización sin permiso' => ['PUT', [], $none, 403, null],
             'permiso de modificación habilita validación del cuerpo' => ['PUT', [], $writer, 400, null],
+            'asignación sin permiso' => ['PUT', [], $none, 403, null],
+            'asignación solo consulta no permite modificar' => ['PUT', [], $opsReader, 403, null],
+            'asignación OPERACIONES alcanza validación del cuerpo' => ['PUT', [], $opsWriter, 400, null],
+            'asignación administrador TI conserva excepción' => ['PUT', [], $tiAdmin, 400, null],
+            'actualización de PUNTOS_Y_DESTINOS conserva acceso administrativo' => ['PUT', [], $pointsWriter, 400, null],
             'registro público alcanza validación sin sesión' => ['POST', [], [], 400, null],
             'consulta no habilita actualización' => ['PUT', [], $reader, 403, null],
         ];

@@ -42,7 +42,7 @@ function harness(administrative = false, callbacks = {}, bootPublic = false, pag
   const L = { Control: { extend: () => class { addTo() {} } }, control: {}, map: () => map, marker, circleMarker: marker, divIcon: options => options, tileLayer: () => ({ addTo() {} }),
     markerClusterGroup() { const group = { markers: new Set(), addTo() { return this; }, addLayer(m) { this.markers.add(m); }, removeLayer(m) { this.markers.delete(m); }, clearLayers() { this.markers.clear(); } }; groups.push(group); return group; } };
   L.layerGroup = L.markerClusterGroup;
-  const context = vm.createContext({ window: { location: { protocol: 'http:' } }, navigator: {}, L, console, Map, Set, URLSearchParams, AbortController, Option: function (text, value) { const e = new Element('option'); e.textContent = text; e.value = value; return e; },
+  const context = vm.createContext({ window: { location: { protocol: 'http:' }, confirm: () => true }, navigator: {}, L, console, Map, Set, URLSearchParams, AbortController, Option: function (text, value) { const e = new Element('option'); e.textContent = text; e.value = value; return e; },
     document: { getElementById: id => elements.get(id) || null, createElement: tag => new Element(tag), createTextNode: value => ({ textContent: value }) },
     buildApiUrl: value => value, setTimeout: fn => { timers.set(++timerId, fn); return timerId; }, clearTimeout: id => timers.delete(id),
     fetch: (url, options) => new Promise((resolve, reject) => requests.push({ url, options, resolve, reject })) });
@@ -75,6 +75,7 @@ function harness(administrative = false, callbacks = {}, bootPublic = false, pag
 }
 const item = (id = 1, estado = 'Pendiente') => ({ id_incidencia: id, estado, prioridad: 'Alta', tipo_problema: 'Contenedor Desbordado', fecha_reporte: '2026-09-18', contenedor_codigo: 'C-1', latitud: -34.91, longitud: -56.15, tracking_number: 'privado', descripcion: 'privado' });
 const respond = (request, data = [], status = 200, meta = {}) => request.resolve({ status, ok: status < 300, headers: { get: () => 'application/json' }, text: async () => JSON.stringify({ success: status < 300, data, meta }), json: async () => ({ success: status < 300, data, meta }) });
+const respondApi = (request, body, status = 200) => request.resolve({ status, ok: status < 300, headers: { get: () => 'application/json' }, text: async () => JSON.stringify(body), json: async () => body });
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function enable(h) { h.elements.get('map-show-incidents').checked = true; h.elements.get('map-show-incidents').change(); }
 
@@ -738,4 +739,68 @@ test('bandeja F2 formulario combina filtros y opciones usan texto seguro de la A
   for (const [key, value] of Object.entries({ prioridad: 'Alta', tipo_problema: 'Contenedor Desbordado', id_ruta: '7', zona: 'Centro', desde: '2026-08-01', hasta: '2026-08-31', page: '1' })) assert.equal(query.get(key), value);
   respond(h.requests.at(-1), [], 200, { has_more: false }); await tick();
   assert.match(h.elements.get('incidentMessage').textContent, /No hay incidencias/);
+});
+
+async function openAssignableIncident(h, incident, options) {
+  const requestFor = predicate => h.incidents().filter(request => predicate(new URL(request.url, 'http://localhost').searchParams)).at(-1);
+  h.elements.get('incidentForm').elements = Object.fromEntries(['id_incidencia', 'estado', 'prioridad'].map(name => [name, new Element('input')]));
+  const loading = h.run(`mostrarIncidencia(${incident.id_incidencia})`);
+  const detailRequest = requestFor(query => query.get('id') === String(incident.id_incidencia) && !query.has('view'));
+  assert.ok(detailRequest, 'se consultó el detalle administrativo');
+  respondApi(detailRequest, { success: true, can_update: true, can_assign: true, data: [incident] });
+  await tick();
+  const locationRequest = requestFor(query => query.get('view') === 'location' && query.get('id') === String(incident.id_incidencia));
+  assert.ok(locationRequest, 'se consultó la ubicación');
+  respond(locationRequest, null);
+  await tick();
+  const optionsRequest = requestFor(query => query.get('opciones') === 'asignacion');
+  assert.ok(optionsRequest, `se consultaron las opciones operativas; solicitudes: ${h.incidents().map(request => request.url).join(' | ')}; estado: ${h.elements.get('incidentSaveMessage').textContent}`);
+  respondApi(optionsRequest, { success: true, data: options });
+  await loading;
+}
+
+test('F3 evita enviar la misma asignación o una desasignación sin cambios', async () => {
+  const h = harness(true, {}, 'admin');
+  const incident = { ...item(31), id_cuadrilla: 4 };
+  const option = { id_usa: 8, id_cuadrilla: 4, id_recorrido: 12, nombre: 'Cuadrilla cuatro', ruta_nombre: 'Ruta doce', estado_recorrido: 'Pendiente', matricula: 'ABC123', estado_vehiculo: 'Disponible' };
+  await openAssignableIncident(h, incident, [option]);
+  const before = h.requests.length;
+  await h.elements.get('incidentAssignmentForm').listeners.submit({ preventDefault() {} });
+  assert.equal(h.requests.length, before);
+  assert.match(h.elements.get('incidentSquadMessage').textContent, /ya tiene esa asignación/);
+  assert.equal(h.elements.get('incidentAssignmentSave').disabled, false);
+});
+
+test('F3 un 409 refresca bandeja, detalle y opciones sin perder filtros ni pagina F2', async () => {
+  const h = harness(true, {}, 'admin');
+  h.run("incidentQuery = { estado: 'En Proceso', prioridad: 'Alta' }; incidentPage = 3;");
+  const incident = { ...item(32), id_cuadrilla: null };
+  const option = { id_usa: 9, id_cuadrilla: 5, id_recorrido: 13, nombre: 'Cuadrilla cinco', ruta_nombre: 'Ruta trece', estado_recorrido: 'En Proceso', matricula: 'XYZ987', estado_vehiculo: 'Disponible' };
+  await openAssignableIncident(h, incident, [option]);
+  h.elements.get('incidentAssignmentOption').value = '9';
+  const saving = h.elements.get('incidentAssignmentForm').listeners.submit({ preventDefault() {} });
+  const assignmentRequest = h.requests.at(-1);
+  assert.equal(assignmentRequest.options.method, 'PUT');
+  const duplicate = h.elements.get('incidentAssignmentForm').listeners.submit({ preventDefault() {} });
+  assert.equal(h.requests.filter(request => request.options?.method === 'PUT').length, 1);
+  await duplicate;
+  respondApi(assignmentRequest, { success: false, message: 'La incidencia cambió.' }, 409);
+  await tick();
+  const inboxRequest = h.requests.at(-1);
+  const inboxQuery = new URL(inboxRequest.url, 'http://localhost').searchParams;
+  assert.equal(inboxQuery.get('page'), '3');
+  assert.equal(inboxQuery.get('estado'), 'En Proceso');
+  assert.equal(inboxQuery.get('prioridad'), 'Alta');
+  respond(inboxRequest, [incident]);
+  await tick();
+  respondApi(h.requests.at(-1), { success: true, can_update: true, can_assign: true, data: [incident] });
+  await tick();
+  respond(h.requests.at(-1), null);
+  await tick();
+  respondApi(h.requests.at(-1), { success: true, data: [option] });
+  await saving;
+  assert.equal(h.elements.get('incidentAssignmentForm').hidden, false);
+  assert.match(h.elements.get('incidentSquadMessage').textContent, /Se actualizaron el detalle y las opciones/);
+  assert.equal(h.elements.get('incidentAssignmentOption').disabled, false);
+  assert.equal(h.run('incidentPage'), 3);
 });

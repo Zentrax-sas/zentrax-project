@@ -862,6 +862,8 @@ let incidentPage = 1;
 let incidentRequest;
 let incidentDetailRequest;
 let incidentSaving = false;
+let incidentAssignment = null;
+let incidentAssignmentOptions = [];
 let incidentQuery = { activas: '1' };
 
 async function incidentApi(params = {}, options = {}) {
@@ -953,6 +955,9 @@ incidentRows.addEventListener('click', event => {
 
 let locationIncidentId = null;
 async function mostrarIncidencia(id) {
+  if (incidentSaving) return;
+  incidentAssignment = null;
+  document.getElementById('incidentAssignmentForm').hidden = true;
   locationIncidentId = null;
   document.getElementById('incidentViewMap').hidden = true;
   document.getElementById('incidentLocationMessage').textContent = 'Consultando ubicación…';
@@ -1005,26 +1010,92 @@ async function mostrarIncidencia(id) {
     if (!json.can_update) return;
     incidentForm.hidden = false;
     for (const name of ['id_incidencia', 'estado', 'prioridad']) incidentForm.elements[name].value = item[name];
-    const squads = incidentForm.elements.id_cuadrilla;
-    squads.disabled = true;
-    squads.replaceChildren(new Option(item.cuadrilla_nombre || 'Sin asignar', item.id_cuadrilla || ''));
-    const squadMessage = document.getElementById('incidentSquadMessage');
-    squadMessage.textContent = 'Cargando cuadrillas…';
-    try {
-      const result = await incidentApi({ opciones: 'cuadrillas' }, { signal: request.signal });
-      if (request.signal.aborted) return;
-      squads.replaceChildren(new Option('Sin asignar', ''));
-      for (const squad of result.data) squads.add(new Option(`${squad.nombre} · ${squad.turno}`, squad.id_cuadrilla));
-      squads.value = item.id_cuadrilla || '';
-      squads.disabled = false;
-      squadMessage.textContent = '';
-    } catch (error) {
-      if (error.name !== 'AbortError') squadMessage.textContent = `${error.message} Podés editar estado y prioridad.`;
+    if (json.can_assign && item.estado !== 'Resuelta') {
+      incidentAssignment = { id_incidencia: Number(item.id_incidencia), cuadrilla_esperada: item.id_cuadrilla == null ? null : Number(item.id_cuadrilla), estado_esperado: item.estado };
+      const assignmentForm = document.getElementById('incidentAssignmentForm');
+      const select = document.getElementById('incidentAssignmentOption');
+      const save = document.getElementById('incidentAssignmentSave');
+      const message = document.getElementById('incidentSquadMessage');
+      assignmentForm.hidden = false; select.disabled = true; save.disabled = true;
+      select.replaceChildren(new Option('Sin asignar', ''));
+      message.textContent = 'Consultando opciones operativas…';
+      try {
+        const result = await incidentApi({ opciones: 'asignacion' }, { signal: request.signal });
+        if (request.signal.aborted) return;
+        incidentAssignmentOptions = result.data;
+        for (const option of result.data) select.add(new Option(`${option.nombre} · ${option.ruta_nombre} (${option.estado_recorrido}) · ${option.matricula} (${option.estado_vehiculo})`, String(option.id_usa)));
+        const current = result.data.find(option => Number(option.id_cuadrilla) === incidentAssignment.cuadrilla_esperada);
+        select.value = current ? String(current.id_usa) : '';
+        select.disabled = false; save.disabled = false;
+        message.textContent = result.data.length ? (incidentAssignment.cuadrilla_esperada && !current ? 'La cuadrilla actual ya no es una opción operativa válida. Podés elegir otra o desasignar.' : '') : 'No hay opciones operativas válidas. Revisá integrantes, recorrido y vehículo en Cuadrillas; también podés desasignar si corresponde.';
+      } catch (error) {
+        if (!request.signal.aborted) message.textContent = error.message;
+      }
     }
+
   } catch (error) {
     if (error.name !== 'AbortError') incidentSaveMessage.textContent = error.message;
   }
 }
+
+document.getElementById('incidentAssignmentReload').addEventListener('click', () => {
+  if (incidentAssignment && !incidentSaving) mostrarIncidencia(incidentAssignment.id_incidencia);
+});
+document.getElementById('incidentAssignmentForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (incidentSaving || !incidentAssignment || document.getElementById('incidentAssignmentSave').disabled) return;
+  const value = document.getElementById('incidentAssignmentOption').value;
+  const option = incidentAssignmentOptions.find(item => String(item.id_usa) === value);
+  if (value && !option) return;
+  const unchanged = option
+    ? Number(option.id_cuadrilla) === incidentAssignment.cuadrilla_esperada
+    : incidentAssignment.cuadrilla_esperada === null;
+  if (unchanged) {
+    document.getElementById('incidentSquadMessage').textContent = 'La incidencia ya tiene esa asignación; no se realizaron cambios.';
+    return;
+  }
+  const confirmation = option ? `¿Asignar la incidencia a ${option.nombre}, recorrido ${option.id_recorrido}, vehículo ${option.matricula}?` : '¿Dejar la incidencia sin cuadrilla asignada?';
+  if (!window.confirm(confirmation)) return;
+  const payload = { accion: 'asignar', ...incidentAssignment, id_cuadrilla: option ? Number(option.id_cuadrilla) : null };
+  if (option) { payload.id_recorrido = Number(option.id_recorrido); payload.id_usa = Number(option.id_usa); }
+  incidentSaving = true;
+  const controls = [...incidentDetail.querySelectorAll('input, select, button')];
+  const disabled = controls.map(control => control.disabled);
+  controls.forEach(control => { control.disabled = true; });
+  const message = document.getElementById('incidentSquadMessage');
+  message.textContent = 'Guardando asignación…';
+  let conflict = false;
+  let refreshAfterConflict = false;
+  try {
+    const result = await incidentApi({}, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    message.textContent = result.message;
+    await cargarIncidenciasAdmin();
+    incidentDetail.hidden = true;
+  } catch (error) {
+    conflict = [401, 403, 404, 409].includes(error.status);
+    refreshAfterConflict = error.status === 409;
+    message.textContent = refreshAfterConflict ? `${error.message} Se actualizarán el detalle y las opciones operativas.` : error.message;
+  } finally {
+    controls.forEach((control, index) => { control.disabled = disabled[index]; });
+    if (conflict) document.getElementById('incidentAssignmentSave').disabled = true;
+    incidentSaving = false;
+  }
+  if (refreshAfterConflict) {
+    const id = incidentAssignment.id_incidencia;
+    await cargarIncidenciasAdmin();
+    await mostrarIncidencia(id);
+    const refreshed = incidentAssignment?.id_incidencia === id
+      && !document.getElementById('incidentAssignmentOption').disabled
+      && !document.getElementById('incidentAssignmentSave').disabled;
+    if (refreshed) {
+      const notice = 'La asignación cambió o dejó de estar disponible. Se actualizaron el detalle y las opciones; revisalos antes de volver a intentar.';
+      incidentSaveMessage.textContent = notice;
+      document.getElementById('incidentSquadMessage').textContent = notice;
+    } else {
+      incidentSaveMessage.textContent = 'La asignación cambió. No se pudo revalidar el detalle y las opciones; actualizá el detalle antes de volver a intentar.';
+    }
+  }
+});
 
 document.getElementById('incidentViewMap').addEventListener('click', async () => {
   const id = locationIncidentId;
@@ -1049,10 +1120,9 @@ document.getElementById('incidentViewMap').addEventListener('click', async () =>
 
 incidentForm.addEventListener('submit', async event => {
   event.preventDefault();
-  if (incidentSaving || !window.confirm('¿Confirmás los cambios de estado, prioridad o asignación de esta incidencia?')) return;
+  if (incidentSaving || !window.confirm('¿Confirmás los cambios de estado o prioridad de esta incidencia?')) return;
   const payload = Object.fromEntries(new FormData(incidentForm));
   payload.id_incidencia = Number(payload.id_incidencia);
-  if ('id_cuadrilla' in payload) payload.id_cuadrilla = payload.id_cuadrilla ? Number(payload.id_cuadrilla) : null;
   incidentSaving = true;
   incidentDetailRequest?.abort();
   const controls = [...incidentForm.querySelectorAll('input, select, button'), document.getElementById('incidentClose')];

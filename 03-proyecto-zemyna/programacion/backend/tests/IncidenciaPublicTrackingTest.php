@@ -219,6 +219,21 @@ class IncidenciaPublicTrackingTest extends TestCase
         }
     }
 
+    public function testRegistroCiudadanoIgnoraIdCuadrillaEnPayload(): void
+    {
+        $_SESSION = [];
+        $model = $this->replaceIncidenciaModel();
+
+        $result = $this->controller->create(array_merge(
+            $this->validIncidenciaPayload(),
+            ['id_cuadrilla' => 999]
+        ));
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(201, $result['statusCode']);
+        $this->assertNull($model->id_cuadrilla);
+    }
+
     /** @dataProvider anonymousIdentityProvider */
     public function testIncidenciaIgnoraSesionYPayloadDeUsuario(array $session, array $payload): void
     {

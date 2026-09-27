@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/RecoleccionOperativa.php';
 
 class Incidencia {
     private $conn;
@@ -191,6 +192,34 @@ class Incidencia {
         return $stmt->fetchColumn() !== false;
     }
 
+    public function assignmentOptions(): array {
+        if (!$this->conn) throw new PDOException('Sin conexión.');
+        return (new RecoleccionOperativa($this->conn))->opcionesIncidencia();
+    }
+
+    public function assignOperational(int $id, ?int $squad, ?int $trip, ?int $use, ?int $expectedSquad, string $expectedState): void {
+        if (!$this->conn) throw new PDOException('Sin conexión.');
+        $this->conn->beginTransaction();
+        try {
+            $lock = $this->conn->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? ' FOR UPDATE' : '';
+            $stmt = $this->conn->prepare('SELECT estado, id_cuadrilla FROM incidencia WHERE id_incidencia = ?' . $lock);
+            $stmt->execute([$id]);
+            $current = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$current) throw new DomainException('Incidencia no encontrada.', 404);
+            if ($current['estado'] === 'Resuelta') throw new DomainException('No se puede asignar ni desasignar una incidencia Resuelta.', 409);
+            $currentSquad = $current['id_cuadrilla'] === null ? null : (int) $current['id_cuadrilla'];
+            if ($currentSquad !== $expectedSquad || $current['estado'] !== $expectedState) throw new DomainException('La incidencia cambió. Volvé a abrir el detalle antes de asignar.', 409);
+            if ($squad !== null) (new RecoleccionOperativa($this->conn))->validarOpcionIncidencia($squad, $trip, $use, true);
+            if ($currentSquad === $squad) throw new DomainException('La incidencia ya tiene esa asignación. Volvé a consultar.', 409);
+            $stmt = $this->conn->prepare('UPDATE incidencia SET id_cuadrilla = ? WHERE id_incidencia = ?');
+            if (!$stmt->execute([$squad, $id])) throw new PDOException('No se pudo asignar.');
+            $this->conn->commit();
+        } catch (Throwable $e) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            throw $e;
+        }
+    }
+
     public function updateManagement(int $id, array $changes): bool {
         if (!$this->conn) return false;
         $sets = [];
@@ -200,7 +229,7 @@ class Incidencia {
             $params[':resolution_state'] = $changes['estado'];
             $params[':resolution_now'] = $this->resolutionNow();
         }
-        foreach (['estado', 'prioridad', 'id_cuadrilla'] as $column) {
+        foreach (['estado', 'prioridad'] as $column) {
             if (array_key_exists($column, $changes)) {
                 $sets[] = "$column = :$column";
                 $params[":$column"] = $changes[$column];
@@ -273,7 +302,6 @@ class Incidencia {
                       tipo_problema = :tipo_problema,
                       id_contenedor = :id_contenedor,
                       id_ruta = :id_ruta,
-                      id_cuadrilla = :id_cuadrilla,
                       id_usuario = :id_usuario
                   WHERE id_incidencia = :id_incidencia";
 
@@ -289,7 +317,6 @@ class Incidencia {
         $stmt->bindParam(':tipo_problema', $this->tipo_problema);
         $stmt->bindParam(':id_contenedor', $this->id_contenedor);
         $stmt->bindParam(':id_ruta', $this->id_ruta);
-        $stmt->bindParam(':id_cuadrilla', $this->id_cuadrilla);
         $stmt->bindParam(':id_usuario', $this->id_usuario);
 
         return $stmt->execute();

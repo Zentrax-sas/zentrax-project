@@ -19,12 +19,12 @@ class RecoleccionOperativa extends Recoleccion
         $user = $this->rows('SELECT activo FROM usuario WHERE id_usuario = ?' . $this->lock(), [$id])[0] ?? null;
         if (!$user || $user['activo'] !== 'Activo') $this->fail(404, 'Usuario activo no encontrado.');
     }
-    public function elegibilidad(int $id): array
+    public function elegibilidad(int $id, bool $locking = false): array
     {
-        $user = $this->rows('SELECT activo FROM usuario WHERE id_usuario = ?', [$id])[0] ?? null;
+        $user = $this->rows('SELECT activo FROM usuario WHERE id_usuario = ?' . ($locking ? $this->lock() : ''), [$id])[0] ?? null;
         if (!$user || $user['activo'] !== 'Activo') return ['elegible' => false, 'motivo' => 'Cuenta inactiva'];
         $date = substr($this->now(), 0, 10);
-        $assignments = $this->rows('SELECT sector, fecha_desde, fecha_hasta FROM usuario_rol WHERE id_usuario = ?', [$id]);
+        $assignments = $this->rows('SELECT sector, fecha_desde, fecha_hasta FROM usuario_rol WHERE id_usuario = ?' . ($locking ? $this->lock() : ''), [$id]);
         $current = array_values(array_filter($assignments, fn($a) => $a['fecha_desde'] <= $date && ($a['fecha_hasta'] === null || $a['fecha_hasta'] >= $date)));
         if (!$current) return ['elegible' => false, 'motivo' => $assignments ? 'Asignación vencida o aún no vigente' : 'Sin asignación de rol'];
         if (!in_array('OPERACIONES', array_column($current, 'sector'), true)) {
@@ -35,7 +35,7 @@ class RecoleccionOperativa extends Recoleccion
             JOIN rol_permiso rp ON rp.id_rol = ur.id_rol JOIN permiso p ON p.id_permiso = rp.id_permiso
             WHERE ur.id_usuario = ? AND ur.sector = 'OPERACIONES'
             AND ur.fecha_desde <= ? AND (ur.fecha_hasta IS NULL OR ur.fecha_hasta >= ?)
-            AND p.nombre IN ('recorrido.consultar', 'recorrido.operar', 'recorrido.modificar')", [$id, $date, $date]), 'nombre');
+            AND p.nombre IN ('recorrido.consultar', 'recorrido.operar', 'recorrido.modificar')" . ($locking ? $this->lock() : ''), [$id, $date, $date]), 'nombre');
         if (!in_array('recorrido.consultar', $permissions, true)) return ['elegible' => false, 'motivo' => 'Sin permiso para consultar recorridos'];
         if (!array_intersect(['recorrido.operar', 'recorrido.modificar'], $permissions)) return ['elegible' => false, 'motivo' => 'Sin permiso para operar recorridos'];
         return ['elegible' => true, 'motivo' => 'Permisos operativos vigentes en Operaciones'];
@@ -104,6 +104,62 @@ class RecoleccionOperativa extends Recoleccion
         return ['items' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'total' => $total, 'page' => $page, 'page_size' => 25,
             'vehiculos' => $vehicles, 'conflicto' => $this->proximo($squad) !== null ? 'La cuadrilla ya tiene un recorrido Pendiente o En Proceso.' : null];
     }
+    /** Opciones F3: solo relaciones existentes, inequívocas y con personal operativo. */
+    public function opcionesIncidencia(): array
+    {
+        $options = [];
+        foreach ($this->rows('SELECT id_cuadrilla FROM cuadrilla ORDER BY nombre, id_cuadrilla', []) as $squad) {
+            $id = (int) $squad['id_cuadrilla'];
+            $trip = $this->proximo($id);
+            if ($trip === null) continue;
+            $uses = $this->rows('SELECT p.id_usa FROM participa p JOIN usa u ON u.id_usa = p.id_usa WHERE p.id_recorrido = ? AND u.id_cuadrilla = ?', [$trip, $id]);
+            if (count($uses) !== 1) continue;
+            try { $options[] = $this->validarOpcionIncidencia($id, $trip, (int) $uses[0]['id_usa']); }
+            catch (DomainException $e) { /* Una relación histórica o no disponible no es una opción operativa. */ }
+        }
+        return $options;
+    }
+
+    public function validarOpcionIncidencia(int $squad, int $trip, int $use, bool $locking = false): array
+    {
+        $lock = $locking ? $this->lock() : '';
+        // Mismo orden de recursos que pertenencias: usuarios antes de cuadrilla.
+        $members = $this->rows('SELECT u.id_usuario FROM usuario u JOIN usuario_cuadrilla uc ON uc.id_usuario = u.id_usuario
+            WHERE uc.id_cuadrilla = ? AND uc.fecha_fin IS NULL ORDER BY u.id_usuario' . $lock, [$squad]);
+        $eligible = false;
+        foreach ($members as $member) {
+            if ($locking) {
+                $this->rows('SELECT ur.id_usuario FROM usuario_rol ur JOIN rol_permiso rp ON rp.id_rol = ur.id_rol
+                    WHERE ur.id_usuario = ?' . $lock, [(int) $member['id_usuario']]);
+            }
+            if ($this->elegibilidad((int) $member['id_usuario'], $locking)['elegible']) $eligible = true;
+        }
+        $group = $this->rows('SELECT id_cuadrilla, nombre, turno FROM cuadrilla WHERE id_cuadrilla = ?' . $lock, [$squad])[0] ?? null;
+        if (!$group) $this->fail(404, 'Cuadrilla no encontrada.');
+        if (!$eligible) $this->fail(409, 'La cuadrilla no tiene integrantes vigentes con permisos operativos en Operaciones.');
+        $row = $this->rows('SELECT re.id_recorrido, re.estado, re.fecha_fin, r.nombre AS ruta_nombre FROM recorrido re
+            JOIN ruta r ON r.id_ruta = re.id_ruta WHERE re.id_recorrido = ?' . $lock, [$trip])[0] ?? null;
+        if (!$row) $this->fail(404, 'Recorrido no encontrado.');
+        if (!in_array($row['estado'], ['Pendiente', 'En Proceso'], true) || $row['fecha_fin'] !== null) $this->fail(409, 'El recorrido ya no está operativo.');
+        $links = $this->rows('SELECT p.id_usa, p.hora_fin, u.id_cuadrilla, u.id_vehiculo FROM participa p
+            JOIN usa u ON u.id_usa = p.id_usa WHERE p.id_recorrido = ?' . $lock, [$trip]);
+        if (count($links) !== 1) $this->fail(409, 'El recorrido tiene una asignación ambigua o duplicada. Revisá la configuración de cuadrillas.');
+        $link = $links[0];
+        if ((int) $link['id_usa'] !== $use || (int) $link['id_cuadrilla'] !== $squad) $this->fail(409, 'La opción ya no corresponde a la cuadrilla y recorrido seleccionados.');
+        if ($link['hora_fin'] !== null) $this->fail(409, 'La participación en el recorrido ya finalizó.');
+        $vehicle = $this->rows('SELECT id_vehiculo, matricula, estado, activo FROM vehiculo WHERE id_vehiculo = ?' . $lock, [$link['id_vehiculo']])[0] ?? null;
+        if (!$vehicle || !(int) $vehicle['activo'] || $vehicle['estado'] === 'En Mantenimiento') $this->fail(409, 'El vehículo relacionado está inactivo o en mantenimiento.');
+        $trips = $this->rows("SELECT DISTINCT re.id_recorrido FROM recorrido re JOIN participa p ON p.id_recorrido = re.id_recorrido
+            JOIN usa u ON u.id_usa = p.id_usa WHERE re.estado IN ('Pendiente','En Proceso')
+            AND (u.id_cuadrilla = ? OR u.id_vehiculo = ?)" . $lock, [$squad, $vehicle['id_vehiculo']]);
+        if (count($trips) !== 1 || (int) $trips[0]['id_recorrido'] !== $trip) $this->fail(409, 'La cuadrilla o el vehículo tienen más de un recorrido operativo.');
+        $duplicates = $this->rows('SELECT id_usa FROM usa WHERE id_cuadrilla = ? AND id_vehiculo = ?' . $lock, [$squad, $vehicle['id_vehiculo']]);
+        if (count($duplicates) !== 1) $this->fail(409, 'La relación entre cuadrilla y vehículo está duplicada.');
+        return ['id_cuadrilla' => $squad, 'nombre' => $group['nombre'], 'turno' => $group['turno'], 'id_recorrido' => $trip,
+            'estado_recorrido' => $row['estado'], 'ruta_nombre' => $row['ruta_nombre'], 'id_usa' => $use,
+            'id_vehiculo' => (int) $vehicle['id_vehiculo'], 'matricula' => $vehicle['matricula'], 'estado_vehiculo' => $vehicle['estado']];
+    }
+
     public function asignarRecorrido(int $actor, int $squad, int $trip, int $use): array
     {
         return $this->transaction(function () use ($actor, $squad, $trip, $use) {
