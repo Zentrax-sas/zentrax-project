@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/RecoleccionOperativa.php';
+require_once __DIR__ . '/../models/Incidencia.php';
 require_once __DIR__ . '/../helpers/auth.php';
 
 class RecoleccionController
@@ -18,6 +19,7 @@ class RecoleccionController
             return $this->failure(401, 'No autenticado.');
         }
         if (!hasEffectivePermission('recorrido.consultar', ['LOGISTICA', 'OPERACIONES'])) return $this->failure(403, 'No tenés permiso para consultar recolección.');
+        if (($query['view'] ?? null) === 'incidencias_propias') return $this->consultarIncidenciasPropias($query, $method, (int) $user['id_usuario']);
         $admin = hasEffectivePermission('cuadrilla.consultar', ['OPERACIONES']) && hasEffectivePermission('cuadrilla.modificar', ['OPERACIONES']);
         if (!in_array($query['view'] ?? 'propia', ['propia', 'administracion', 'integrantes', 'permisos', 'asignables'], true)) return $this->failure(400, 'Vista inválida.');
         if (($query['view'] ?? '') === 'administracion' && !$admin) return $this->failure(403, 'La consulta de otras cuadrillas requiere permiso de gestión de cuadrillas.');
@@ -84,6 +86,61 @@ class RecoleccionController
             return $this->failure(503, 'No se pudo consultar la base de datos.');
         }
     }
+    private function consultarIncidenciasPropias(array $query, string $method, int $user): array
+    {
+        if ($method !== 'GET') return $this->failure(405, 'Método no permitido.');
+        if (array_diff(array_keys($query), ['view', 'id_incidencia', 'estado', 'page', 'limit'])) {
+            return $this->failure(400, 'Parámetros no admitidos. La identidad y la cuadrilla se obtienen de la sesión y pertenencia vigente.');
+        }
+        foreach (['id_incidencia' => 2147483647, 'page' => 1000000, 'limit' => 100] as $field => $max) {
+            if (array_key_exists($field, $query) && (!is_scalar($query[$field])
+                || !preg_match('/^[1-9][0-9]*$/D', (string) $query[$field]) || (float) $query[$field] > $max)) {
+                return $this->failure(400, 'IDs y paginación deben ser enteros positivos dentro del rango permitido.');
+            }
+        }
+        if (array_key_exists('estado', $query) && !in_array($query['estado'], ['Pendiente', 'En Proceso', 'Resuelta'], true)) {
+            return $this->failure(400, 'Estado de incidencia inválido.');
+        }
+        $id = isset($query['id_incidencia']) ? (int) $query['id_incidencia'] : null;
+        if ($id !== null && array_intersect(array_keys($query), ['estado', 'page', 'limit'])) {
+            return $this->failure(400, 'El detalle no admite filtros ni paginación.');
+        }
+        if (!hasEffectivePermission('recorrido.consultar', ['OPERACIONES']) || !$this->canOperate()) {
+            return $this->failure(403, 'No tenés permisos operativos vigentes en OPERACIONES.');
+        }
+        if (!$this->db) return $this->failure(503, 'No se pudo consultar la base de datos.');
+        try {
+            $model = new RecoleccionOperativa($this->db);
+            if (!$model->usuarioActivo($user)) return $this->failure(401, 'La sesión no corresponde a un usuario activo.');
+            // También para TI: la excepción general no reemplaza la elegibilidad operativa.
+            if (!$model->elegibilidad($user)['elegible']) return $this->failure(403, 'No tenés permisos operativos vigentes en OPERACIONES.');
+            $member = $model->pertenencia($user);
+            if (!$member) return $this->failure(409, 'No tenés pertenencia vigente a una cuadrilla.', 'sin_pertenencia');
+            $page = $id !== null ? 1 : (int) ($query['page'] ?? 1);
+            $limit = $id !== null ? 1 : (int) ($query['limit'] ?? 20);
+            $stmt = (new Incidencia($this->db))->readOwn($user, (int) $member['id_cuadrilla'], $id, $page, $limit, $query['estado'] ?? null);
+            if (!$stmt) return $this->failure(503, 'No se pudieron consultar las incidencias propias.');
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if ($id !== null && !$rows) return $this->failure(404, 'Incidencia no accesible para esta cuadrilla.');
+            $hasMore = count($rows) > $limit;
+            $rows = array_slice($rows, 0, $limit);
+            foreach ($rows as &$row) {
+                $row['id_incidencia'] = (int) $row['id_incidencia'];
+                foreach (['id_contenedor', 'id_ruta'] as $field) $row[$field] = $row[$field] === null ? null : (int) $row[$field];
+                if (is_numeric($row['latitud']) && is_numeric($row['longitud'])
+                    && abs((float) $row['latitud']) <= 90 && abs((float) $row['longitud']) <= 180) {
+                    $row['latitud'] = (float) $row['latitud']; $row['longitud'] = (float) $row['longitud'];
+                } else {
+                    $row['latitud'] = $row['longitud'] = $row['ubicacion_origen'] = null;
+                }
+            }
+            return ['success' => true, 'statusCode' => 200, 'data' => $rows,
+                'meta' => ['page' => $page, 'limit' => $limit, 'has_more' => $hasMore]];
+        } catch (PDOException $e) {
+            return $this->failure(503, 'No se pudieron consultar las incidencias propias.');
+        }
+    }
+
     private function canAssignTrips(): bool
     {
         return hasEffectivePermission('cuadrilla.consultar', ['OPERACIONES']) && hasEffectivePermission('cuadrilla.modificar', ['OPERACIONES'])

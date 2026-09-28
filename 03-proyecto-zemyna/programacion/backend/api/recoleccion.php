@@ -14,12 +14,13 @@ if ($db && !empty($_SESSION['usuario']['id_usuario'])) {
 }
 $controller = new RecoleccionController($db);
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-if ($method === 'POST') {
+$ownIncidents = ($_GET['view'] ?? null) === 'incidencias_propias';
+if ($method === 'POST' && !$ownIncidents) {
     $body = json_decode(file_get_contents('php://input'), true);
     $response = !is_array($body) || json_last_error() !== JSON_ERROR_NONE
         ? ['success' => false, 'statusCode' => 400, 'message' => 'JSON inválido.'] : $controller->modificar($body);
 } else $response = $controller->consultar($_GET, $method);
 http_response_code($response['statusCode']);
 header('Cache-Control: no-store');
-if ($response['statusCode'] === 405) header('Allow: GET, POST');
+if ($response['statusCode'] === 405) header($ownIncidents ? 'Allow: GET' : 'Allow: GET, POST');
 echo json_encode($response, JSON_UNESCAPED_UNICODE);

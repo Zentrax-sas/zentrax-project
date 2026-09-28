@@ -24,10 +24,28 @@ class Incidencia {
     }
 
     public function read($id = null, $page = 1, $limit = 20, $trackingNumber = null, $estado = null, $prioridad = null, array $filters = [], bool $lookahead = false) {
+        return $this->readQuery($id, $page, $limit, $trackingNumber, $estado, $prioridad, $filters, $lookahead);
+    }
+
+    /** Usuario y cuadrilla provienen de la sesión/pertenencia, nunca del request. */
+    public function readOwn(int $user, int $squad, ?int $id, int $page, int $limit, ?string $estado) {
+        $filters = $id === null && $estado === null ? ['activas' => '1'] : [];
+        return $this->readQuery($id, $page, $limit, null, $estado, null, $filters, true, [$user, $squad]);
+    }
+
+    private function readQuery($id, $page, $limit, $trackingNumber, $estado, $prioridad, array $filters, bool $lookahead, ?array $ownership = null) {
         if (!$this->conn) return null;
 
         $conditions = [];
         $params = [];
+        if ($ownership !== null) {
+            $conditions[] = 'i.id_cuadrilla = :own_squad';
+            // Revalidar la pertenencia también en el SELECT: un traslado no amplía el alcance.
+            $conditions[] = 'EXISTS (SELECT 1 FROM usuario_cuadrilla uc WHERE uc.id_usuario = :own_user
+                AND uc.id_cuadrilla = i.id_cuadrilla AND uc.fecha_fin IS NULL)';
+            $params[':own_user'] = $ownership[0];
+            $params[':own_squad'] = $ownership[1];
+        }
         foreach (['id_incidencia' => $id, 'tracking_number' => $trackingNumber,
                   'estado' => $estado, 'prioridad' => $prioridad] as $column => $value) {
             if ($value !== null && $value !== '') {
@@ -49,12 +67,20 @@ class Incidencia {
 
         $offset = ($page - 1) * $limit;
 
-        $query = "SELECT i.*,
+        $fields = $ownership === null ? "i.*,
                          c.codigo AS contenedor_codigo, c.direccion AS contenedor_direccion,
                          r.nombre AS ruta_nombre,
                          q.nombre AS cuadrilla_nombre,
                          u.nombre AS usuario_nombre,
-                         u.apellido AS usuario_apellido
+                         u.apellido AS usuario_apellido" : "i.id_incidencia, i.tracking_number, i.estado, i.prioridad,
+                         i.tipo_problema, i.descripcion, i.fecha_reporte, i.fecha_resolucion,
+                         i.id_contenedor, c.codigo AS contenedor_codigo, c.direccion AS contenedor_direccion,
+                         r.id_ruta, r.nombre AS ruta_nombre,
+                         COALESCE(i.latitud, c.latitud) AS latitud, COALESCE(i.longitud, c.longitud) AS longitud,
+                         CASE WHEN i.latitud IS NOT NULL AND i.longitud IS NOT NULL THEN 'problema'
+                              WHEN c.latitud IS NOT NULL AND c.longitud IS NOT NULL THEN 'contenedor'
+                              ELSE NULL END AS ubicacion_origen";
+        $query = "SELECT " . $fields . "
                   FROM " . $this->table_name . " i
                   LEFT JOIN contenedor c ON c.id_contenedor = i.id_contenedor
                   LEFT JOIN ruta r ON r.id_ruta = COALESCE(i.id_ruta, c.id_ruta)
