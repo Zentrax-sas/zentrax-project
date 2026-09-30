@@ -40,7 +40,7 @@ class LoginNavigationContractTest extends TestCase
     public function testRedirigeSolamenteAlPanelTrasValidarRol(): void
     {
         $validation = strpos($this->source, 'if (!tieneRolInternoVigente(json.data))');
-        $redirect = strpos($this->source, "window.location.href = buildFrontendUrl('admin.html')");
+        $redirect = strpos($this->source, "window.location.replace(buildFrontendUrl('admin.html'))");
         $this->assertNotFalse($validation);
         $this->assertNotFalse($redirect);
         $this->assertGreaterThan($validation, $redirect);
@@ -57,6 +57,17 @@ class LoginNavigationContractTest extends TestCase
     public function testRolVacioODesconocidoMuestraErrorYDetieneElFlujo(): void
     {
         $this->assertStringContainsString('Tu cuenta no tiene un rol interno vigente reconocido.', $this->source);
-        $this->assertMatchesRegularExpression('/if \(!tieneRolInternoVigente\(json\.data\)\) \{[\s\S]*?return;[\s\S]*?\}/', $this->source);
+        $this->assertMatchesRegularExpression('/if \(!tieneRolInternoVigente\(json\.data\)\) \{[\s\S]*?return false;[\s\S]*?\}/', $this->source);
+    }
+    public function testComportamientoLoginYSesionEnJavaScript(): void
+    {
+        $process = proc_open(['node', '--test', __DIR__ . '/../../frontend/tests/login-session.test.cjs'],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        $this->assertIsResource($process);
+        fclose($pipes[0]);
+        $output = stream_get_contents($pipes[1]); $errors = stream_get_contents($pipes[2]);
+        fclose($pipes[1]); fclose($pipes[2]);
+        $this->assertSame(0, proc_close($process), $output . $errors);
+        $this->assertStringContainsString('# fail 0', $output);
     }
 }

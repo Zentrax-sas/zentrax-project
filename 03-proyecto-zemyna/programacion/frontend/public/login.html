@@ -6,6 +6,7 @@
     <link rel="icon" href="assets/logo.jpeg" type="image/jpeg">
     <link rel="stylesheet" href="../src/styles/login.css">
     <style>
+        .login-form[hidden] { display: none; }
         .captcha-row {
             margin: 20px 0;
         }
@@ -55,8 +56,10 @@
             </a>
             <h1 style="font-size: 24px; font-weight: 600; margin: 15px 0 10px; line-height: 1.4; max-width: 280px; color: #ffffff;">Sistema de Gestión de Residuos Urbanos</h1>
             <p style="font-size: 13px; color: #888888; margin: 8px 0 0; font-weight: 400;">Montevideo en tiempo real.</p>
+            <p id="session-status" role="status">Comprobando sesión…</p>
+            <noscript>Activá JavaScript para iniciar sesión.</noscript>
         </div>
-        <div class="login-form">
+        <div class="login-form" id="login-panel" hidden>
             <h2>Iniciar Sesión</h2>
             <form id="login-form">
                 <label for="email">Email</label>
@@ -108,8 +111,43 @@
         });
     }
 
+    function redirigirUsuarioAutenticado(json) {
+        if (!tieneRolInternoVigente(json.data)) {
+            document.getElementById('login-message').textContent = 'Tu cuenta no tiene un rol interno vigente reconocido.';
+            return false;
+        }
+        window.location.replace(buildFrontendUrl('admin.html'));
+        return true;
+    }
+
+    let comprobandoSesion = true;
+    async function comprobarSesionExistente() {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 8000);
+        let redirigiendo = false;
+        try {
+            const response = await fetch(buildApiUrl('/backend/api/session.php', { cacheBust: false }), {
+                credentials: 'same-origin', cache: 'no-store', signal: controller.signal
+            });
+            if (!response.ok) return;
+            const json = await response.json();
+            if (json?.success !== true || !Number.isInteger(json.data?.id_usuario) || json.data.id_usuario <= 0) return;
+            redirigiendo = redirigirUsuarioAutenticado(json);
+        } catch (error) {
+            document.getElementById('login-message').textContent = 'No se pudo comprobar la sesión. Podés intentar iniciar sesión.';
+        } finally {
+            window.clearTimeout(timeout);
+            if (!redirigiendo) {
+                comprobandoSesion = false;
+                document.getElementById('session-status').hidden = true;
+                document.getElementById('login-panel').hidden = false;
+            }
+        }
+    }
+
     document.getElementById('login-form').addEventListener('submit', async function (event) {
         event.preventDefault();
+        if (comprobandoSesion) return;
         const message = document.getElementById('login-message');
         message.textContent = 'Iniciando sesión...';
 
@@ -131,13 +169,8 @@
                 throw new Error(json.message || 'Error al iniciar sesión');
             }
 
-            if (!tieneRolInternoVigente(json.data)) {
-                message.textContent = 'Tu cuenta no tiene un rol interno vigente reconocido.';
-                return;
-            }
-
             message.textContent = 'Sesión iniciada correctamente.';
-            window.location.href = buildFrontendUrl('admin.html');
+            redirigirUsuarioAutenticado(json);
         } catch (error) {
             if (error instanceof TypeError && error.message.toLowerCase().includes('fetch')) {
                 message.textContent = 'No se pudo conectar con el backend. Verifica Apache en XAMPP y abre la app con http://localhost, no con file://.';
@@ -146,6 +179,7 @@
             }
         }
     });
+    if (window.location.protocol !== 'file:') comprobarSesionExistente();
     </script>
 </body>
 </html>
