@@ -3,8 +3,8 @@
 -- Este archivo debe usarse como base para una instalación nueva.
 
 -- Schema oficial Zemyna — DER v0.9 (ZTX-DOC-ISW-001 / ZTX-DOC-ISW-003)
--- MariaDB 10.4 compatible — 28 tablas (v17)
--- ADVERTENCIA: este archivo elimina y recrea las 28 tablas de la base
+-- MariaDB 10.4 compatible — 29 tablas (v18)
+-- ADVERTENCIA: este archivo elimina y recrea las 29 tablas de la base
 -- seleccionada. No crea, elimina ni selecciona una base por nombre. El operador
 -- debe elegir el destino expresamente mediante la opcion --database del cliente.
 -- No ejecutar sobre una base que contenga datos que deban conservarse.
@@ -28,7 +28,7 @@ ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS
     sesion, mantenimiento, solicitud, maquinaria, vertedero, acopio, foto,
-    denuncia, incidencia, atencion_contenedor, usuario_cuadrilla, participa, recorrido, usa, cuadrilla, vehiculo,
+    denuncia, atencion_incidencia, incidencia, atencion_contenedor, usuario_cuadrilla, participa, recorrido, usa, cuadrilla, vehiculo,
     geocodificacion_cache, contenedor, usuario_rol, rol_permiso, permiso,
     sector, rol, usuario, ruta, tipo_residuo, centro, vecino;
 SET FOREIGN_KEY_CHECKS = 1;
@@ -739,3 +739,40 @@ CREATE TABLE IF NOT EXISTS atencion_contenedor (
     CONSTRAINT fk_atencion_contenedor FOREIGN KEY (id_contenedor) REFERENCES contenedor(id_contenedor),
     CONSTRAINT fk_atencion_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- v18: F4.2. MariaDB 10.4. Aplicar sin escritores concurrentes y con respaldo.
+-- DDL hace commit implícito. No reconstruye asignaciones ni hitos históricos.
+CREATE TABLE IF NOT EXISTS atencion_incidencia (
+    id_atencion_incidencia INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_incidencia INT NOT NULL,
+    id_cuadrilla INT NOT NULL,
+    estado ENUM('Asignada','Aceptada','En atención','Finalizada','Rechazada','Interrumpida') NOT NULL,
+    origen ENUM('Asignacion','Reapertura','Reinicio administrativo','Migracion') NOT NULL,
+    fecha_registro DATETIME NOT NULL,
+    id_usuario_registra INT DEFAULT NULL,
+    fecha_aceptacion DATETIME DEFAULT NULL,
+    id_usuario_acepta INT DEFAULT NULL,
+    fecha_inicio DATETIME DEFAULT NULL,
+    id_usuario_inicia INT DEFAULT NULL,
+    fecha_cierre DATETIME DEFAULT NULL,
+    id_usuario_cierra INT DEFAULT NULL,
+    motivo_cierre VARCHAR(500) DEFAULT NULL,
+    incidencia_abierta INT GENERATED ALWAYS AS (IF(fecha_cierre IS NULL, id_incidencia, NULL)) PERSISTENT,
+    UNIQUE KEY uq_ai_abierta (incidencia_abierta),
+    KEY idx_ai_historial (id_incidencia, id_atencion_incidencia),
+    CONSTRAINT fk_ai_incidencia FOREIGN KEY (id_incidencia) REFERENCES incidencia(id_incidencia) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_cuadrilla FOREIGN KEY (id_cuadrilla) REFERENCES cuadrilla(id_cuadrilla) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_registra FOREIGN KEY (id_usuario_registra) REFERENCES usuario(id_usuario) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_acepta FOREIGN KEY (id_usuario_acepta) REFERENCES usuario(id_usuario) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_inicia FOREIGN KEY (id_usuario_inicia) REFERENCES usuario(id_usuario) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_cierra FOREIGN KEY (id_usuario_cierra) REFERENCES usuario(id_usuario) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_origen CHECK ((origen='Migracion' AND id_usuario_registra IS NULL) OR (origen<>'Migracion' AND id_usuario_registra IS NOT NULL)),
+    CONSTRAINT chk_ai_acepta CHECK ((fecha_aceptacion IS NULL AND id_usuario_acepta IS NULL) OR (fecha_aceptacion IS NOT NULL AND id_usuario_acepta IS NOT NULL)),
+    CONSTRAINT chk_ai_inicia CHECK ((fecha_inicio IS NULL AND id_usuario_inicia IS NULL) OR (fecha_inicio IS NOT NULL AND id_usuario_inicia IS NOT NULL AND fecha_aceptacion IS NOT NULL)),
+    CONSTRAINT chk_ai_cierra CHECK ((fecha_cierre IS NULL AND id_usuario_cierra IS NULL AND estado IN ('Asignada','Aceptada','En atención')) OR (fecha_cierre IS NOT NULL AND id_usuario_cierra IS NOT NULL AND estado IN ('Finalizada','Rechazada','Interrumpida'))),
+    CONSTRAINT chk_ai_hitos CHECK ((estado IN ('Asignada','Rechazada') AND fecha_aceptacion IS NULL AND fecha_inicio IS NULL) OR (estado='Aceptada' AND fecha_aceptacion IS NOT NULL AND fecha_inicio IS NULL) OR (estado IN ('En atención','Finalizada') AND fecha_aceptacion IS NOT NULL AND fecha_inicio IS NOT NULL) OR estado='Interrumpida'),
+    CONSTRAINT chk_ai_motivo CHECK ((estado IN ('Rechazada','Interrumpida') AND motivo_cierre IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_cierre)) BETWEEN 1 AND 500) OR (estado NOT IN ('Rechazada','Interrumpida') AND motivo_cierre IS NULL)),
+    CONSTRAINT chk_ai_fechas CHECK ((fecha_aceptacion IS NULL OR fecha_aceptacion>=fecha_registro) AND (fecha_inicio IS NULL OR fecha_inicio>=fecha_aceptacion) AND (fecha_cierre IS NULL OR fecha_cierre>=COALESCE(fecha_inicio,fecha_aceptacion,fecha_registro)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Aplicar v18 después de cargar roles/permisos para conceder incidencia.operar.

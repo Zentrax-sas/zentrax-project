@@ -125,6 +125,9 @@ class RecoleccionController
             $hasMore = count($rows) > $limit;
             $rows = array_slice($rows, 0, $limit);
             foreach ($rows as &$row) {
+                $row['atencion'] = $row['atencion_id'] === null ? null : [
+                    'id_atencion_incidencia' => (int)$row['atencion_id'], 'estado' => $row['atencion_estado']];
+                unset($row['atencion_id'], $row['atencion_estado']);
                 $row['id_incidencia'] = (int) $row['id_incidencia'];
                 foreach (['id_contenedor', 'id_ruta'] as $field) $row[$field] = $row[$field] === null ? null : (int) $row[$field];
                 if (is_numeric($row['latitud']) && is_numeric($row['longitud'])
@@ -160,6 +163,9 @@ class RecoleccionController
         $user = $_SESSION['usuario']['id_usuario'] ?? null;
         if (!filter_var($user, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])) return $this->failure(401, 'No autenticado.');
         $action = $body['accion'] ?? '';
+        if (in_array($action, ['aceptar_incidencia', 'rechazar_incidencia', 'iniciar_atencion_incidencia', 'finalizar_atencion_incidencia'], true)) {
+            return $this->operarIncidencia((int)$user, $body);
+        }
         $assignment = $action === 'asignar_recorrido';
         $membership = in_array($action, ['asignar', 'trasladar', 'finalizar_pertenencia'], true);
         if ($assignment ? !$this->canAssignTrips() : ($membership ? !$this->canMembers(true) : !$this->canOperate())) return $this->failure(403, 'No tenés permiso para esta operación.');
@@ -186,6 +192,36 @@ class RecoleccionController
         } catch (PDOException $e) {
             if (in_array((int) ($e->errorInfo[1] ?? 0), [1062, 1205, 1213], true)) return $this->failure(409, 'La operación entró en conflicto. Volvé a consultar.');
             return $this->failure(503, 'No se pudo guardar la operación. No se aplicaron cambios parciales.');
+        }
+    }
+
+    private function operarIncidencia(int $user, array $body): array
+    {
+        $allowed = ['accion', 'id_incidencia', 'id_atencion_incidencia', 'estado_operativo_esperado'];
+        if ($body['accion'] === 'rechazar_incidencia') $allowed[] = 'motivo';
+        if (array_diff(array_keys($body), $allowed)) return $this->failure(400, 'No se admiten identidades operativas ni fechas del cliente.');
+        foreach (['id_incidencia', 'id_atencion_incidencia'] as $field) {
+            if (!isset($body[$field]) || (!is_int($body[$field]) && !is_string($body[$field])) || !preg_match('/^[1-9][0-9]*$/D', (string)$body[$field]) || (float)$body[$field] > 2147483647) {
+                return $this->failure(400, 'IDs positivos obligatorios.');
+            }
+        }
+        if (!in_array($body['estado_operativo_esperado'] ?? null, ['Asignada','Aceptada','En atención','Finalizada','Rechazada','Interrumpida'], true)) return $this->failure(400, 'Estado operativo esperado inválido.');
+        $reason = null;
+        if ($body['accion'] === 'rechazar_incidencia') {
+            if (!is_string($body['motivo'] ?? null)) return $this->failure(400, 'Indicá el motivo del rechazo.');
+            $reason = trim($body['motivo']);
+            if ($reason === '' || mb_strlen($reason, 'UTF-8') > 500) return $this->failure(400, 'Indicá un motivo de hasta 500 caracteres.');
+        }
+        if (!$this->db) return $this->failure(503, 'No se pudo consultar la base de datos.');
+        try {
+            $data = (new AtencionIncidencia($this->db))->operate($user, (int)$body['id_incidencia'], (int)$body['id_atencion_incidencia'], $body['estado_operativo_esperado'], $body['accion'], $reason);
+            return ['success'=>true, 'statusCode'=>200, 'data'=>$data];
+        } catch (DomainException $e) {
+            $code = $e->getCode() === 409 ? ($e->getMessage() === 'No tenés pertenencia vigente a una cuadrilla.' ? 'sin_pertenencia' : 'conflicto_operativo') : '';
+            return $this->failure($e->getCode(), $e->getMessage(), $code);
+        } catch (PDOException $e) {
+            if (in_array((int)($e->errorInfo[1] ?? 0), [1062,1205,1213], true)) return $this->failure(409, 'La operación entró en conflicto. Volvé a consultar.', 'conflicto_operativo');
+            return $this->failure(503, 'No se pudo guardar la atención. No se aplicaron cambios parciales.');
         }
     }
 }

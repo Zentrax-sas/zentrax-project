@@ -1,6 +1,7 @@
 <?php
 
 use PHPUnit\Framework\TestCase;
+require_once __DIR__ . '/fixtures/atencion_incidencia.php';
 
 require_once __DIR__ . '/../controllers/IncidenciaController.php';
 
@@ -8,10 +9,13 @@ require_once __DIR__ . '/../controllers/IncidenciaController.php';
 final class IncidenciaAdminTest extends TestCase
 {
     private PDO $db;
+    private array $previousSession;
     private IncidenciaController $controller;
 
     protected function setUp(): void
     {
+        $this->previousSession = $_SESSION ?? [];
+        $_SESSION = ['usuario'=>['id_usuario'=>10]];
         $this->db = new PDO('sqlite::memory:');
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->db->exec("PRAGMA foreign_keys = ON;
@@ -54,8 +58,11 @@ final class IncidenciaAdminTest extends TestCase
             INSERT INTO usa VALUES (1, 1, 1);
             INSERT INTO recorrido VALUES (1, 9, 'Pendiente', '2026-09-01 10:00:00', NULL);
             INSERT INTO participa VALUES (1, 1, 1, NULL);");
+        createAttentionFixture($this->db);
         $this->controller = new IncidenciaController($this->db);
     }
+
+    protected function tearDown(): void { $_SESSION = $this->previousSession; }
 
     private function assignmentPayload(array $changes = []): array {
         return array_replace(['accion' => 'asignar', 'id_incidencia' => 1, 'id_cuadrilla' => 1, 'id_recorrido' => 1, 'id_usa' => 1,

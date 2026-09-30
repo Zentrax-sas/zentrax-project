@@ -256,7 +256,7 @@ class IncidenciaController {
         try {
             $this->incidencia->assignOperational((int) $data['id_incidencia'], isset($data['id_cuadrilla']) ? (int) $data['id_cuadrilla'] : null,
                 isset($data['id_recorrido']) ? (int) $data['id_recorrido'] : null, isset($data['id_usa']) ? (int) $data['id_usa'] : null,
-                isset($data['cuadrilla_esperada']) ? (int) $data['cuadrilla_esperada'] : null, $data['estado_esperado']);
+                isset($data['cuadrilla_esperada']) ? (int) $data['cuadrilla_esperada'] : null, $data['estado_esperado'], (int)($_SESSION['usuario']['id_usuario'] ?? 0));
             return ['success' => true, 'statusCode' => 200, 'data' => null, 'message' => 'Asignación actualizada correctamente.'];
         } catch (DomainException $e) { return $this->managementError($e->getCode(), $e->getMessage()); }
         catch (PDOException | PersistenceException $e) {
@@ -297,10 +297,12 @@ class IncidenciaController {
                 $data['longitud'] = $existing['data'][0]['longitud'] ?? null;
                 return $this->update($data);
             }
-            if ($changes && !$this->incidencia->updateManagement((int)$data['id_incidencia'], $changes)) {
+            if ($changes && !$this->incidencia->updateManagement((int)$data['id_incidencia'], $changes, (int)($_SESSION['usuario']['id_usuario'] ?? 0))) {
                 return $this->managementError(500, 'No se pudo actualizar la incidencia.');
             }
             return ['success' => true, 'data' => null, 'message' => 'Incidencia actualizada correctamente.', 'errors' => [], 'statusCode' => 200];
+        } catch (DomainException $exception) {
+            return $this->managementError($exception->getCode(), $exception->getMessage());
         } catch (PDOException | PersistenceException $exception) {
             return $this->managementError(500, 'No se pudo actualizar la incidencia.');
         }
@@ -497,6 +499,7 @@ class IncidenciaController {
             $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
             $hasMore = count($rows) > $limit;
             $rows = array_slice($rows, 0, $limit);
+            if ($id !== null && $rows) $rows[0]['atenciones'] = $this->incidencia->attentionHistory($id);
             if ($id !== null && $rows) $rows[0]['evidencias'] = $this->incidencia->evidence($id);
         } catch (PDOException | PersistenceException $exception) {
             return $this->managementError(500, 'No se pudieron cargar las incidencias.');
@@ -747,7 +750,7 @@ class IncidenciaController {
                 ? (int)$data['id_usuario']
                 : null;
 
-        if ($this->incidencia->update()) {
+        if ($this->incidencia->update((int)($_SESSION['usuario']['id_usuario'] ?? 0))) {
             return [
                 "success" => true,
                 "data" => null,
@@ -775,6 +778,8 @@ class IncidenciaController {
             if ($this->incidencia->delete()) {
                 return ['success' => true, 'data' => null, 'message' => 'Incidencia eliminada correctamente.', 'errors' => [], 'statusCode' => 200];
             }
+        } catch (DomainException $exception) {
+            return $this->managementError($exception->getCode(), $exception->getMessage());
         } catch (PDOException | PersistenceException $exception) {
             return $this->managementError(500, 'No se pudo eliminar la incidencia.');
         }

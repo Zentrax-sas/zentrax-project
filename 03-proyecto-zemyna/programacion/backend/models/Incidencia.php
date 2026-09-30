@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/RecoleccionOperativa.php';
+require_once __DIR__ . '/AtencionIncidencia.php';
 
 class Incidencia {
     private $conn;
@@ -80,6 +81,10 @@ class Incidencia {
                          CASE WHEN i.latitud IS NOT NULL AND i.longitud IS NOT NULL THEN 'problema'
                               WHEN c.latitud IS NOT NULL AND c.longitud IS NOT NULL THEN 'contenedor'
                               ELSE NULL END AS ubicacion_origen";
+        if ($ownership !== null) {
+            $fields .= ", (SELECT a.id_atencion_incidencia FROM atencion_incidencia a WHERE a.id_incidencia=i.id_incidencia AND a.id_cuadrilla=i.id_cuadrilla ORDER BY a.id_atencion_incidencia DESC LIMIT 1) AS atencion_id,
+                (SELECT a.estado FROM atencion_incidencia a WHERE a.id_incidencia=i.id_incidencia AND a.id_cuadrilla=i.id_cuadrilla ORDER BY a.id_atencion_incidencia DESC LIMIT 1) AS atencion_estado";
+        }
         $query = "SELECT " . $fields . "
                   FROM " . $this->table_name . " i
                   LEFT JOIN contenedor c ON c.id_contenedor = i.id_contenedor
@@ -107,6 +112,10 @@ class Incidencia {
         if (!$this->conn) throw new PDOException('Sin conexión.');
         return ['rutas' => $this->conn->query('SELECT id_ruta, nombre, zona FROM ruta ORDER BY zona, nombre, id_ruta')->fetchAll(PDO::FETCH_ASSOC),
             'tipos' => $this->conn->query('SELECT DISTINCT tipo_problema FROM incidencia ORDER BY tipo_problema')->fetchAll(PDO::FETCH_COLUMN)];
+    }
+
+    public function attentionHistory(int $id): array {
+        return (new AtencionIncidencia($this->conn))->history($id);
     }
 
     public function evidence(int $id): array {
@@ -223,7 +232,7 @@ class Incidencia {
         return (new RecoleccionOperativa($this->conn))->opcionesIncidencia();
     }
 
-    public function assignOperational(int $id, ?int $squad, ?int $trip, ?int $use, ?int $expectedSquad, string $expectedState): void {
+    public function assignOperational(int $id, ?int $squad, ?int $trip, ?int $use, ?int $expectedSquad, string $expectedState, int $actor = 0): void {
         if (!$this->conn) throw new PDOException('Sin conexión.');
         $this->conn->beginTransaction();
         try {
@@ -237,6 +246,10 @@ class Incidencia {
             if ($currentSquad !== $expectedSquad || $current['estado'] !== $expectedState) throw new DomainException('La incidencia cambió. Volvé a abrir el detalle antes de asignar.', 409);
             if ($squad !== null) (new RecoleccionOperativa($this->conn))->validarOpcionIncidencia($squad, $trip, $use, true);
             if ($currentSquad === $squad) throw new DomainException('La incidencia ya tiene esa asignación. Volvé a consultar.', 409);
+            $attention = new AtencionIncidencia($this->conn);
+            $now = AtencionIncidencia::now();
+            $attention->interrupt($id, $actor, $squad === null ? 'Desasignación' : 'Reasignación', $now);
+            if ($squad !== null) $attention->register($id, $squad, $actor, 'Asignacion', $now);
             $stmt = $this->conn->prepare('UPDATE incidencia SET id_cuadrilla = ? WHERE id_incidencia = ?');
             if (!$stmt->execute([$squad, $id])) throw new PDOException('No se pudo asignar.');
             $this->conn->commit();
@@ -246,7 +259,7 @@ class Incidencia {
         }
     }
 
-    public function updateManagement(int $id, array $changes): bool {
+    public function updateManagement(int $id, array $changes, int $actor = 0): bool {
         if (!$this->conn) return false;
         $sets = [];
         $params = [':id' => $id];
@@ -262,7 +275,7 @@ class Incidencia {
             }
         }
         $stmt = $this->conn->prepare('UPDATE incidencia SET ' . implode(', ', $sets) . ' WHERE id_incidencia = :id');
-        return $stmt->execute($params);
+        return (new AtencionIncidencia($this->conn))->administrative($id, $changes['estado'] ?? null, $actor, fn() => $stmt->execute($params));
     }
 
     public function create() {
@@ -310,7 +323,7 @@ class Incidencia {
         return false;
     }
 
-    public function update() {
+    public function update(int $actor = 0) {
         if (!$this->conn) return false;
 
         $tieneContenedor = !empty($this->id_contenedor);
@@ -345,7 +358,7 @@ class Incidencia {
         $stmt->bindParam(':id_ruta', $this->id_ruta);
         $stmt->bindParam(':id_usuario', $this->id_usuario);
 
-        return $stmt->execute();
+        return (new AtencionIncidencia($this->conn))->administrative((int)$this->id_incidencia, $this->estado, $actor, fn() => $stmt->execute());
     }
 
     public function delete() {
@@ -357,6 +370,6 @@ class Incidencia {
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id_incidencia', $this->id_incidencia);
 
-        return $stmt->execute();
+        return (new AtencionIncidencia($this->conn))->delete((int)$this->id_incidencia, fn() => $stmt->execute());
     }
 }

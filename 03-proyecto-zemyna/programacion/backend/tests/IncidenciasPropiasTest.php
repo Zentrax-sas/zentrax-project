@@ -1,5 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
+require_once __DIR__ . '/fixtures/atencion_incidencia.php';
 require_once __DIR__ . '/../controllers/RecoleccionController.php';
 require_once __DIR__ . '/../controllers/IncidenciaController.php';
 
@@ -47,6 +48,7 @@ final class IncidenciasPropiasTest extends TestCase
                 (3,'INC-2026-00003','Resuelta','Alta','Contenedor Desbordado','Trabajo resuelto','2026-09-01 09:00:00','2026-09-03 12:00:00',1,NULL,1,NULL,NULL,NULL),
                 (4,'INC-2026-00004','Pendiente','Alta','Contenedor Desbordado','Reporte ajeno','2026-08-01 08:00:00',NULL,1,NULL,2,2,NULL,NULL),
                 (5,'INC-2026-00005','Pendiente','Alta','Contenedor Desbordado','Sin asignar','2026-08-01 08:00:00',NULL,1,NULL,NULL,NULL,NULL,NULL);");
+        createAttentionFixture($this->db);
         $this->user();
     }
 
@@ -85,7 +87,7 @@ final class IncidenciasPropiasTest extends TestCase
             'tipo_problema' => 'Contenedor Desbordado', 'descripcion' => 'Reporte propio',
             'fecha_reporte' => '2026-09-01 08:00:00', 'fecha_resolucion' => null,
             'id_contenedor' => 1, 'contenedor_codigo' => 'C-001', 'contenedor_direccion' => 'Calle de prueba 123',
-            'id_ruta' => 1, 'ruta_nombre' => 'Ruta del contenedor', 'latitud' => -34.9, 'longitud' => -56.1, 'ubicacion_origen' => 'contenedor',
+            'id_ruta' => 1, 'ruta_nombre' => 'Ruta del contenedor', 'latitud' => -34.9, 'longitud' => -56.1, 'ubicacion_origen' => 'contenedor', 'atencion' => null,
         ], $this->get(['id_incidencia' => 1])['data'][0]);
         $this->user(2);
         $this->assertSame([4], $this->ids());
