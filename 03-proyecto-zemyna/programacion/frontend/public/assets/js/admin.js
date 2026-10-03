@@ -328,7 +328,7 @@ async function cargarCamionesAdmin() {
       const unidad = `VH-${vehiculo.id_vehiculo}`;
       const busqueda = `${unidad} ${matricula} ${vehiculo.marca || ''} ${vehiculo.modelo || ''} ${estado}`.toLocaleLowerCase('es');
       const claseEstado = estadoFiltro === 'mantenimiento' ? 'state pause' : 'state';
-      return `<tr data-search="${escapeHtml(busqueda)}" data-status="${estadoFiltro}"><td><div class="asset-cell"><span class="asset-icon">▱</span><div><div class="asset-code">${escapeHtml(unidad)}</div><div class="asset-detail">${escapeHtml(vehiculo.marca)} ${escapeHtml(vehiculo.modelo)}</div></div></div></td><td>${escapeHtml(matricula)}</td><td>Tipo residuo #${escapeHtml(vehiculo.id_tipo_residuo)}</td><td>Sin asignar</td><td>Sin ruta</td><td><span class="${claseEstado}">${escapeHtml(estado)}</span></td><td><button class="table-action" type="button" data-action="edit-truck" data-id="${escapeHtml(vehiculo.id_vehiculo)}">Editar</button> <button class="table-action" type="button" data-action="delete-truck" data-id="${escapeHtml(vehiculo.id_vehiculo)}">Dar de baja</button></td></tr>`;
+      return `<tr data-search="${escapeHtml(busqueda)}" data-status="${estadoFiltro}"><td><div class="asset-cell"><span class="asset-icon">▱</span><div><div class="asset-code">${escapeHtml(unidad)}</div><div class="asset-detail">${escapeHtml(vehiculo.marca)} ${escapeHtml(vehiculo.modelo)}</div></div></div></td><td>${escapeHtml(matricula)}</td><td>${escapeHtml(vehiculo.funcion_operativa || 'Pendiente')} · Tipo residuo #${escapeHtml(vehiculo.id_tipo_residuo)}</td><td>Sin asignar</td><td>Sin ruta</td><td><span class="${claseEstado}">${escapeHtml(estado)}</span></td><td><button class="table-action" type="button" data-action="edit-truck" data-id="${escapeHtml(vehiculo.id_vehiculo)}">Editar</button> <button class="table-action" type="button" data-action="delete-truck" data-id="${escapeHtml(vehiculo.id_vehiculo)}">Dar de baja</button></td></tr>`;
     }).join('');
     count.textContent = `${vehiculos.length} ${vehiculos.length === 1 ? 'camión mostrado' : 'camiones mostrados'}`;
     empty.hidden = vehiculos.length !== 0;
@@ -516,6 +516,7 @@ document.addEventListener('click', async event => {
     truckForm.querySelector('[name="modelo"]').value = vehicle.modelo || '';
     truckForm.querySelector('[name="capacidad_carga"]').value = vehicle.capacidad_carga || '';
     truckForm.querySelector('[name="estado"]').value = vehicle.estado || 'Disponible';
+    truckForm.querySelector('[name="funcion_operativa"]').value = vehicle.funcion_operativa || '';
     truckForm.querySelector('[name="id_tipo_residuo"]').value = vehicle.id_tipo_residuo || '';
     truckForm.querySelector('button[type="submit"]').textContent = 'Actualizar vehículo';
     truckForm.querySelector('[name="matricula"]').focus();
@@ -809,6 +810,7 @@ truckForm?.addEventListener('submit', async event => {
   if (isVehicleUpdate) payload.id_vehiculo = idVehiculo;
   payload.capacidad_carga = Number(payload.capacidad_carga);
   payload.id_tipo_residuo = Number(payload.id_tipo_residuo);
+  payload.funcion_operativa = payload.funcion_operativa || null;
 
   try {
     const response = await fetch(buildApiUrl('/backend/api/vehiculos.php'), {

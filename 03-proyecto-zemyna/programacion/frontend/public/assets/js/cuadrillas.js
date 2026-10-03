@@ -35,6 +35,7 @@
   }
   function summary(data) {
     selected = data.cuadrilla; const trip = data.recorrido_actual;
+    window.VehicleAssignmentAdmin?.open(selected.id_cuadrilla);
     const card = node('article'); card.className = 'card squad-summary';
     card.append(node('h3', trip?.estado || 'Sin recorrido disponible'), node('p', `${data.integrantes_activos} integrantes activos · Turno ${selected.turno}`), node('p', `Vehículos: ${vehicles(data.vehiculos)}`));
     if (trip) card.append(node('h3', trip.ruta_nombre), node('p', progress(trip)), node('p', `Inicio: ${trip.fecha_inicio} · Fin: ${trip.fecha_fin || 'Sin finalizar'}`));
@@ -58,6 +59,7 @@
     catch (error) { if (current === version && error.name !== 'AbortError') { el('squadStatus').textContent = error.message; el('squadList').hidden = true; el('squadDetail').hidden = true; el('squadPaging').hidden = true; } }
   }
   function select(squad) {
+    window.VehicleAssignmentAdmin?.pause();
     if (saving) return; selected = squad; tripPage = 1; el('squadState').value = ''; el('squadTripDetail').replaceChildren(); setTab('summary');
     return load({ view: 'administracion', id_cuadrilla: squad.id_cuadrilla }, summary);
   }
@@ -212,6 +214,6 @@
     finally { busyTrip(false); }
   });
   async function open() { active = true; if (!await ready) { el('squadStatus').textContent = 'No tenés permiso para administrar cuadrillas.'; return; } if (active) { selected = null; await catalog(); } }
-  function pause() { active = false; version++; request?.abort(); dialogVersion++; dialogRequest?.abort(); }
+  function pause() { window.VehicleAssignmentAdmin?.pause(); active = false; version++; request?.abort(); dialogVersion++; dialogRequest?.abort(); }
   window.SquadAdmin = { open, pause };
 })();

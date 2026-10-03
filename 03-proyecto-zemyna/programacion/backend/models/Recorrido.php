@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/AsignacionVehiculo.php';
 
 class Recorrido {
     private $conn;
@@ -75,7 +76,7 @@ class Recorrido {
         return false;
     }
 
-    public function update() {
+    private function updateRow() {
         if (!$this->conn) return false;
 
         $query = "UPDATE " . $this->table_name . "
@@ -102,6 +103,26 @@ class Recorrido {
             if ($guard->fetchColumn() !== false) throw new DomainException('El recorrido tiene actividad registrada. No se puede alterar su historial desde el CRUD general.', 409);
         }
         return $ok;
+    }
+
+    public function update() {
+        if (!$this->conn) return false;
+        $this->conn->beginTransaction();
+        try {
+            $lock=$this->conn->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'?' FOR UPDATE':'';
+            $s=$this->conn->prepare('SELECT id_recorrido FROM recorrido WHERE id_recorrido=?'.$lock);
+            $s->execute([$this->id_recorrido]); $s->fetchAll();
+            if (in_array($this->estado,['Pendiente','En Proceso'],true)) {
+                $s=$this->conn->prepare('SELECT u.id_cuadrilla,u.id_vehiculo FROM participa p JOIN usa u ON u.id_usa=p.id_usa WHERE p.id_recorrido=? ORDER BY u.id_vehiculo'.$lock);
+                $s->execute([$this->id_recorrido]);
+                foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $pair) {
+                    $v=$this->conn->prepare('SELECT id_vehiculo FROM vehiculo WHERE id_vehiculo=?'.$lock);
+                    $v->execute([$pair['id_vehiculo']]); $v->fetchAll();
+                    (new AsignacionVehiculo($this->conn))->assertPair((int)$pair['id_cuadrilla'],(int)$pair['id_vehiculo']);
+                }
+            }
+            $result=$this->updateRow(); $this->conn->commit(); return $result;
+        } catch (Throwable $e) { if ($this->conn->inTransaction()) $this->conn->rollBack(); throw $e; }
     }
 
     public function delete() {

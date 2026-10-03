@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/fixtures/asignacion_vehiculo.php';
 
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/fixtures/atencion_incidencia.php';
@@ -18,6 +19,7 @@ final class IncidenciaAdminTest extends TestCase
         $_SESSION = ['usuario'=>['id_usuario'=>10]];
         $this->db = new PDO('sqlite::memory:');
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        createAsignacionVehiculoFixture($this->db);
         $this->db->exec("PRAGMA foreign_keys = ON;
             CREATE TABLE contenedor (id_contenedor INTEGER PRIMARY KEY, codigo TEXT);
             CREATE TABLE ruta (id_ruta INTEGER PRIMARY KEY, nombre TEXT);

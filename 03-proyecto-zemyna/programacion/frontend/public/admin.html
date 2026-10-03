@@ -270,6 +270,7 @@
               <label>Modelo<input name="modelo" maxlength="50" required></label>
               <label>Capacidad de carga<input name="capacidad_carga" type="number" min="0.01" step="0.01" required></label>
               <label>Estado<select name="estado" required><option value="Disponible">Disponible</option><option value="En Servicio">En Servicio</option><option value="En Mantenimiento">En Mantenimiento</option></select></label>
+              <label>Función habitual<select name="funcion_operativa"><option value="">Pendiente</option><option>REGULAR</option><option>APOYO</option></select></label>
               <label>ID tipo de residuo<input name="id_tipo_residuo" type="number" min="1" step="1" required></label>
             </div>
             <div class="form-actions"><button class="primary-button" type="submit">Guardar vehículo</button><button class="link-button" id="cancelTruckButton" type="button">Cancelar</button></div>
@@ -326,6 +327,7 @@
               <button id="squadSummaryTab" type="button" aria-pressed="true">Resumen</button><button id="squadMembersTab" type="button" aria-pressed="false" hidden>Integrantes</button><button id="squadTripsTab" type="button" aria-pressed="false">Recorridos</button>
             </nav>
             <div id="squadSummary"></div>
+            <section id="vehicleAssignment" hidden aria-label="Utilización de vehículo"></section>
             <section id="squadMembers" hidden><div class="view-heading"><h3>Integrantes activos</h3><button class="primary-button" id="squadAdd" type="button" hidden>Agregar operario</button></div>
               <a href="#usuarios" id="squadUsers" hidden>Gestionar usuarios</a><div id="squadActiveMembers"></div>
               <details><summary>Historial de integrantes</summary><div id="squadHistory"></div></details>
@@ -398,7 +400,8 @@
   <script src="assets/js/user-eligibility.js"></script>
   <script src="assets/js/admin.js?v=7"></script>
   <script src="assets/js/dashboard.js"></script>
-  <script src="assets/js/cuadrillas.js?v=2"></script>
+  <script src="assets/js/asignaciones-vehiculo.js"></script>
+  <script src="assets/js/cuadrillas.js?v=3"></script>
   <script src="assets/js/incidence-report.js"></script>
   <script src="assets/js/crew-report.js"></script>
 </body>

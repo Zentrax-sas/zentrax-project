@@ -31,6 +31,7 @@ class VehiculoController {
     }
 
     private function writeExceptionResponse(PDOException $exception, string $fallbackMessage) {
+        if (in_array((int) ($exception->errorInfo[1] ?? 0), [1205, 1213], true)) return $this->response(false, null, 'Conflicto concurrente. Volve a consultar.', [], 409);
         if ($this->isDuplicateKey($exception)) {
             return $this->response(false, null, 'La matrícula ya está registrada.', ['La matrícula ya existe.'], 409);
         }
@@ -79,10 +80,13 @@ class VehiculoController {
         if ($this->normalizePositiveId($data['id_tipo_residuo'] ?? null) === null) {
             $errors[] = 'El id_tipo_residuo debe ser un entero positivo.';
         }
+        if (!in_array($data['funcion_operativa'] ?? null, [null, 'REGULAR', 'APOYO'], true)) $errors[] = 'La funcion operativa debe ser REGULAR, APOYO o null.';
         return $errors;
     }
 
     private function assignPayload($data) {
+        $this->vehiculo->funcion_operativa = $data['funcion_operativa'] ?? null;
+        $this->vehiculo->actualiza_funcion = array_key_exists('funcion_operativa', $data);
         $this->vehiculo->matricula = $this->normalizeString($data['matricula']);
         $this->vehiculo->marca = $this->normalizeString($data['marca']);
         $this->vehiculo->modelo = $this->normalizeString($data['modelo']);
@@ -159,6 +163,7 @@ class VehiculoController {
         catch (PDOException $exception) {
             return $this->writeExceptionResponse($exception, 'Error al actualizar el vehículo.');
         }
+        catch (DomainException $exception) { return $this->response(false, null, $exception->getMessage(), [], 409); }
         catch (PersistenceException $exception) { $updated = false; }
 
         if (!$updated) return $this->response(false, null, 'Error al actualizar el vehículo.', [], 500);
@@ -185,7 +190,9 @@ class VehiculoController {
 
         $this->vehiculo->id_vehiculo = $id;
         try { $deleted = $this->vehiculo->delete(); }
-        catch (PDOException | PersistenceException $exception) { $deleted = false; }
+        catch (DomainException $exception) { return $this->response(false, null, $exception->getMessage(), [], 409); }
+        catch (PDOException $exception) { return $this->writeExceptionResponse($exception, 'No se pudo dar de baja el vehículo.'); }
+        catch (PersistenceException $exception) { $deleted = false; }
 
         if (!$deleted) return $this->response(false, null, 'No se pudo dar de baja el vehículo.', [], 500);
         return $this->response(true, null, 'Vehículo dado de baja lógicamente.', [], 200);

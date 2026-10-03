@@ -3,8 +3,8 @@
 -- Este archivo debe usarse como base para una instalación nueva.
 
 -- Schema oficial Zemyna — DER v0.9 (ZTX-DOC-ISW-001 / ZTX-DOC-ISW-003)
--- MariaDB 10.4 compatible — 29 tablas (v18)
--- ADVERTENCIA: este archivo elimina y recrea las 29 tablas de la base
+-- MariaDB 10.4 compatible — 30 tablas (v19)
+-- ADVERTENCIA: este archivo elimina y recrea las 30 tablas de la base
 -- seleccionada. No crea, elimina ni selecciona una base por nombre. El operador
 -- debe elegir el destino expresamente mediante la opcion --database del cliente.
 -- No ejecutar sobre una base que contenga datos que deban conservarse.
@@ -28,7 +28,7 @@ ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS
     sesion, mantenimiento, solicitud, maquinaria, vertedero, acopio, foto,
-    denuncia, atencion_incidencia, incidencia, atencion_contenedor, usuario_cuadrilla, participa, recorrido, usa, cuadrilla, vehiculo,
+    denuncia, asignacion_vehiculo_operativa, atencion_incidencia, incidencia, atencion_contenedor, usuario_cuadrilla, participa, recorrido, usa, cuadrilla, vehiculo,
     geocodificacion_cache, contenedor, usuario_rol, rol_permiso, permiso,
     sector, rol, usuario, ruta, tipo_residuo, centro, vecino;
 SET FOREIGN_KEY_CHECKS = 1;
@@ -262,6 +262,8 @@ CREATE TABLE geocodificacion_cache (
 -- =====================================
 
 CREATE TABLE vehiculo (
+    funcion_operativa VARCHAR(7) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL,
+    CONSTRAINT chk_vehiculo_funcion CHECK (funcion_operativa IS NULL OR (BINARY funcion_operativa=BINARY 'REGULAR' AND OCTET_LENGTH(funcion_operativa)=7) OR (BINARY funcion_operativa=BINARY 'APOYO' AND OCTET_LENGTH(funcion_operativa)=5)),
     id_vehiculo INT NOT NULL AUTO_INCREMENT,
     id_tipo_residuo INT NOT NULL,
     matricula VARCHAR(10) NOT NULL,
@@ -776,3 +778,27 @@ CREATE TABLE IF NOT EXISTS atencion_incidencia (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Aplicar v18 después de cargar roles/permisos para conceder incidencia.operar.
+
+CREATE TABLE IF NOT EXISTS asignacion_vehiculo_operativa (
+    id_asignacion_vehiculo INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_cuadrilla INT NOT NULL,
+    id_vehiculo INT NOT NULL,
+    fecha_inicio DATETIME NOT NULL,
+    fecha_fin DATETIME DEFAULT NULL,
+    id_usuario_asigna INT NOT NULL,
+    id_usuario_finaliza INT DEFAULT NULL,
+    motivo_cierre VARCHAR(150) DEFAULT NULL,
+    cuadrilla_abierta INT GENERATED ALWAYS AS (IF(fecha_fin IS NULL,id_cuadrilla,NULL)) PERSISTENT,
+    vehiculo_abierto INT GENERATED ALWAYS AS (IF(fecha_fin IS NULL,id_vehiculo,NULL)) PERSISTENT,
+    UNIQUE KEY uq_avo_cuadrilla_abierta (cuadrilla_abierta),
+    UNIQUE KEY uq_avo_vehiculo_abierto (vehiculo_abierto),
+    KEY idx_avo_cuadrilla_historial (id_cuadrilla,fecha_inicio,id_asignacion_vehiculo),
+    KEY idx_avo_vehiculo_historial (id_vehiculo,fecha_inicio,id_asignacion_vehiculo),
+    CONSTRAINT fk_avo_cuadrilla FOREIGN KEY (id_cuadrilla) REFERENCES cuadrilla(id_cuadrilla) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_avo_vehiculo FOREIGN KEY (id_vehiculo) REFERENCES vehiculo(id_vehiculo) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_avo_asigna FOREIGN KEY (id_usuario_asigna) REFERENCES usuario(id_usuario) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_avo_finaliza FOREIGN KEY (id_usuario_finaliza) REFERENCES usuario(id_usuario) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT chk_avo_fechas CHECK (fecha_fin IS NULL OR fecha_fin>=fecha_inicio),
+    CONSTRAINT chk_avo_cierre CHECK ((fecha_fin IS NULL AND id_usuario_finaliza IS NULL AND motivo_cierre IS NULL) OR
+        (fecha_fin IS NOT NULL AND id_usuario_finaliza IS NOT NULL AND motivo_cierre IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_cierre)) BETWEEN 1 AND 150))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

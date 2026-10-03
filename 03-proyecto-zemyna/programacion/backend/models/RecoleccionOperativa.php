@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/Recoleccion.php';
+require_once __DIR__ . '/AsignacionVehiculo.php';
 
 /** Cambios atómicos: usuario -> cuadrilla -> recorrido. Nunca usa identidad del cuerpo. */
 class RecoleccionOperativa extends Recoleccion
@@ -149,6 +150,7 @@ class RecoleccionOperativa extends Recoleccion
         if ($link['hora_fin'] !== null) $this->fail(409, 'La participación en el recorrido ya finalizó.');
         $vehicle = $this->rows('SELECT id_vehiculo, matricula, estado, activo FROM vehiculo WHERE id_vehiculo = ?' . $lock, [$link['id_vehiculo']])[0] ?? null;
         if (!$vehicle || !(int) $vehicle['activo'] || $vehicle['estado'] === 'En Mantenimiento') $this->fail(409, 'El vehículo relacionado está inactivo o en mantenimiento.');
+        (new AsignacionVehiculo($this->db))->assertPair($squad, (int)$vehicle['id_vehiculo']);
         $trips = $this->rows("SELECT DISTINCT re.id_recorrido FROM recorrido re JOIN participa p ON p.id_recorrido = re.id_recorrido
             JOIN usa u ON u.id_usa = p.id_usa WHERE re.estado IN ('Pendiente','En Proceso')
             AND (u.id_cuadrilla = ? OR u.id_vehiculo = ?)" . $lock, [$squad, $vehicle['id_vehiculo']]);
@@ -173,6 +175,7 @@ class RecoleccionOperativa extends Recoleccion
             $vehicle = $this->rows('SELECT v.id_vehiculo, v.activo, v.estado FROM usa u JOIN vehiculo v ON v.id_vehiculo = u.id_vehiculo
                 WHERE u.id_usa = ? AND u.id_cuadrilla = ?' . $this->lock(), [$use, $squad])[0] ?? null;
             if (!$vehicle) $this->fail(404, 'Vehículo no relacionado con la cuadrilla seleccionada.');
+            (new AsignacionVehiculo($this->db))->assertPair($squad, (int)$vehicle['id_vehiculo']);
             if (!(int) $vehicle['activo'] || $vehicle['estado'] === 'En Mantenimiento') $this->fail(409, 'El vehículo no está disponible para operar.');
             if ($this->rows("SELECT re.id_recorrido FROM recorrido re JOIN participa p ON p.id_recorrido = re.id_recorrido
                 JOIN usa u ON u.id_usa = p.id_usa WHERE u.id_vehiculo = ? AND re.estado IN ('Pendiente','En Proceso')" . $this->lock(), [$vehicle['id_vehiculo']])) $this->fail(409, 'El vehículo ya participa en un recorrido operativo.');
@@ -250,6 +253,10 @@ class RecoleccionOperativa extends Recoleccion
                 if ($this->rows("SELECT re.id_recorrido FROM recorrido re JOIN participa p ON p.id_recorrido = re.id_recorrido
                     JOIN usa u ON u.id_usa = p.id_usa WHERE u.id_cuadrilla = ? AND re.estado = 'En Proceso'", [$squad])) $this->fail(409, 'La cuadrilla ya tiene un recorrido En Proceso.');
                 $vehicles = $this->detalle($squad, $trip)['vehiculos'];
+                foreach ($vehicles as $v) {
+                    $this->rows('SELECT id_vehiculo FROM vehiculo WHERE id_vehiculo=?' . $this->lock(), [$v['id_vehiculo']]);
+                    (new AsignacionVehiculo($this->db))->assertPair($squad, (int)$v['id_vehiculo']);
+                }
                 foreach ($vehicles as $v) if (!(int) $v['activo'] || $v['estado'] === 'En Mantenimiento') $this->fail(409, 'El vehículo relacionado no está disponible para operar.');
                 $this->execute("UPDATE recorrido SET estado = 'En Proceso', fecha_inicio = ?, fecha_fin = NULL, id_usuario_inicio = ? WHERE id_recorrido = ?", [$now, $user, $trip]);
             } else {

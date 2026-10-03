@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/fixtures/asignacion_vehiculo.php';
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/../controllers/RecoleccionController.php';
 
@@ -15,6 +16,7 @@ final class RecoleccionTest extends TestCase
         $this->previous = $_SESSION ?? [];
         $this->db = new PDO('sqlite::memory:');
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        createAsignacionVehiculoFixture($this->db);
         $this->db->exec("CREATE TABLE usuario (id_usuario INTEGER, activo TEXT);
             CREATE TABLE cuadrilla (id_cuadrilla INTEGER, nombre TEXT, turno TEXT);
             CREATE TABLE ruta (id_ruta INTEGER, nombre TEXT, zona TEXT);
