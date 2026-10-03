@@ -160,7 +160,8 @@ class AsignacionVehiculoTest extends TestCase
         $this->db->exec("INSERT INTO participa(id_usa,id_recorrido,hora_inicio) VALUES(1,1,'08:00:00')");
         try { $op->operar(2,1,'iniciar',null); $this->fail('Debe rechazar inicio incompatible.'); }
         catch(DomainException $e) { $this->assertSame(409,$e->getCode()); }
-        try { $op->validarOpcionIncidencia(1,1,1); $this->fail('F3 debe rechazar opcion contradictoria.'); }
+        $assignment=(int)$this->db->query('SELECT id_asignacion_vehiculo FROM asignacion_vehiculo_operativa WHERE fecha_fin IS NULL')->fetchColumn();
+        try { $op->validarOpcionF3(1,$assignment,1,1,true); $this->fail('F3 debe rechazar opcion contradictoria.'); }
         catch(DomainException $e) { $this->assertSame(409,$e->getCode()); }
     }
 }

@@ -237,26 +237,39 @@ class IncidenciaController {
     }
 
     public function getAssignmentOptions(): array {
-        try { return ['success' => true, 'statusCode' => 200, 'data' => $this->incidencia->assignmentOptions()]; }
+        try {
+            $this->incidencia->authorizeAssignment((int)($_SESSION['usuario']['id_usuario'] ?? 0));
+            return ['success' => true, 'statusCode' => 200, 'data' => $this->incidencia->assignmentOptions()];
+        }
+        catch (DomainException $e) { return $this->managementError($e->getCode(), $e->getMessage()); }
         catch (PDOException | PersistenceException $e) { return $this->managementError(500, 'No se pudieron consultar las opciones operativas.'); }
     }
 
+    public function canAssignOperational(): bool {
+        try { $this->incidencia->authorizeAssignment((int)($_SESSION['usuario']['id_usuario'] ?? 0)); return true; }
+        catch (DomainException | PDOException | PersistenceException $e) { return false; }
+    }
+
     public function assignAdministrative(array $data): array {
-        $allowed = ['accion', 'id_incidencia', 'id_cuadrilla', 'id_recorrido', 'id_usa', 'cuadrilla_esperada', 'estado_esperado'];
+        try { $this->incidencia->authorizeAssignment((int)($_SESSION['usuario']['id_usuario'] ?? 0)); }
+        catch (DomainException $e) { return $this->managementError($e->getCode(), $e->getMessage()); }
+        catch (PDOException | PersistenceException $e) { return $this->managementError(500, 'No se pudo comprobar la autorización operativa.'); }
+        $allowed = ['accion', 'id_incidencia', 'id_cuadrilla', 'id_asignacion_vehiculo', 'id_recorrido', 'id_usa', 'cuadrilla_esperada', 'estado_esperado'];
         if (array_diff(array_keys($data), $allowed) || !$this->positiveInteger($data['id_incidencia'] ?? null)
             || !array_key_exists('id_cuadrilla', $data) || !array_key_exists('cuadrilla_esperada', $data)
             || !in_array($data['estado_esperado'] ?? null, ['Pendiente', 'En Proceso', 'Resuelta'], true)) {
             return $this->managementError(400, 'Indicá la opción operativa y la asignación consultada.');
         }
-        foreach (['id_cuadrilla', 'cuadrilla_esperada', 'id_recorrido', 'id_usa'] as $field) {
+        foreach (['id_cuadrilla', 'cuadrilla_esperada', 'id_asignacion_vehiculo', 'id_recorrido', 'id_usa'] as $field) {
             if (isset($data[$field]) && !$this->positiveInteger($data[$field])) return $this->managementError(400, 'Los IDs deben ser enteros positivos.');
         }
-        if ($data['id_cuadrilla'] !== null && (!isset($data['id_recorrido'], $data['id_usa']))) return $this->managementError(400, 'Seleccioná un recorrido y vehículo relacionados.');
-        if ($data['id_cuadrilla'] === null && (isset($data['id_recorrido']) || isset($data['id_usa']))) return $this->managementError(400, 'La desasignación no admite recorrido ni vehículo.');
+        if ($data['id_cuadrilla'] !== null && (!isset($data['id_asignacion_vehiculo'], $data['id_usa']))) return $this->managementError(400, 'Seleccioná una utilización operativa y autorización relacionadas.');
+        if ($data['id_cuadrilla'] === null && (isset($data['id_asignacion_vehiculo']) || isset($data['id_recorrido']) || isset($data['id_usa']))) return $this->managementError(400, 'La desasignación no admite utilización, recorrido ni vehículo.');
         try {
             $this->incidencia->assignOperational((int) $data['id_incidencia'], isset($data['id_cuadrilla']) ? (int) $data['id_cuadrilla'] : null,
                 isset($data['id_recorrido']) ? (int) $data['id_recorrido'] : null, isset($data['id_usa']) ? (int) $data['id_usa'] : null,
-                isset($data['cuadrilla_esperada']) ? (int) $data['cuadrilla_esperada'] : null, $data['estado_esperado'], (int)($_SESSION['usuario']['id_usuario'] ?? 0));
+                isset($data['cuadrilla_esperada']) ? (int) $data['cuadrilla_esperada'] : null, $data['estado_esperado'], (int)($_SESSION['usuario']['id_usuario'] ?? 0),
+                isset($data['id_asignacion_vehiculo']) ? (int)$data['id_asignacion_vehiculo'] : null);
             return ['success' => true, 'statusCode' => 200, 'data' => null, 'message' => 'Asignación actualizada correctamente.'];
         } catch (DomainException $e) { return $this->managementError($e->getCode(), $e->getMessage()); }
         catch (PDOException | PersistenceException $e) {

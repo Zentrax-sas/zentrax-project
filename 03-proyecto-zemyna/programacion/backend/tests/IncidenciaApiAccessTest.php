@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 final class IncidenciaApiAccessTest extends TestCase
 {
     /** @dataProvider requests */
-    public function testAccesoYRuteo(string $method, array $query, array $session, int $status, ?string $operation): void
+    public function testAccesoYRuteo(string $method, array $query, array $session, int $status, ?string $operation, array $body = []): void
     {
         $script = tempnam(sys_get_temp_dir(), 'inc_access_');
         $endpoint = realpath(__DIR__ . '/../api/incidencias.php');
@@ -27,7 +27,14 @@ class IncidenciaController {
     public function getAll($filters) { return ['success' => true, 'statusCode' => 200, 'operation' => 'list', 'data' => [$filters]]; }
     public function getPublicByTracking($tracking) { return ['success' => true, 'statusCode' => 200, 'operation' => 'public', 'data' => ['tracking_number' => $tracking]]; }
     public function getCuadrillas() { return ['success' => true, 'statusCode' => 200, 'operation' => 'cuadrillas', 'data' => []]; }
-    public function getAssignmentOptions() { return ['success' => true, 'statusCode' => 200, 'operation' => 'assignment-options', 'data' => []]; }
+    // Doble de la autorización real del controlador, probada con SQL en IncidenciaAdminTest.
+    public function canAssignOperational() {
+        $permissions=[];
+        foreach ($_SESSION['usuario']['autorizaciones'] ?? [] as $a) if (($a['sector'] ?? '')==='OPERACIONES') $permissions[]=$a['permiso'];
+        return in_array('incidencia.consultar',$permissions,true) && in_array('incidencia.modificar',$permissions,true);
+    }
+    public function getAssignmentOptions() { return $this->canAssignOperational() ? ['success' => true, 'statusCode' => 200, 'operation' => 'assignment-options', 'data' => []] : ['success'=>false,'statusCode'=>403]; }
+    public function assignAdministrative($body) { return $this->canAssignOperational() ? ['success'=>true,'statusCode'=>200,'operation'=>'assignment'] : ['success'=>false,'statusCode'=>403]; }
 }
 register_shutdown_function(function () {
     $body = ob_get_clean();
@@ -39,6 +46,22 @@ PHP;
         $code .= PHP_EOL . '$_SERVER["REQUEST_METHOD"] = ' . var_export($method, true) . ';';
         $code .= PHP_EOL . '$_GET = ' . var_export($query, true) . ';';
         $code .= PHP_EOL . '$_SESSION = ' . var_export($session, true) . ';';
+        if ($body) {
+            $code .= <<<'PHP'
+
+class F3Input {
+    public $context;
+    public static string $body;
+    private int $offset=0;
+    public function stream_open($path,$mode,$options,&$opened): bool { return $path==='php://input'; }
+    public function stream_read($count): string { $s=substr(self::$body,$this->offset,$count);$this->offset+=strlen($s);return $s; }
+    public function stream_eof(): bool { return $this->offset>=strlen(self::$body); }
+    public function stream_stat(): array { return []; }
+}
+stream_wrapper_unregister('php');stream_wrapper_register('php',F3Input::class);
+PHP;
+            $code .= PHP_EOL . 'F3Input::$body = ' . var_export(json_encode($body),true) . ';';
+        }
         $code .= PHP_EOL . 'require ' . var_export($endpoint, true) . ';';
         file_put_contents($script, $code);
         try {
@@ -79,6 +102,10 @@ PHP;
         ]]];
         $tiAdmin = ['usuario' => ['roles' => ['ADMINISTRADOR_TI'], 'autorizaciones' => []]];
         return [
+            'F3 PUT Operaciones' => ['PUT', [], $opsWriter, 200, 'assignment', ['accion'=>'asignar']],
+            'F3 PUT TI sin bypass' => ['PUT', [], $tiAdmin, 403, null, ['accion'=>'asignar']],
+            'F3 PUT sin permiso' => ['PUT', [], $none, 403, null, ['accion'=>'asignar']],
+            'F3 PUT desasignación TI' => ['PUT', [], $tiAdmin, 403, null, ['accion'=>'asignar','id_cuadrilla'=>null]],
             'filtros sin sesión' => ['GET', ['opciones' => 'filtros'], [], 401, null],
             'filtros sin permiso' => ['GET', ['opciones' => 'filtros'], $none, 403, null],
             'filtros autorizados' => ['GET', ['opciones' => 'filtros'], $reader, 200, 'filters'],
@@ -118,14 +145,14 @@ PHP;
             'opciones de asignación solo consulta' => ['GET', ['opciones' => 'asignacion'], $opsReader, 403, null],
             'opciones de asignación sector incorrecto' => ['GET', ['opciones' => 'asignacion'], $pointsWriter, 403, null],
             'opciones de asignación OPERACIONES' => ['GET', ['opciones' => 'asignacion'], $opsWriter, 200, 'assignment-options'],
-            'opciones de asignación administrador TI' => ['GET', ['opciones' => 'asignacion'], $tiAdmin, 200, 'assignment-options'],
+            'opciones de asignación administrador TI sin bypass' => ['GET', ['opciones' => 'asignacion'], $tiAdmin, 403, null],
             'actualización sin sesión' => ['PUT', [], [], 401, null],
             'actualización sin permiso' => ['PUT', [], $none, 403, null],
             'permiso de modificación habilita validación del cuerpo' => ['PUT', [], $writer, 400, null],
             'asignación sin permiso' => ['PUT', [], $none, 403, null],
             'asignación solo consulta no permite modificar' => ['PUT', [], $opsReader, 403, null],
             'asignación OPERACIONES alcanza validación del cuerpo' => ['PUT', [], $opsWriter, 400, null],
-            'asignación administrador TI conserva excepción' => ['PUT', [], $tiAdmin, 400, null],
+            'PUT TI sin cuerpo conserva validación administrativa' => ['PUT', [], $tiAdmin, 400, null],
             'actualización de PUNTOS_Y_DESTINOS conserva acceso administrativo' => ['PUT', [], $pointsWriter, 400, null],
             'registro público alcanza validación sin sesión' => ['POST', [], [], 400, null],
             'consulta no habilita actualización' => ['PUT', [], $reader, 403, null],

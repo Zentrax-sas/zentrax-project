@@ -227,12 +227,17 @@ class Incidencia {
         return $stmt->fetchColumn() !== false;
     }
 
+    public function authorizeAssignment(int $actor, bool $locking = false): void {
+        if (!$this->conn) throw new PDOException('Sin conexión.');
+        (new RecoleccionOperativa($this->conn))->autorizarF3($actor, $locking);
+    }
+
     public function assignmentOptions(): array {
         if (!$this->conn) throw new PDOException('Sin conexión.');
         return (new RecoleccionOperativa($this->conn))->opcionesIncidencia();
     }
 
-    public function assignOperational(int $id, ?int $squad, ?int $trip, ?int $use, ?int $expectedSquad, string $expectedState, int $actor = 0): void {
+    public function assignOperational(int $id, ?int $squad, ?int $trip, ?int $use, ?int $expectedSquad, string $expectedState, int $actor = 0, ?int $assignment = null): void {
         if (!$this->conn) throw new PDOException('Sin conexión.');
         $this->conn->beginTransaction();
         try {
@@ -241,10 +246,11 @@ class Incidencia {
             $stmt->execute([$id]);
             $current = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$current) throw new DomainException('Incidencia no encontrada.', 404);
+            $this->authorizeAssignment($actor, true);
             if ($current['estado'] === 'Resuelta') throw new DomainException('No se puede asignar ni desasignar una incidencia Resuelta.', 409);
             $currentSquad = $current['id_cuadrilla'] === null ? null : (int) $current['id_cuadrilla'];
             if ($currentSquad !== $expectedSquad || $current['estado'] !== $expectedState) throw new DomainException('La incidencia cambió. Volvé a abrir el detalle antes de asignar.', 409);
-            if ($squad !== null) (new RecoleccionOperativa($this->conn))->validarOpcionIncidencia($squad, $trip, $use, true);
+            if ($squad !== null) (new RecoleccionOperativa($this->conn))->validarOpcionF3($squad, $assignment ?? 0, $trip, $use, true);
             if ($currentSquad === $squad) throw new DomainException('La incidencia ya tiene esa asignación. Volvé a consultar.', 409);
             $attention = new AtencionIncidencia($this->conn);
             $now = AtencionIncidencia::now();

@@ -111,14 +111,77 @@ class RecoleccionOperativa extends Recoleccion
         $options = [];
         foreach ($this->rows('SELECT id_cuadrilla FROM cuadrilla ORDER BY nombre, id_cuadrilla', []) as $squad) {
             $id = (int) $squad['id_cuadrilla'];
-            $trip = $this->proximo($id);
-            if ($trip === null) continue;
-            $uses = $this->rows('SELECT p.id_usa FROM participa p JOIN usa u ON u.id_usa = p.id_usa WHERE p.id_recorrido = ? AND u.id_cuadrilla = ?', [$trip, $id]);
-            if (count($uses) !== 1) continue;
-            try { $options[] = $this->validarOpcionIncidencia($id, $trip, (int) $uses[0]['id_usa']); }
+            $assignment = $this->rows('SELECT id_asignacion_vehiculo FROM asignacion_vehiculo_operativa WHERE id_cuadrilla=? AND fecha_fin IS NULL', [$id]);
+            if (count($assignment) !== 1) continue;
+            try { $options[] = $this->validarOpcionF3($id, (int)$assignment[0]['id_asignacion_vehiculo']); }
             catch (DomainException $e) { /* Una relación histórica o no disponible no es una opción operativa. */ }
         }
         return $options;
+    }
+
+    /** Autorización F3 real: ni el rol TI ni permisos cacheados conceden acceso. */
+    public function autorizarF3(int $actor, bool $locking = false): void
+    {
+        $lock = $locking ? $this->lock() : '';
+        $user = $this->rows('SELECT activo FROM usuario WHERE id_usuario=?' . $lock, [$actor])[0] ?? null;
+        if (!$user || $user['activo'] !== 'Activo') $this->fail(401, 'Usuario de sesión inactivo.');
+        $date = substr($this->now(), 0, 10);
+        $permissions = array_column($this->rows("SELECT p.nombre FROM usuario_rol ur
+            JOIN rol_permiso rp ON rp.id_rol=ur.id_rol JOIN permiso p ON p.id_permiso=rp.id_permiso
+            WHERE ur.id_usuario=? AND ur.sector='OPERACIONES' AND ur.fecha_desde<=?
+            AND (ur.fecha_hasta IS NULL OR ur.fecha_hasta>=?)" . $lock, [$actor, $date, $date]), 'nombre');
+        foreach (['incidencia.consultar', 'incidencia.modificar'] as $permission) {
+            if (!in_array($permission, $permissions, true)) $this->fail(403, 'No tenés permisos operativos vigentes para asignar incidencias en Operaciones.');
+        }
+    }
+
+    /** V19 define el vehículo; recorrido/usa solo validan relaciones existentes. */
+    public function validarOpcionF3(int $squad, int $expectedAssignment, ?int $expectedTrip = null, ?int $expectedUse = null, bool $locking = false): array
+    {
+        $lock = $locking ? $this->lock() : '';
+        $members = $this->rows('SELECT u.id_usuario FROM usuario u JOIN usuario_cuadrilla uc ON uc.id_usuario=u.id_usuario
+            WHERE uc.id_cuadrilla=? AND uc.fecha_fin IS NULL ORDER BY u.id_usuario' . $lock, [$squad]);
+        $eligible = false;
+        foreach ($members as $member) if ($this->elegibilidad((int)$member['id_usuario'], $locking)['elegible']) $eligible = true;
+        $group = $this->rows('SELECT id_cuadrilla,nombre,turno FROM cuadrilla WHERE id_cuadrilla=?' . $lock, [$squad])[0] ?? null;
+        if (!$group) $this->fail(404, 'Cuadrilla no encontrada.');
+        if (!$eligible) $this->fail(409, 'La cuadrilla no tiene integrantes vigentes con permisos operativos en Operaciones.');
+        $assignments = $this->rows('SELECT id_asignacion_vehiculo,id_vehiculo FROM asignacion_vehiculo_operativa
+            WHERE id_cuadrilla=? AND fecha_fin IS NULL' . $lock, [$squad]);
+        if (count($assignments)!==1 || (int)$assignments[0]['id_asignacion_vehiculo']!==$expectedAssignment) $this->fail(409, 'La utilización del vehículo cambió o se cerró. Volvé a consultar.');
+        $vehicleId = (int)$assignments[0]['id_vehiculo'];
+        // V19 consulta recorridos antes de bloquear vehículo. Mantener ese orden.
+        $trips = $this->rows("SELECT DISTINCT re.id_recorrido,re.estado,re.fecha_fin,r.nombre ruta_nombre FROM recorrido re
+            JOIN ruta r ON r.id_ruta=re.id_ruta JOIN participa p ON p.id_recorrido=re.id_recorrido JOIN usa u ON u.id_usa=p.id_usa
+            WHERE re.estado IN ('Pendiente','En Proceso') AND (u.id_cuadrilla=? OR u.id_vehiculo=?)" . $lock, [$squad,$vehicleId]);
+        if (count($trips)>1) $this->fail(409, 'La cuadrilla o el vehículo tienen más de un recorrido operativo.');
+        $trip = $trips[0] ?? null;
+        $link = null;
+        if ($trip) {
+            if ($trip['fecha_fin']!==null) $this->fail(409, 'El recorrido ya no está operativo.');
+            $links = $this->rows('SELECT p.id_usa,p.hora_fin,u.id_cuadrilla,u.id_vehiculo FROM participa p JOIN usa u ON u.id_usa=p.id_usa
+                WHERE p.id_recorrido=?' . $lock, [$trip['id_recorrido']]);
+            if (count($links)!==1) $this->fail(409, 'El recorrido tiene una asignación ambigua o duplicada.');
+            $link = $links[0];
+            if ($link['hora_fin']!==null || (int)$link['id_cuadrilla']!==$squad || (int)$link['id_vehiculo']!==$vehicleId) $this->fail(409, 'El recorrido contradice la utilización operativa actual.');
+        }
+        $vehicle = $this->rows('SELECT id_vehiculo,matricula,estado,activo,funcion_operativa FROM vehiculo WHERE id_vehiculo=?' . $lock, [$vehicleId])[0] ?? null;
+        if (!$vehicle || !(int)$vehicle['activo'] || $vehicle['estado']==='En Mantenimiento') $this->fail(409, 'El vehículo relacionado está inactivo o en mantenimiento.');
+        if (!in_array($vehicle['funcion_operativa'], ['REGULAR','APOYO'], true)) $this->fail(409, 'El vehículo tiene clasificación pendiente.');
+        $uses = $this->rows('SELECT id_usa FROM usa WHERE id_cuadrilla=? AND id_vehiculo=?' . $lock, [$squad,$vehicleId]);
+        if (count($uses)!==1) $this->fail(409, 'La pareja cuadrilla/vehículo no está autorizada o es ambigua.');
+        $use = (int)$uses[0]['id_usa'];
+        if ($expectedUse!==null && $expectedUse!==$use) $this->fail(409, 'La autorización del vehículo cambió.');
+        if ($link && (int)$link['id_usa']!==$use) $this->fail(409, 'La participación no corresponde a la autorización vigente.');
+        $regular = $vehicle['funcion_operativa']==='REGULAR';
+        if ($regular && !$trip) $this->fail(409, 'El vehículo REGULAR requiere un recorrido operativo coherente.');
+        if ($locking && $regular && $expectedTrip===null) $this->fail(400, 'Seleccioná un recorrido para el vehículo REGULAR.');
+        if ($regular && $expectedTrip!==null && $expectedTrip!==(int)$trip['id_recorrido']) $this->fail(409, 'El recorrido cambió o ya no está operativo.');
+        if (!$regular && $expectedTrip!==null) $this->fail(400, 'La opción APOYO no admite recorrido; seleccioná la utilización actual.');
+        return ['id_cuadrilla'=>$squad,'nombre'=>$group['nombre'],'turno'=>$group['turno'],
+            'id_asignacion_vehiculo'=>$expectedAssignment,'id_vehiculo'=>$vehicleId,'matricula'=>$vehicle['matricula'],
+            'estado_vehiculo'=>$vehicle['estado'],'funcion_operativa'=>$vehicle['funcion_operativa'],'id_usa'=>$use,
+            'id_recorrido'=>$regular?(int)$trip['id_recorrido']:null,'estado_recorrido'=>$regular?$trip['estado']:null,'ruta_nombre'=>$regular?$trip['ruta_nombre']:null];
     }
 
     public function validarOpcionIncidencia(int $squad, int $trip, int $use, bool $locking = false): array

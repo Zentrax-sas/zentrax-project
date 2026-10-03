@@ -1025,11 +1025,14 @@ async function mostrarIncidencia(id) {
         const result = await incidentApi({ opciones: 'asignacion' }, { signal: request.signal });
         if (request.signal.aborted) return;
         incidentAssignmentOptions = result.data;
-        for (const option of result.data) select.add(new Option(`${option.nombre} · ${option.ruta_nombre} (${option.estado_recorrido}) · ${option.matricula} (${option.estado_vehiculo})`, String(option.id_usa)));
+        for (const option of result.data) {
+          const work = option.funcion_operativa === 'APOYO' ? 'Sin recorrido fijo' : `${option.ruta_nombre} (${option.estado_recorrido})`;
+          select.add(new Option(`${option.nombre} · ${option.matricula} · ${option.funcion_operativa} (${option.estado_vehiculo}) · ${work}`, String(option.id_asignacion_vehiculo)));
+        }
         const current = result.data.find(option => Number(option.id_cuadrilla) === incidentAssignment.cuadrilla_esperada);
-        select.value = current ? String(current.id_usa) : '';
+        select.value = current ? String(current.id_asignacion_vehiculo) : '';
         select.disabled = false; save.disabled = false;
-        message.textContent = result.data.length ? (incidentAssignment.cuadrilla_esperada && !current ? 'La cuadrilla actual ya no es una opción operativa válida. Podés elegir otra o desasignar.' : '') : 'No hay opciones operativas válidas. Revisá integrantes, recorrido y vehículo en Cuadrillas; también podés desasignar si corresponde.';
+        message.textContent = result.data.length ? (incidentAssignment.cuadrilla_esperada && !current ? 'La cuadrilla actual ya no es una opción operativa válida. Podés elegir otra o desasignar.' : '') : 'No hay opciones operativas válidas. Revisá integrantes y utilización abierta del vehículo en Cuadrillas; REGULAR también requiere recorrido. Podés desasignar si corresponde.';
       } catch (error) {
         if (!request.signal.aborted) message.textContent = error.message;
       }
@@ -1047,7 +1050,7 @@ document.getElementById('incidentAssignmentForm').addEventListener('submit', asy
   event.preventDefault();
   if (incidentSaving || !incidentAssignment || document.getElementById('incidentAssignmentSave').disabled) return;
   const value = document.getElementById('incidentAssignmentOption').value;
-  const option = incidentAssignmentOptions.find(item => String(item.id_usa) === value);
+  const option = incidentAssignmentOptions.find(item => String(item.id_asignacion_vehiculo) === value);
   if (value && !option) return;
   const unchanged = option
     ? Number(option.id_cuadrilla) === incidentAssignment.cuadrilla_esperada
@@ -1056,10 +1059,10 @@ document.getElementById('incidentAssignmentForm').addEventListener('submit', asy
     document.getElementById('incidentSquadMessage').textContent = 'La incidencia ya tiene esa asignación; no se realizaron cambios.';
     return;
   }
-  const confirmation = option ? `¿Asignar la incidencia a ${option.nombre}, recorrido ${option.id_recorrido}, vehículo ${option.matricula}?` : '¿Dejar la incidencia sin cuadrilla asignada?';
+  const confirmation = option ? `¿Asignar la incidencia a ${option.nombre}, vehículo ${option.matricula} · ${option.funcion_operativa}, ${option.id_recorrido == null ? 'sin recorrido fijo' : `recorrido ${option.id_recorrido}`}?` : '¿Dejar la incidencia sin cuadrilla asignada?';
   if (!window.confirm(confirmation)) return;
   const payload = { accion: 'asignar', ...incidentAssignment, id_cuadrilla: option ? Number(option.id_cuadrilla) : null };
-  if (option) { payload.id_recorrido = Number(option.id_recorrido); payload.id_usa = Number(option.id_usa); }
+  if (option) { payload.id_asignacion_vehiculo = Number(option.id_asignacion_vehiculo); payload.id_recorrido = option.id_recorrido == null ? null : Number(option.id_recorrido); payload.id_usa = Number(option.id_usa); }
   incidentSaving = true;
   const controls = [...incidentDetail.querySelectorAll('input, select, button')];
   const disabled = controls.map(control => control.disabled);

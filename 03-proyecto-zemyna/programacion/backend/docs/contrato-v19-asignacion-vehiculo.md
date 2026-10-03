@@ -79,8 +79,11 @@ Abrir/cambiar rechaza recorridos Pendiente/En Proceso incompatibles o ambiguos. 
 e iniciar un recorrido, validar opciones F3 y reactivar mediante CRUD también comprueban
 la utilización abierta. Finalizar un recorrido nunca cierra la utilización.
 
-F3 conserva su requisito de recorrido: no incorpora apoyo sin recorrido. Su ampliación
-queda pendiente. F4.1/F4.2 conserva ownership de cuadrilla, permisos y estados; no se
+F3 utiliza ahora la asignación V19 abierta como fuente del vehículo actual y exige
+el mismo ID consultado al confirmar. REGULAR requiere recorrido coherente; APOYO
+no requiere recorrido y valida las contradicciones de relaciones existentes.
+El contrato completo está en [contrato-f3-v19.md](contrato-f3-v19.md).
+F4.1/F4.2 conserva ownership de cuadrilla, permisos y estados; no se
 agrega vehículo a atencion_incidencia. El dashboard mantiene sus métricas actuales por
 recorrido y estado; una utilización abierta no es una nueva métrica de trabajo ocupado.
 

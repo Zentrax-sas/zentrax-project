@@ -46,20 +46,21 @@ final class IncidenciaAdminTest extends TestCase
             CREATE TABLE usuario_rol (id_usuario INTEGER, id_rol INTEGER, sector TEXT, fecha_desde TEXT, fecha_hasta TEXT);
             CREATE TABLE rol_permiso (id_rol INTEGER, id_permiso INTEGER);
             CREATE TABLE permiso (id_permiso INTEGER, nombre TEXT);
-            CREATE TABLE vehiculo (id_vehiculo INTEGER PRIMARY KEY, matricula TEXT, activo INTEGER, estado TEXT);
+            CREATE TABLE vehiculo (id_vehiculo INTEGER PRIMARY KEY, matricula TEXT, activo INTEGER, estado TEXT, funcion_operativa TEXT);
             CREATE TABLE usa (id_usa INTEGER PRIMARY KEY, id_cuadrilla INTEGER, id_vehiculo INTEGER);
             CREATE TABLE recorrido (id_recorrido INTEGER PRIMARY KEY, id_ruta INTEGER, estado TEXT, fecha_inicio TEXT, fecha_fin TEXT);
             CREATE TABLE participa (id_participa INTEGER PRIMARY KEY, id_usa INTEGER, id_recorrido INTEGER, hora_fin TEXT);
             INSERT INTO usuario VALUES (10, 'Operario', 'Prueba', 'Activo');
             INSERT INTO usuario_cuadrilla VALUES (10, 1, NULL);
             INSERT INTO usuario_rol VALUES (10, 1, 'OPERACIONES', '2020-01-01', NULL);
-            INSERT INTO permiso VALUES (1, 'recorrido.consultar'), (2, 'recorrido.operar');
-            INSERT INTO rol_permiso VALUES (1, 1), (1, 2);
+            INSERT INTO permiso VALUES (1, 'recorrido.consultar'), (2, 'recorrido.operar'), (3,'incidencia.consultar'), (4,'incidencia.modificar');
+            INSERT INTO rol_permiso VALUES (1, 1), (1, 2), (1,3), (1,4);
             INSERT INTO ruta VALUES (9, 'Operativa', 'Centro');
-            INSERT INTO vehiculo VALUES (1, 'PRUEBA', 1, 'Disponible');
+            INSERT INTO vehiculo VALUES (1, 'PRUEBA', 1, 'Disponible', 'REGULAR');
             INSERT INTO usa VALUES (1, 1, 1);
             INSERT INTO recorrido VALUES (1, 9, 'Pendiente', '2026-09-01 10:00:00', NULL);
             INSERT INTO participa VALUES (1, 1, 1, NULL);");
+        $this->db->exec("INSERT INTO asignacion_vehiculo_operativa(id_asignacion_vehiculo,id_cuadrilla,id_vehiculo,fecha_inicio,id_usuario_asigna) VALUES(1,1,1,'2020-01-01',10)");
         createAttentionFixture($this->db);
         $this->controller = new IncidenciaController($this->db);
     }
@@ -67,7 +68,7 @@ final class IncidenciaAdminTest extends TestCase
     protected function tearDown(): void { $_SESSION = $this->previousSession; }
 
     private function assignmentPayload(array $changes = []): array {
-        return array_replace(['accion' => 'asignar', 'id_incidencia' => 1, 'id_cuadrilla' => 1, 'id_recorrido' => 1, 'id_usa' => 1,
+        return array_replace(['accion' => 'asignar', 'id_incidencia' => 1, 'id_cuadrilla' => 1, 'id_asignacion_vehiculo'=>1, 'id_recorrido' => 1, 'id_usa' => 1,
             'cuadrilla_esperada' => null, 'estado_esperado' => 'Pendiente'], $changes);
     }
 
@@ -87,7 +88,7 @@ final class IncidenciaAdminTest extends TestCase
         $this->assertSame($usesBefore, $this->db->query('SELECT * FROM usa ORDER BY id_usa')->fetchAll(PDO::FETCH_ASSOC));
         $this->assertSame($participationsBefore, $this->db->query('SELECT * FROM participa ORDER BY id_participa')->fetchAll(PDO::FETCH_ASSOC));
         $this->assertSame(409, $this->controller->assignAdministrative($this->assignmentPayload())['statusCode']);
-        $this->assertSame(200, $this->controller->assignAdministrative($this->assignmentPayload(['id_cuadrilla'=>null,'id_recorrido'=>null,'id_usa'=>null,'cuadrilla_esperada'=>1]))['statusCode']);
+        $this->assertSame(200, $this->controller->assignAdministrative($this->assignmentPayload(['id_cuadrilla'=>null,'id_asignacion_vehiculo'=>null,'id_recorrido'=>null,'id_usa'=>null,'cuadrilla_esperada'=>1]))['statusCode']);
         $this->assertNull($this->db->query('SELECT id_cuadrilla FROM incidencia WHERE id_incidencia=1')->fetchColumn());
     }
 
@@ -103,12 +104,13 @@ final class IncidenciaAdminTest extends TestCase
             "UPDATE incidencia SET estado='Resuelta' WHERE id_incidencia=1",
             "UPDATE incidencia SET estado='En Proceso' WHERE id_incidencia=1",
             "UPDATE usuario_cuadrilla SET fecha_fin='2026-09-01'",
-            "UPDATE usuario SET activo='Inactivo'", "DELETE FROM rol_permiso WHERE id_permiso=2",
-            "UPDATE usuario_rol SET sector='LOGISTICA'", "UPDATE usuario_rol SET fecha_hasta='2020-01-02'",
             "UPDATE recorrido SET estado='Finalizado'", "UPDATE recorrido SET estado='Cancelado'",
             "UPDATE vehiculo SET activo=0", "UPDATE vehiculo SET estado='En Mantenimiento'",
             "INSERT INTO participa VALUES(2,1,1,NULL)", "INSERT INTO usa VALUES(2,1,1)",
             "UPDATE participa SET hora_fin='12:00:00'",
+            "DELETE FROM asignacion_vehiculo_operativa",
+            "UPDATE vehiculo SET funcion_operativa=NULL",
+            "UPDATE asignacion_vehiculo_operativa SET fecha_fin='2026-09-01',id_usuario_finaliza=10,motivo_cierre='Prueba'",
             "INSERT INTO recorrido VALUES(2,9,'Pendiente','2026-09-02',NULL); INSERT INTO participa VALUES(2,1,2,NULL)",
             "INSERT INTO cuadrilla VALUES(2,'Otra','Matutino'); INSERT INTO usa VALUES(2,2,1); INSERT INTO participa VALUES(2,2,1,NULL)"
         ]);
@@ -117,7 +119,7 @@ final class IncidenciaAdminTest extends TestCase
         $this->assertSame(404, $this->controller->assignAdministrative($this->assignmentPayload(['id_incidencia'=>999]))['statusCode']);
         $this->assertSame(404, $this->controller->assignAdministrative($this->assignmentPayload(['id_cuadrilla'=>999]))['statusCode']);
         $this->assertSame(409, $this->controller->assignAdministrative($this->assignmentPayload(['id_usa'=>999]))['statusCode']);
-        foreach ([['id_cuadrilla'=>'1 OR 1=1'], ['id_usuario'=>10], ['id_vehiculo'=>1], ['id_recorrido'=>null], ['cuadrilla_esperada'=>[]]] as $change) {
+        foreach ([['id_cuadrilla'=>'1 OR 1=1'], ['id_usuario'=>10], ['id_vehiculo'=>1], ['id_asignacion_vehiculo'=>null], ['id_recorrido'=>null], ['cuadrilla_esperada'=>[]]] as $change) {
             $this->assertSame(400, $this->controller->assignAdministrative($this->assignmentPayload($change))['statusCode']);
         }
         $this->assertSame(400, $this->controller->updateAdministrative(['id_incidencia'=>1,'id_cuadrilla'=>1])['statusCode']);

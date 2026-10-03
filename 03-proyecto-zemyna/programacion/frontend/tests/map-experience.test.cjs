@@ -762,7 +762,7 @@ async function openAssignableIncident(h, incident, options) {
 test('F3 evita enviar la misma asignación o una desasignación sin cambios', async () => {
   const h = harness(true, {}, 'admin');
   const incident = { ...item(31), id_cuadrilla: 4 };
-  const option = { id_usa: 8, id_cuadrilla: 4, id_recorrido: 12, nombre: 'Cuadrilla cuatro', ruta_nombre: 'Ruta doce', estado_recorrido: 'Pendiente', matricula: 'ABC123', estado_vehiculo: 'Disponible' };
+  const option = { id_asignacion_vehiculo: 80, funcion_operativa: 'REGULAR', id_usa: 8, id_cuadrilla: 4, id_recorrido: 12, nombre: 'Cuadrilla cuatro', ruta_nombre: 'Ruta doce', estado_recorrido: 'Pendiente', matricula: 'ABC123', estado_vehiculo: 'Disponible' };
   await openAssignableIncident(h, incident, [option]);
   const before = h.requests.length;
   await h.elements.get('incidentAssignmentForm').listeners.submit({ preventDefault() {} });
@@ -771,16 +771,35 @@ test('F3 evita enviar la misma asignación o una desasignación sin cambios', as
   assert.equal(h.elements.get('incidentAssignmentSave').disabled, false);
 });
 
+for (const support of [false,true]) test(`F3 ${support?'APOYO':'REGULAR'} muestra función y envía versión V19 con recorrido nullable`, async () => {
+  const h=harness(true,{},'admin');const incident={...item(33),id_cuadrilla:null};
+  const option={id_asignacion_vehiculo:81,id_usa:8,id_cuadrilla:4,id_recorrido:support?null:12,nombre:'Cuadrilla prueba',matricula:'TEST1',funcion_operativa:support?'APOYO':'REGULAR',estado_vehiculo:'En Servicio',ruta_nombre:support?null:'Ruta doce',estado_recorrido:support?null:'Pendiente'};
+  await openAssignableIncident(h,incident,[option]);
+  const select=h.elements.get('incidentAssignmentOption');assert.match(text(select),support?/Sin recorrido fijo/:/Ruta doce/);assert.match(text(select),support?/APOYO/:/REGULAR/);select.value='81';
+  const saving=h.elements.get('incidentAssignmentForm').listeners.submit({preventDefault(){}});
+  const request=h.requests.at(-1);const body=JSON.parse(request.options.body);
+  assert.equal(body.id_asignacion_vehiculo,81);assert.equal(body.id_usa,8);assert.equal(body.id_recorrido,support?null:12);assert.equal('id_vehiculo'in body,false);
+  respondApi(request,{success:true,message:'Asignada'});await tick();respond(h.requests.at(-1),[]);await saving;
+});
+
+test('F3 opciones vacías explican utilización abierta y permiten desasignar',async()=>{
+  const h=harness(true,{},'admin');await openAssignableIncident(h,{...item(34),id_cuadrilla:4},[]);
+  assert.match(h.elements.get('incidentSquadMessage').textContent,/utilización abierta/);assert.equal(h.elements.get('incidentAssignmentSave').disabled,false);
+  const saving=h.elements.get('incidentAssignmentForm').listeners.submit({preventDefault(){}});const request=h.requests.at(-1);const body=JSON.parse(request.options.body);
+  assert.equal(body.id_cuadrilla,null);assert.equal('id_asignacion_vehiculo'in body,false);respondApi(request,{success:true,message:'Desasignada'});await tick();respond(h.requests.at(-1),[]);await saving;
+});
+
 test('F3 un 409 refresca bandeja, detalle y opciones sin perder filtros ni pagina F2', async () => {
   const h = harness(true, {}, 'admin');
   h.run("incidentQuery = { estado: 'En Proceso', prioridad: 'Alta' }; incidentPage = 3;");
   const incident = { ...item(32), id_cuadrilla: null };
-  const option = { id_usa: 9, id_cuadrilla: 5, id_recorrido: 13, nombre: 'Cuadrilla cinco', ruta_nombre: 'Ruta trece', estado_recorrido: 'En Proceso', matricula: 'XYZ987', estado_vehiculo: 'Disponible' };
+  const option = { id_asignacion_vehiculo: 90, funcion_operativa: 'REGULAR', id_usa: 9, id_cuadrilla: 5, id_recorrido: 13, nombre: 'Cuadrilla cinco', ruta_nombre: 'Ruta trece', estado_recorrido: 'En Proceso', matricula: 'XYZ987', estado_vehiculo: 'Disponible' };
   await openAssignableIncident(h, incident, [option]);
-  h.elements.get('incidentAssignmentOption').value = '9';
+  h.elements.get('incidentAssignmentOption').value = '90';
   const saving = h.elements.get('incidentAssignmentForm').listeners.submit({ preventDefault() {} });
   const assignmentRequest = h.requests.at(-1);
   assert.equal(assignmentRequest.options.method, 'PUT');
+  assert.equal(JSON.parse(assignmentRequest.options.body).id_asignacion_vehiculo, 90);
   const duplicate = h.elements.get('incidentAssignmentForm').listeners.submit({ preventDefault() {} });
   assert.equal(h.requests.filter(request => request.options?.method === 'PUT').length, 1);
   await duplicate;

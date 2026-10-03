@@ -78,6 +78,21 @@ final class IncidenciasPropiasTest extends TestCase
         return array_column($response['data'], 'id_incidencia');
     }
 
+    public function testF3ApoyoSinRecorridoVisibleSoloParaSuCuadrilla(): void
+    {
+        $this->db->exec("INSERT INTO permiso VALUES(3,'incidencia.consultar'),(4,'incidencia.modificar'); INSERT INTO rol_permiso VALUES(1,3),(1,4);
+            CREATE TABLE vehiculo(id_vehiculo INTEGER PRIMARY KEY,matricula TEXT,activo INTEGER,estado TEXT,funcion_operativa TEXT);
+            CREATE TABLE usa(id_usa INTEGER PRIMARY KEY,id_cuadrilla INTEGER,id_vehiculo INTEGER);
+            CREATE TABLE recorrido(id_recorrido INTEGER PRIMARY KEY,id_ruta INTEGER,estado TEXT,fecha_fin TEXT);
+            CREATE TABLE participa(id_usa INTEGER,id_recorrido INTEGER,hora_fin TEXT);
+            INSERT INTO vehiculo VALUES(1,'APOYO1',1,'En Servicio','APOYO'); INSERT INTO usa VALUES(1,1,1);
+            INSERT INTO asignacion_vehiculo_operativa(id_asignacion_vehiculo,id_cuadrilla,id_vehiculo,fecha_inicio,id_usuario_asigna) VALUES(1,1,1,'2020-01-01',1)");
+        $response=(new IncidenciaController($this->db))->assignAdministrative(['accion'=>'asignar','id_incidencia'=>5,'id_cuadrilla'=>1,'id_asignacion_vehiculo'=>1,'id_usa'=>1,'id_recorrido'=>null,'cuadrilla_esperada'=>null,'estado_esperado'=>'Pendiente']);
+        $this->assertSame(200,$response['statusCode']);$this->assertContains(5,$this->ids());
+        $this->user(2);$this->assertNotContains(5,$this->ids());
+        $this->assertSame(0,(int)$this->db->query('SELECT COUNT(*) FROM recorrido')->fetchColumn());
+    }
+
     public function testListaPropiaSinRecorridoNiDatosDelAutor(): void
     {
         // No hay tablas recorrido/usa/participa: consultar incidencias no debe necesitarlas.
@@ -257,11 +272,13 @@ final class IncidenciasPropiasTest extends TestCase
 
     public function testReportePublicoF2AsignacionF3YDescubrimientoF41(): void
     {
-        $this->db->exec("CREATE TABLE vehiculo (id_vehiculo INTEGER, matricula TEXT, activo INTEGER, estado TEXT);
+        $this->db->exec("INSERT INTO permiso VALUES(3,'incidencia.consultar'),(4,'incidencia.modificar'); INSERT INTO rol_permiso VALUES(1,3),(1,4);
+            CREATE TABLE vehiculo (id_vehiculo INTEGER, matricula TEXT, activo INTEGER, estado TEXT,funcion_operativa TEXT);
             CREATE TABLE usa (id_usa INTEGER, id_cuadrilla INTEGER, id_vehiculo INTEGER);
             CREATE TABLE recorrido (id_recorrido INTEGER, id_ruta INTEGER, estado TEXT, fecha_inicio TEXT, fecha_fin TEXT);
             CREATE TABLE participa (id_participa INTEGER, id_usa INTEGER, id_recorrido INTEGER, hora_fin TEXT);
-            INSERT INTO vehiculo VALUES(1,'TEST',1,'Disponible'); INSERT INTO usa VALUES(1,1,1);
+            INSERT INTO vehiculo VALUES(1,'TEST',1,'Disponible','REGULAR'); INSERT INTO usa VALUES(1,1,1);
+            INSERT INTO asignacion_vehiculo_operativa(id_asignacion_vehiculo,id_cuadrilla,id_vehiculo,fecha_inicio,id_usuario_asigna) VALUES(1,1,1,'2020-01-01',1);
             INSERT INTO recorrido VALUES(1,2,'Pendiente','2026-09-01',NULL); INSERT INTO participa VALUES(1,1,1,NULL);");
         $admin = new IncidenciaController($this->db);
         $created = $admin->create(['descripcion' => 'Reporte ciudadano de prueba', 'tipo_problema' => 'Contenedor Desbordado', 'id_contenedor' => 1]);
@@ -270,7 +287,7 @@ final class IncidenciasPropiasTest extends TestCase
         $this->assertSame(200, $admin->getAll(['id' => $id])['statusCode']);
         $this->assertSame(404, $this->get(['id_incidencia' => $id])['statusCode']);
         $assigned = $admin->assignAdministrative(['accion' => 'asignar', 'id_incidencia' => $id,
-            'id_cuadrilla' => 1, 'id_recorrido' => 1, 'id_usa' => 1, 'cuadrilla_esperada' => null, 'estado_esperado' => 'Pendiente']);
+            'id_cuadrilla' => 1, 'id_asignacion_vehiculo'=>1, 'id_recorrido' => 1, 'id_usa' => 1, 'cuadrilla_esperada' => null, 'estado_esperado' => 'Pendiente']);
         $this->assertSame(200, $assigned['statusCode']);
         $this->assertContains((int) $id, $this->ids());
         $detail = $this->get(['id_incidencia' => $id]);

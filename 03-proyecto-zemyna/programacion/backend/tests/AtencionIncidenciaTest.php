@@ -52,13 +52,14 @@ final class AtencionIncidenciaTest extends TestCase
                 (5,'INC-2026-00005','Pendiente','Alta','Contenedor Desbordado','Sin asignar','2026-08-01 08:00:00',NULL,1,NULL,NULL,NULL,NULL,NULL);");
         createAttentionFixture($this->db);
         $this->db->exec("PRAGMA foreign_keys=ON;
-            INSERT INTO permiso VALUES(3,'incidencia.operar'); INSERT INTO rol_permiso VALUES(1,3);
-            CREATE TABLE vehiculo(id_vehiculo INTEGER PRIMARY KEY,matricula TEXT,activo INTEGER,estado TEXT);
+            INSERT INTO permiso VALUES(3,'incidencia.operar'),(4,'incidencia.consultar'),(5,'incidencia.modificar'); INSERT INTO rol_permiso VALUES(1,3),(1,4),(1,5);
+            CREATE TABLE vehiculo(id_vehiculo INTEGER PRIMARY KEY,matricula TEXT,activo INTEGER,estado TEXT,funcion_operativa TEXT);
             CREATE TABLE usa(id_usa INTEGER PRIMARY KEY,id_cuadrilla INTEGER,id_vehiculo INTEGER);
             CREATE TABLE recorrido(id_recorrido INTEGER PRIMARY KEY,id_ruta INTEGER,estado TEXT,fecha_inicio TEXT,fecha_fin TEXT);
             CREATE TABLE participa(id_participa INTEGER PRIMARY KEY,id_usa INTEGER,id_recorrido INTEGER,hora_fin TEXT);
             CREATE TABLE atencion_contenedor(id_recorrido INTEGER,id_contenedor INTEGER,fecha_atencion TEXT);
-            INSERT INTO vehiculo VALUES(1,'TEST1',1,'Disponible'),(2,'TEST2',1,'Disponible');
+            INSERT INTO vehiculo VALUES(1,'TEST1',1,'Disponible','REGULAR'),(2,'TEST2',1,'Disponible','REGULAR');
+            INSERT INTO asignacion_vehiculo_operativa(id_asignacion_vehiculo,id_cuadrilla,id_vehiculo,fecha_inicio,id_usuario_asigna) VALUES(1,1,1,'2020-01-01',1),(2,2,2,'2020-01-01',2);
             INSERT INTO usa VALUES(1,1,1),(2,2,2);
             INSERT INTO recorrido VALUES(1,1,'Pendiente','2026-09-01',NULL),(2,2,'Pendiente','2026-09-01',NULL);
             INSERT INTO participa VALUES(1,1,1,NULL),(2,2,2,NULL);
@@ -85,8 +86,19 @@ final class AtencionIncidenciaTest extends TestCase
     }
     private function admin(array $change): array { return (new IncidenciaController($this->db))->updateAdministrative(['id_incidencia'=>1]+$change); }
     private function assign(?int $squad, ?int $expected): array {
+        $support=$squad!==null && $this->db->query('SELECT funcion_operativa FROM vehiculo WHERE id_vehiculo='.(int)$squad)->fetchColumn()==='APOYO';
         return (new IncidenciaController($this->db))->assignAdministrative(['accion'=>'asignar','id_incidencia'=>1,
-            'id_cuadrilla'=>$squad,'id_recorrido'=>$squad,'id_usa'=>$squad,'cuadrilla_esperada'=>$expected,'estado_esperado'=>$this->row()['estado']]);
+            'id_cuadrilla'=>$squad,'id_asignacion_vehiculo'=>$squad,'id_recorrido'=>$support?null:$squad,'id_usa'=>$squad,'cuadrilla_esperada'=>$expected,'estado_esperado'=>$this->row()['estado']]);
+    }
+    public function testApoyoAsignadoPorF3SinRecorridoSeOperaPorCuadrilla(): void {
+        $this->assertSame(200,$this->assign(null,1)['statusCode']);
+        $this->db->exec("DELETE FROM participa; DELETE FROM recorrido; UPDATE vehiculo SET funcion_operativa='APOYO'");
+        $this->assertSame(200,$this->assign(1,null)['statusCode']);
+        $this->assertSame(200,$this->act('aceptar_incidencia')['statusCode']);
+        $this->assertSame(200,$this->act('iniciar_atencion_incidencia','Aceptada')['statusCode']);
+        $this->assertSame(200,$this->act('finalizar_atencion_incidencia','En atención')['statusCode']);
+        $this->assertSame('Resuelta',$this->row()['estado']);
+        $this->assertSame(0,(int)$this->db->query('SELECT COUNT(*) FROM recorrido')->fetchColumn());
     }
     private function own(array $query=[]): array { return (new RecoleccionController($this->db))->consultar(['view'=>'incidencias_propias']+$query); }
 
