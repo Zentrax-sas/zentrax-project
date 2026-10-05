@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/fixtures/incidencia_upload_token.php';
 require_once __DIR__ . '/fixtures/asignacion_vehiculo.php';
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/fixtures/atencion_incidencia.php';
@@ -51,6 +52,7 @@ final class IncidenciasPropiasTest extends TestCase
                 (4,'INC-2026-00004','Pendiente','Alta','Contenedor Desbordado','Reporte ajeno','2026-08-01 08:00:00',NULL,1,NULL,2,2,NULL,NULL),
                 (5,'INC-2026-00005','Pendiente','Alta','Contenedor Desbordado','Sin asignar','2026-08-01 08:00:00',NULL,1,NULL,NULL,NULL,NULL,NULL);");
         createAttentionFixture($this->db);
+        createUploadTokenFixture($this->db);
         $this->user();
     }
 

@@ -284,6 +284,22 @@ class Incidencia {
         return (new AtencionIncidencia($this->conn))->administrative($id, $changes['estado'] ?? null, $actor, fn() => $stmt->execute($params));
     }
 
+    /** Alta y capability se confirman juntas; nunca concede a registros históricos. */
+    public function createWithUploadGrant() {
+        if (!$this->conn) return false;
+        require_once __DIR__ . '/IncidenciaUploadToken.php';
+        $this->conn->beginTransaction();
+        try {
+            if (!$this->create()) { $this->conn->rollBack(); return false; }
+            $grant = (new IncidenciaUploadToken($this->conn))->issue((int)$this->id_incidencia, $this->id_usuario);
+            $this->conn->commit();
+            return $grant;
+        } catch (Throwable $error) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            throw $error;
+        }
+    }
+
     public function create() {
         if (!$this->conn) return false;
 

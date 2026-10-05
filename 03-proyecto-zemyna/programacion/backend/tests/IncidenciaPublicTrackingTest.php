@@ -368,6 +368,7 @@ class IncidenciaPublicTrackingTest extends TestCase
             public int $createCalls = 0;
             public array $trackingNumbers = [];
             public function __construct(private array $outcomes) {}
+            public function createWithUploadGrant() { return $this->create() ? ['upload_token'=>str_repeat('a',64),'upload_expires_at'=>'2026-10-04 12:00:00'] : false; }
             public function create(): bool {
                 $this->createCalls++;
                 $this->trackingNumbers[] = $this->tracking_number;

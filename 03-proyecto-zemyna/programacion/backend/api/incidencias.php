@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/bootstrap.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') header('Cache-Control: no-store');
 
 $database = new Database();
 $db = $database->getConnection();

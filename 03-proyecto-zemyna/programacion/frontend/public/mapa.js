@@ -318,6 +318,7 @@ if (submitReporteButton) {
             let mensajeFinal = 'Incidencia enviada correctamente.';
             const idIncidencia = json?.data?.id_incidencia;
             const trackingNumber = json?.data?.tracking_number;
+            const uploadToken = json?.data?.upload_token;
             if (trackingNumber) {
                 mensajeFinal = `Incidencia enviada. Tu número de seguimiento es ${trackingNumber}.`;
             }
@@ -327,8 +328,10 @@ if (submitReporteButton) {
                 const formData = new FormData();
                 formData.append('id_incidencia', String(idIncidencia));
                 formData.append('foto', fotoSeleccionada);
+                if (uploadToken) formData.append('upload_token', uploadToken);
 
                 try {
+                    if (!uploadToken) throw new Error('La autorización para adjuntar la fotografía no está disponible.');
                     const fotoResponse = await fetch(buildApiUrl('/backend/api/foto.php'), {
                         method: 'POST',
                         credentials: 'same-origin',
@@ -341,7 +344,7 @@ if (submitReporteButton) {
                     mensajeFinal = 'Incidencia enviada correctamente con foto adjunta.';
                 } catch (fotoError) {
                     fotoFallida = true;
-                    mensajeFinal = 'La incidencia fue registrada, pero no se pudo adjuntar la fotografía.';
+                    mensajeFinal = `La incidencia fue registrada${trackingNumber ? ' (' + trackingNumber + ')' : ''}, pero no se pudo adjuntar la fotografía. ${fotoError.message || 'No se pudo completar la carga.'}`;
                 }
             }
 

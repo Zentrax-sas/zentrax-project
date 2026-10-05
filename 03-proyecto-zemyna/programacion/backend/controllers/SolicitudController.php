@@ -42,10 +42,13 @@ class SolicitudController {
     }
 
     public function create($data) {
-        $this->solicitud->fecha           = $data['fecha'] ?? date('Y-m-d H:i:s');
+        $data = array_intersect_key(is_array($data) ? $data : [], array_flip([
+            'descripcion', 'direccion', 'id_tipo_residuo', 'email', 'telefono', 'tipo_solicitud'
+        ]));
+        $this->solicitud->fecha           = (new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d H:i:s');
         $this->solicitud->descripcion     = $data['descripcion'] ?? null;
         $this->solicitud->direccion       = $data['direccion'] ?? null;
-        $this->solicitud->estado          = $data['estado'] ?? 'Pendiente';
+        $this->solicitud->estado          = 'Pendiente';
         $this->solicitud->id_tipo_residuo = $data['id_tipo_residuo'] ?? $this->inferTipoResiduoId($data['tipo_solicitud'] ?? null, $data['descripcion'] ?? null);
         $this->solicitud->email           = $data['email'] ?? null;
         $this->solicitud->telefono        = $data['telefono'] ?? null;
@@ -69,6 +72,19 @@ class SolicitudController {
 
         if ($errors) {
             return ["success" => false, "data" => null, "message" => "Datos incompletos o invalidos.", "errors" => $errors, "statusCode" => 400];
+        }
+
+        $residue = $this->solicitud->id_tipo_residuo;
+        if ((!is_int($residue) && !is_string($residue)) || !preg_match('/^[1-9][0-9]*$/D', (string)$residue)
+            || filter_var($residue, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]) === false) {
+            return ['success' => false, 'data' => null, 'message' => 'Tipo de residuo inválido.', 'errors' => ['id_tipo_residuo' => 'Seleccioná un tipo de residuo del catálogo.'], 'statusCode' => 400];
+        }
+        try {
+            if (!$this->solicitud->tipoResiduoExists((int)$residue)) {
+                return ['success' => false, 'data' => null, 'message' => 'Tipo de residuo inexistente.', 'errors' => ['id_tipo_residuo' => 'Seleccioná un tipo de residuo del catálogo.'], 'statusCode' => 400];
+            }
+        } catch (PDOException | PersistenceException $error) {
+            return ['success' => false, 'data' => null, 'message' => 'No se pudo validar el tipo de residuo.', 'errors' => [], 'statusCode' => 500];
         }
 
         $attemptedTrackingNumbers = [];

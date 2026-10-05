@@ -20,6 +20,7 @@ class SolicitudControllerTest extends TestCase
             public ?Throwable $exception = null;
             public array $outcomes = [];
             public array $trackingNumbers = [];
+            public function tipoResiduoExists(int $id): bool { return $id >= 1 && $id <= 9; }
             public function create(): bool {
                 $this->createCalls++;
                 $this->trackingNumbers[] = $this->tracking_number;

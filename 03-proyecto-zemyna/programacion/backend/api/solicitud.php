@@ -47,6 +47,8 @@ do {
         break;
     }
 
+    if (!is_array($data)) { http_response_code(400); echo json_encode(['success'=>false,'message'=>'JSON inválido.']); break; }
+
     if (!validarCaptcha($data['captcha_respuesta'] ?? null)) {
         http_response_code(400);
         echo json_encode([
@@ -57,12 +59,6 @@ do {
         break;
     }
 
-    if (!isset($data['estado']) || trim((string)$data['estado']) === '') {
-        $data['estado'] = 'Pendiente';
-    }
-    if (!isset($data['fecha']) || trim((string)$data['fecha']) === '') {
-        $data['fecha'] = date('Y-m-d H:i:s');
-    }
     if (!isset($data['id_tipo_residuo']) || (int)$data['id_tipo_residuo'] <= 0) {
         $tipoSolicitud = strtolower((string)($data['tipo_solicitud'] ?? ''));
         $descripcion = strtolower((string)($data['descripcion'] ?? ''));

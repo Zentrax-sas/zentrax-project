@@ -42,6 +42,13 @@ class Solicitud {
         return $row ?: null;
     }
 
+    public function tipoResiduoExists(int $id): bool {
+        if (!$this->conn) throw new PDOException('Sin conexión.');
+        $stmt = $this->conn->prepare('SELECT id_tipo_residuo FROM tipo_residuo WHERE id_tipo_residuo=?');
+        if (!$stmt->execute([$id])) throw new PDOException('No se pudo consultar el catálogo.');
+        return $stmt->fetchColumn() !== false;
+    }
+
     public function create() {
         if (!$this->conn) return false;
         if (empty($this->descripcion) || empty($this->direccion) || empty($this->estado) ||

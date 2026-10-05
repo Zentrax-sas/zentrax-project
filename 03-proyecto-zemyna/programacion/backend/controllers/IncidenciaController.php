@@ -638,13 +638,12 @@ class IncidenciaController {
     }
 
     public function create($data, ?int $trustedUserId = null) {
-        $data = $data ?? [];
-
-        $data['fecha_reporte'] = $data['fecha_reporte'] ?? date('Y-m-d H:i:s');
-        $data['estado'] = $data['estado'] ?? 'Pendiente';
-        $data['prioridad'] = $data['prioridad'] ?? 'Media';
-        unset($data['id_usuario'], $data['id_cuadrilla']);
-        if ($trustedUserId === null) unset($data['latitud'], $data['longitud']);
+        $allowed = ['descripcion', 'tipo_problema', 'id_contenedor', 'id_ruta', 'direccion'];
+        if ($trustedUserId !== null) $allowed = array_merge($allowed, ['latitud', 'longitud']);
+        $data = array_intersect_key(is_array($data) ? $data : [], array_flip($allowed));
+        $data['fecha_reporte'] = (new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d H:i:s');
+        $data['estado'] = 'Pendiente';
+        $data['prioridad'] = 'Media';
 
         $errors = $this->validateIncidenciaPayload($data, false, $trustedUserId !== null);
 
@@ -685,7 +684,8 @@ class IncidenciaController {
             $attemptedTrackingNumbers[$this->incidencia->tracking_number] = true;
 
             try {
-                $created = $this->incidencia->create();
+                $grant = $this->incidencia->createWithUploadGrant();
+                $created = $grant !== false;
             } catch (PDOException $exception) {
                 if ($this->isTrackingDuplicate($exception) && $attempt < 3) {
                     continue;
@@ -701,7 +701,7 @@ class IncidenciaController {
                     "data" => [
                         "id_incidencia" => $this->incidencia->id_incidencia,
                         "tracking_number" => $this->incidencia->tracking_number
-                    ],
+                    ] + $grant,
                     "message" => "Incidencia registrada correctamente.",
                     "errors" => [],
                     "statusCode" => 201

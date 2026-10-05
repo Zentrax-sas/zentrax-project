@@ -121,6 +121,7 @@ class FotoStorageTest extends TestCase
     {
         $source = file_get_contents(__DIR__ . '/../api/foto.php');
         $this->assertStringContainsString("header('Content-Type: application/json; charset=utf-8')", $source);
+        $source .= file_get_contents(__DIR__ . '/../controllers/FotoUploadController.php');
         $this->assertStringContainsString('FotoStorage::uploadErrorDetails', $source);
         $this->assertStringContainsString("sendFotoJson(500, false", $source);
         $this->assertStringContainsString('@unlink($targetPath)', $source);

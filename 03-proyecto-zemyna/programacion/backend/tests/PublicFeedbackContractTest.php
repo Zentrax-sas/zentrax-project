@@ -102,7 +102,7 @@ class PublicFeedbackContractTest extends TestCase
         $this->assertNotFalse($confirmationPosition);
         $this->assertLessThan($photoTryPosition, $trackingPosition);
         $this->assertLessThan($confirmationPosition, $photoTryPosition);
-        $this->assertStringContainsString('La incidencia fue registrada, pero no se pudo adjuntar la fotografía.', $source);
+        $this->assertStringContainsString('pero no se pudo adjuntar la fotografía.', $source);
     }
 
     public function testFrontendDetectaRespuestaVaciaYJsonInvalidoSinParseoDirectoEnElEnvio(): void

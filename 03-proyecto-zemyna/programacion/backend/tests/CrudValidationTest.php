@@ -15,6 +15,7 @@ class CrudValidationTest extends TestCase
         $incidenciaProperty->setAccessible(true);
         $incidenciaProperty->setValue($this->incidenciaController, new class {
             public $id_incidencia = 55;
+            public function createWithUploadGrant() { return ['upload_token'=>str_repeat('a',64),'upload_expires_at'=>'2026-10-04 12:00:00']; }
             public function create() { return true; }
             public function update() { return true; }
         });
@@ -46,7 +47,7 @@ class CrudValidationTest extends TestCase
         );
     }
 
-    public function testIncidenciaRechazaFechaInvalida(): void
+    public function testIncidenciaIgnoraFechaClienteInvalida(): void
     {
         $result = $this->incidenciaController->create([
             'descripcion' => 'Fecha inválida', 'fecha_reporte' => 'fecha-invalida',
@@ -54,7 +55,7 @@ class CrudValidationTest extends TestCase
             'tipo_problema' => 'Contenedor Desbordado', 'id_contenedor' => 1,
         ]);
 
-        $this->assertTrue(($result['success'] ?? false) === false && ($result['statusCode'] ?? null) === 400);
+        $this->assertTrue(($result['success'] ?? false) === true && ($result['statusCode'] ?? null) === 201);
     }
 
 }

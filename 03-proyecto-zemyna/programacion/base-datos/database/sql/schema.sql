@@ -3,8 +3,8 @@
 -- Este archivo debe usarse como base para una instalación nueva.
 
 -- Schema oficial Zemyna — DER v0.9 (ZTX-DOC-ISW-001 / ZTX-DOC-ISW-003)
--- MariaDB 10.4 compatible — 30 tablas (v19)
--- ADVERTENCIA: este archivo elimina y recrea las 30 tablas de la base
+-- MariaDB 10.4 compatible — 31 tablas (v20)
+-- ADVERTENCIA: este archivo elimina y recrea las 31 tablas de la base
 -- seleccionada. No crea, elimina ni selecciona una base por nombre. El operador
 -- debe elegir el destino expresamente mediante la opcion --database del cliente.
 -- No ejecutar sobre una base que contenga datos que deban conservarse.
@@ -29,7 +29,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS
     sesion, mantenimiento, solicitud, maquinaria, vertedero, acopio, foto,
     denuncia, asignacion_vehiculo_operativa, atencion_incidencia, incidencia, atencion_contenedor, usuario_cuadrilla, participa, recorrido, usa, cuadrilla, vehiculo,
-    geocodificacion_cache, contenedor, usuario_rol, rol_permiso, permiso,
+    incidencia_upload_token, geocodificacion_cache, contenedor, usuario_rol, rol_permiso, permiso,
     sector, rol, usuario, ruta, tipo_residuo, centro, vecino;
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -801,4 +801,25 @@ CREATE TABLE IF NOT EXISTS asignacion_vehiculo_operativa (
     CONSTRAINT chk_avo_fechas CHECK (fecha_fin IS NULL OR fecha_fin>=fecha_inicio),
     CONSTRAINT chk_avo_cierre CHECK ((fecha_fin IS NULL AND id_usuario_finaliza IS NULL AND motivo_cierre IS NULL) OR
         (fecha_fin IS NOT NULL AND id_usuario_finaliza IS NOT NULL AND motivo_cierre IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_cierre)) BETWEEN 1 AND 150))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- V20: sólo esquema. Sin backfill ni concesiones para incidencias existentes.
+CREATE TABLE IF NOT EXISTS incidencia_upload_token (
+    token_hash BINARY(32) NOT NULL PRIMARY KEY,
+    id_incidencia INT NOT NULL,
+    id_usuario_emisor INT DEFAULT NULL,
+    fecha_creacion DATETIME NOT NULL,
+    fecha_expiracion DATETIME NOT NULL,
+    fecha_consumo DATETIME DEFAULT NULL,
+    id_foto INT DEFAULT NULL,
+    KEY idx_iut_incidencia (id_incidencia),
+    KEY idx_iut_expiracion (fecha_expiracion),
+    UNIQUE KEY uk_iut_foto (id_foto),
+    CONSTRAINT fk_iut_incidencia FOREIGN KEY (id_incidencia) REFERENCES incidencia(id_incidencia) ON DELETE CASCADE,
+    CONSTRAINT fk_iut_emisor FOREIGN KEY (id_usuario_emisor) REFERENCES usuario(id_usuario) ON DELETE RESTRICT,
+    -- Borrar una foto no vuelve utilizable su concesión consumida.
+    CONSTRAINT fk_iut_foto FOREIGN KEY (id_foto) REFERENCES foto(id_foto) ON DELETE SET NULL,
+    CONSTRAINT chk_iut_expiracion CHECK (fecha_expiracion > fecha_creacion),
+    CONSTRAINT chk_iut_consumo CHECK ((fecha_consumo IS NULL AND id_foto IS NULL)
+        OR (fecha_consumo IS NOT NULL AND fecha_consumo >= fecha_creacion AND fecha_consumo < fecha_expiracion))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

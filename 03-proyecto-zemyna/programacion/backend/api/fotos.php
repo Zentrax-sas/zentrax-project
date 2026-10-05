@@ -1,6 +1,14 @@
 <?php
 require_once __DIR__ . '/../config/bootstrap.php';
 
+// No existe consumidor de asociación JSON. Rechazar antes de conectar a BD.
+if (in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT'], true)) {
+    header('Allow: GET, DELETE');
+    http_response_code(405);
+    echo json_encode(['success' => false, 'statusCode' => 405, 'message' => 'Adjuntá evidencia mediante foto.php con upload_token.']);
+    exit;
+}
+
 $database   = new Database();
 $db         = $database->getConnection();
 $controller = new FotoController($db);
@@ -18,32 +26,6 @@ switch ($method) {
             unset($row);
         }
         http_response_code($response['statusCode'] ?? 500);
-        echo json_encode($response);
-        break;
-
-    case "POST":
-        requirePermission('incidencia.adjuntar_evidencia', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
-        $data = json_decode(file_get_contents("php://input"), true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            http_response_code(400);
-            echo json_encode(["success" => false, "message" => "JSON inválido.", "errors" => [json_last_error_msg()]]);
-            break;
-        }
-        $response = $controller->create($data ?? []);
-        http_response_code($response['success'] ? 201 : 400);
-        echo json_encode($response);
-        break;
-
-    case "PUT":
-        requirePermission('incidencia.adjuntar_evidencia', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
-        $data = json_decode(file_get_contents("php://input"), true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            http_response_code(400);
-            echo json_encode(["success" => false, "message" => "JSON inválido.", "errors" => [json_last_error_msg()]]);
-            break;
-        }
-        $response = $controller->update($data ?? []);
-        http_response_code($response['success'] ? 200 : 400);
         echo json_encode($response);
         break;
 
