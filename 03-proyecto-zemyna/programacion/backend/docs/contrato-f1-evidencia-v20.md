@@ -30,7 +30,7 @@ concesión, no queda una incidencia creada parcialmente.
 ## Solicitud pública
 
 `POST solicitud.php` conserva captcha, descripción, dirección, contacto,
-tipo de solicitud e inferencia existente de residuo. Ignora estado, fecha e
+tipo de solicitud. Desde F6.1/V21 exige residuo explícito del catálogo, sin inferencia. Ignora estado, fecha e
 identidad/tracking del cliente: fecha servidor, estado Pendiente y tracking REF.
 El ID de residuo debe ser un entero positivo que exista en `tipo_residuo`;
 un ID inexistente devuelve 400. No cambia los estados posteriores ni F6.

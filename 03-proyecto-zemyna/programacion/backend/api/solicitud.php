@@ -59,31 +59,6 @@ do {
         break;
     }
 
-    if (!isset($data['id_tipo_residuo']) || (int)$data['id_tipo_residuo'] <= 0) {
-        $tipoSolicitud = strtolower((string)($data['tipo_solicitud'] ?? ''));
-        $descripcion = strtolower((string)($data['descripcion'] ?? ''));
-        $texto = $tipoSolicitud . ' ' . $descripcion;
-        $idTipo = 1;
-        if (strpos($texto, 'papel') !== false || strpos($texto, 'carton') !== false) {
-            $idTipo = 2;
-        } elseif (strpos($texto, 'plast') !== false) {
-            $idTipo = 3;
-        } elseif (strpos($texto, 'vidrio') !== false) {
-            $idTipo = 4;
-        } elseif (strpos($texto, 'metal') !== false) {
-            $idTipo = 5;
-        } elseif (strpos($texto, 'electr') !== false) {
-            $idTipo = 6;
-        } elseif (strpos($texto, 'pila') !== false || strpos($texto, 'bateria') !== false) {
-            $idTipo = 7;
-        } elseif (strpos($texto, 'escombro') !== false) {
-            $idTipo = 8;
-        } elseif (strpos($texto, 'voluminos') !== false || strpos($texto, 'gran volumen') !== false) {
-            $idTipo = 9;
-        }
-        $data['id_tipo_residuo'] = $idTipo;
-    }
-
     $response = $controller->create($data ?? []);
     http_response_code($response['statusCode'] ?? ($response['success'] ? 201 : 400));
     echo json_encode($response);

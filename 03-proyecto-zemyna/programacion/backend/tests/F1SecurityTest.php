@@ -28,7 +28,8 @@ class F1SecurityTest extends TestCase {
                 latitud NUMERIC,longitud NUMERIC,fecha_resolucion TEXT DEFAULT NULL);
             CREATE TABLE foto(id_foto INTEGER PRIMARY KEY AUTOINCREMENT,fecha TEXT,url TEXT,id_incidencia INTEGER REFERENCES incidencia(id_incidencia));
             CREATE TABLE solicitud(id_solicitud INTEGER PRIMARY KEY AUTOINCREMENT,tracking_number TEXT UNIQUE,fecha TEXT,
-                descripcion TEXT,direccion TEXT,estado TEXT,id_tipo_residuo INTEGER REFERENCES tipo_residuo(id_tipo_residuo),email TEXT,telefono TEXT,tipo_solicitud TEXT);");
+                descripcion TEXT,direccion TEXT,estado TEXT,id_tipo_residuo INTEGER REFERENCES tipo_residuo(id_tipo_residuo),email TEXT,telefono TEXT,tipo_solicitud TEXT,
+                fecha_confirmacion_residuo TEXT,id_usuario_confirma_residuo INTEGER);");
         createUploadTokenFixture($this->db);
     }
     protected function seed(): void {

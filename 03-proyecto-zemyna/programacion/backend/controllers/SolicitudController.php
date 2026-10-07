@@ -49,10 +49,20 @@ class SolicitudController {
         $this->solicitud->descripcion     = $data['descripcion'] ?? null;
         $this->solicitud->direccion       = $data['direccion'] ?? null;
         $this->solicitud->estado          = 'Pendiente';
-        $this->solicitud->id_tipo_residuo = $data['id_tipo_residuo'] ?? $this->inferTipoResiduoId($data['tipo_solicitud'] ?? null, $data['descripcion'] ?? null);
+        $this->solicitud->id_tipo_residuo = $data['id_tipo_residuo'] ?? null;
         $this->solicitud->email           = $data['email'] ?? null;
         $this->solicitud->telefono        = $data['telefono'] ?? null;
         $this->solicitud->tipo_solicitud  = $data['tipo_solicitud'] ?? null;
+        $this->solicitud->fecha_confirmacion_residuo = $this->solicitud->fecha;
+        $this->solicitud->id_usuario_confirma_residuo = null;
+
+        // Validar tipos antes de usar funciones de texto sobre JSON no confiable.
+        foreach (['descripcion', 'direccion', 'email', 'telefono', 'tipo_solicitud'] as $field) {
+            if (!is_string($data[$field] ?? null) || trim($data[$field]) === '') {
+                return ['success' => false, 'data' => null, 'message' => 'Datos incompletos o invalidos.',
+                    'errors' => [$field => 'Indicá un texto válido.'], 'statusCode' => 400];
+            }
+        }
 
         $estados = ['Pendiente', 'Programada', 'Finalizada', 'Cancelada'];
         $errors = [];
@@ -118,22 +128,6 @@ class SolicitudController {
         }
 
         return ["success" => false, "data" => null, "message" => "Error al registrar la solicitud.", "errors" => [], "statusCode" => 500];
-    }
-
-    private function inferTipoResiduoId($tipoSolicitud, $descripcion) {
-        $texto = strtolower(trim((string)($tipoSolicitud . ' ' . $descripcion)));
-        if ($texto === '') return null;
-
-        if (strpos($texto, 'papel') !== false || strpos($texto, 'carton') !== false) return 2;
-        if (strpos($texto, 'plast') !== false) return 3;
-        if (strpos($texto, 'vidrio') !== false) return 4;
-        if (strpos($texto, 'metal') !== false) return 5;
-        if (strpos($texto, 'electr') !== false) return 6;
-        if (strpos($texto, 'pila') !== false || strpos($texto, 'bateria') !== false) return 7;
-        if (strpos($texto, 'escombro') !== false) return 8;
-        if (strpos($texto, 'voluminos') !== false) return 9;
-
-        return 1;
     }
 
     public function update($data) {

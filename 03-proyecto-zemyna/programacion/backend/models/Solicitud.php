@@ -15,6 +15,8 @@ class Solicitud {
     public $email;
     public $telefono;
     public $tipo_solicitud;
+    public $fecha_confirmacion_residuo;
+    public $id_usuario_confirma_residuo;
 
     public function __construct($db) {
         $this->conn = $db;
@@ -58,8 +60,8 @@ class Solicitud {
         }
         if (!filter_var($this->email, FILTER_VALIDATE_EMAIL)) return false;
         $query = "INSERT INTO " . $this->table_name . "
-                  (tracking_number, fecha, descripcion, direccion, estado, id_tipo_residuo, email, telefono, tipo_solicitud)
-                  VALUES (:tracking_number, :fecha, :descripcion, :direccion, :estado, :id_tipo_residuo, :email, :telefono, :tipo_solicitud)";
+                  (tracking_number, fecha, descripcion, direccion, estado, id_tipo_residuo, email, telefono, tipo_solicitud, fecha_confirmacion_residuo, id_usuario_confirma_residuo)
+                  VALUES (:tracking_number, :fecha, :descripcion, :direccion, :estado, :id_tipo_residuo, :email, :telefono, :tipo_solicitud, :fecha_confirmacion_residuo, NULL)";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":tracking_number", $this->tracking_number);
         $stmt->bindParam(":fecha",           $this->fecha);
@@ -70,6 +72,7 @@ class Solicitud {
         $stmt->bindParam(":email",           $this->email);
         $stmt->bindParam(":telefono",        $this->telefono);
         $stmt->bindParam(":tipo_solicitud",  $this->tipo_solicitud);
+        $stmt->bindParam(":fecha_confirmacion_residuo", $this->fecha_confirmacion_residuo);
         return $stmt->execute();
     }
 

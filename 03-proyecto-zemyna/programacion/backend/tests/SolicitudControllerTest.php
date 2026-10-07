@@ -15,6 +15,7 @@ class SolicitudControllerTest extends TestCase
         $this->model = new class {
             public mixed $fecha, $descripcion, $direccion, $estado, $id_tipo_residuo;
             public mixed $email, $telefono, $tipo_solicitud, $tracking_number;
+            public mixed $fecha_confirmacion_residuo, $id_usuario_confirma_residuo;
             public int $createCalls = 0;
             public bool $createResult = true;
             public ?Throwable $exception = null;
@@ -60,7 +61,7 @@ class SolicitudControllerTest extends TestCase
 
     public static function requiredFieldProvider(): array
     {
-        return [['direccion'], ['telefono'], ['email']];
+        return [['direccion'], ['telefono'], ['email'], ['id_tipo_residuo']];
     }
 
     public function testEmailInvalidoDevuelve400(): void
@@ -96,6 +97,22 @@ class SolicitudControllerTest extends TestCase
         $this->assertStringNotContainsString('persona@example.com', $serialized);
         $this->assertStringNotContainsString('099123456', $serialized);
         $this->assertStringNotContainsString('Avenida de prueba', $serialized);
+        $this->assertSame($this->model->fecha, $this->model->fecha_confirmacion_residuo);
+        $this->assertNull($this->model->id_usuario_confirma_residuo);
+    }
+
+    public function testResiduoNoSeInfiereYManipulacionesDeConfirmacionSeIgnoran(): void
+    {
+        $body = $this->validPayload(); unset($body['id_tipo_residuo']);
+        $this->assertSame(400, $this->controller->create($body)['statusCode']);
+        foreach ([true, 2.5, [], '0', '999'] as $id) {
+            $body['id_tipo_residuo'] = $id;
+            $this->assertSame(400, $this->controller->create($body)['statusCode']);
+        }
+        $body = $this->validPayload() + ['fecha_confirmacion_residuo' => '2099-01-01', 'id_usuario_confirma_residuo' => 1];
+        $this->assertSame(201, $this->controller->create($body)['statusCode']);
+        $this->assertSame($this->model->fecha, $this->model->fecha_confirmacion_residuo);
+        $this->assertNull($this->model->id_usuario_confirma_residuo);
     }
 
     public function testFalloDePersistenciaDevuelve500Generico(): void

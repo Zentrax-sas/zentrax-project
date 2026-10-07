@@ -578,3 +578,16 @@ INSERT IGNORE INTO rol_permiso (id_rol, id_permiso)
 SELECT r.id_rol, p.id_permiso FROM rol r CROSS JOIN permiso p
 WHERE r.nombre IN ('OPERARIO', 'ADMINISTRADOR_TI', 'RESPONSABLE_SECTORIAL', 'ADMINISTRATIVO_OPERATIVO') AND p.nombre = 'recorrido.operar';
 -- El endpoint exige sector OPERACIONES y pertenencia vigente incluso para administradores.
+
+-- V21 permisos F6 para instalación limpia con roles cargados.
+START TRANSACTION;
+INSERT INTO permiso (nombre,descripcion) VALUES
+ ('solicitud.consultar','Consultar solicitudes de retiro especial en Operaciones'),
+ ('solicitud.modificar','Evaluar, asignar y cancelar solicitudes de retiro especial'),
+ ('solicitud.operar','Consultar y atender solicitudes propias de la cuadrilla vigente')
+ON DUPLICATE KEY UPDATE descripcion=VALUES(descripcion);
+INSERT IGNORE INTO rol_permiso (id_rol,id_permiso)
+SELECT r.id_rol,p.id_permiso FROM rol r CROSS JOIN permiso p
+WHERE (r.nombre IN ('RESPONSABLE_SECTORIAL','ADMINISTRATIVO_OPERATIVO') AND p.nombre IN ('solicitud.consultar','solicitud.modificar'))
+ OR (r.nombre='OPERARIO' AND p.nombre='solicitud.operar');
+COMMIT;
