@@ -138,7 +138,10 @@ class RecoleccionController
                 }
             }
             return ['success' => true, 'statusCode' => 200, 'data' => $rows,
+                'contexto_operativo' => $model->contextoIncidencias($user),
                 'meta' => ['page' => $page, 'limit' => $limit, 'has_more' => $hasMore]];
+        } catch (DomainException $e) {
+            return $this->failure($e->getCode(), $e->getMessage(), $e->getCode() === 409 ? 'sin_pertenencia' : '');
         } catch (PDOException $e) {
             return $this->failure(503, 'No se pudieron consultar las incidencias propias.');
         }

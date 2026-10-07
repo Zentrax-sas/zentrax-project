@@ -6,6 +6,7 @@
     return buildApiUrl(`/backend/api/recoleccion.php${search ? `?${search}` : ''}`, { cacheBust: false });
   };
   function sessionExpired() {
+    window.dispatchEvent?.(new Event('zemyna:session-expired'));
     el('collectionStatus').textContent = 'Tu sesión venció. Iniciá sesión nuevamente.';
     el('collectionLogin').hidden = false;
     el('collectionLogin').href = buildFrontendUrl('login.html');
@@ -103,5 +104,9 @@
   }
   el('collectionRetry').addEventListener('click', () => load(query));
   window.addEventListener('pagehide', () => { version++; request?.abort(); });
+  window.addEventListener('zemyna:session-expired', () => {
+    version++; request?.abort(); el('collectionPanel').hidden = true;
+    el('collectionItems').replaceChildren(); el('collectionVehicles').textContent = '';
+  });
   load();
 })();

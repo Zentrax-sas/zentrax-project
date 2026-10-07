@@ -93,12 +93,27 @@ final class IncidenciasPropiasTest extends TestCase
         $this->assertSame(200,$response['statusCode']);$this->assertContains(5,$this->ids());
         $this->user(2);$this->assertNotContains(5,$this->ids());
         $this->assertSame(0,(int)$this->db->query('SELECT COUNT(*) FROM recorrido')->fetchColumn());
+        $this->user();
+        $context = $this->get()['contexto_operativo'];
+        $this->assertSame('APOYO', $context['funcion_operativa']);
+        $this->assertSame('APOYO1', $context['vehiculo']['matricula']);
+        $this->assertNull($context['recorrido']);
+        $this->assertSame('no_requerido', $context['estado_recorrido']);
     }
 
     public function testListaPropiaSinRecorridoNiDatosDelAutor(): void
     {
         // No hay tablas recorrido/usa/participa: consultar incidencias no debe necesitarlas.
         $_SESSION['usuario']['id_cuadrilla'] = 2;
+        $context = $this->get()['contexto_operativo'];
+        $this->assertSame(1, $context['cuadrilla']['id_cuadrilla']);
+        $this->assertFalse($context['puede_operar_incidencias']);
+        $this->assertNull($context['vehiculo']);
+        $this->assertNull($context['funcion_operativa']);
+        $this->db->exec("INSERT INTO permiso VALUES(9,'incidencia.operar'); INSERT INTO rol_permiso VALUES(1,9)");
+        $this->assertTrue($this->get()['contexto_operativo']['puede_operar_incidencias']);
+        $this->db->exec('DELETE FROM rol_permiso WHERE id_permiso=9');
+        $this->assertFalse($this->get()['contexto_operativo']['puede_operar_incidencias']);
         $this->assertSame([1,2], $this->ids());
         $this->assertSame(['page' => 1, 'limit' => 20, 'has_more' => false], $this->get()['meta']);
         $this->assertSame([

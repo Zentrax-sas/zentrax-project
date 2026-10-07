@@ -15,6 +15,14 @@
 <a id="collectionLogin" href="login.html" hidden>Iniciar sesión</a>
 <section id="collectionPanel" hidden aria-label="Tu recorrido"><h2 id="collectionHeading"></h2><p id="collectionVehicles"></p><div id="collectionItems"></div></section>
 <div class="collection-actions"><button class="secondary-button" type="button" id="collectionRetry">Actualizar información</button><button class="secondary-button" type="button" id="collectionReportButton">Reportar problema</button></div>
+<section id="ownIncidents" aria-labelledby="ownIncidentsHeading">
+  <h2 id="ownIncidentsHeading">Incidencias asignadas</h2>
+  <p id="ownIncidentContext"></p>
+  <p id="ownIncidentStatus" role="status" aria-live="polite">Consultando incidencias…</p>
+  <div id="ownIncidentList"></div>
+  <nav aria-label="Páginas de incidencias"><button id="ownIncidentPrevious" type="button" disabled>Anterior</button><span id="ownIncidentPage"></span><button id="ownIncidentNext" type="button" disabled>Siguiente</button><button id="ownIncidentRefresh" type="button">Actualizar incidencias</button></nav>
+  <section id="ownIncidentDetail" hidden aria-label="Detalle de incidencia" tabindex="-1"></section>
+</section>
         <section id="collectionReport" hidden>
           <section class="card panel crew-report">
             <h2 class="panel-title">Reportar problema</h2>
@@ -51,5 +59,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="assets/js/recoleccion.js?v=4"></script>
+<script src="assets/js/recoleccion-incidencias.js?v=1"></script>
 <script src="assets/js/recoleccion-report.js"></script><script src="assets/js/crew-report.js"></script>
 </body></html>

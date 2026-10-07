@@ -42,6 +42,45 @@ class RecoleccionOperativa extends Recoleccion
         return ['elegible' => true, 'motivo' => 'Permisos operativos vigentes en Operaciones'];
     }
     public function elegible(int $id): bool { return $this->elegibilidad($id)['elegible']; }
+    /** Contexto de lectura F4: identidad y pertenencia resueltas en servidor. */
+    public function contextoIncidencias(int $user): array
+    {
+        $member = $this->pertenencia($user);
+        if (!$member) $this->fail(409, 'No tenés pertenencia vigente a una cuadrilla.');
+        $date = substr($this->now(), 0, 10);
+        $permission = $this->rows("SELECT p.nombre FROM usuario_rol ur JOIN rol_permiso rp ON rp.id_rol=ur.id_rol
+            JOIN permiso p ON p.id_permiso=rp.id_permiso WHERE ur.id_usuario=? AND ur.sector='OPERACIONES'
+            AND ur.fecha_desde<=? AND (ur.fecha_hasta IS NULL OR ur.fecha_hasta>=?) AND p.nombre='incidencia.operar'", [$user, $date, $date]);
+        $context = ['puede_operar_incidencias' => $this->elegible($user) && count($permission) > 0,
+            'cuadrilla' => ['id_cuadrilla' => (int)$member['id_cuadrilla'], 'nombre' => $member['nombre'], 'turno' => $member['turno']],
+            'asignacion_v19' => null, 'vehiculo' => null, 'funcion_operativa' => null,
+            'estado_v19' => 'sin_asignacion', 'recorrido' => null, 'estado_recorrido' => 'no_determinado'];
+        $assignments = $this->rows('SELECT id_asignacion_vehiculo,id_vehiculo,fecha_inicio FROM asignacion_vehiculo_operativa WHERE id_cuadrilla=? AND fecha_fin IS NULL', [(int)$member['id_cuadrilla']]);
+        if (count($assignments) > 1) { $context['estado_v19'] = 'ambiguo'; return $context; }
+        if (!$assignments) return $context;
+        $assignment = $assignments[0];
+        $vehicle = $this->rows('SELECT id_vehiculo,matricula,estado,activo,funcion_operativa FROM vehiculo WHERE id_vehiculo=?', [$assignment['id_vehiculo']])[0] ?? null;
+        $context['asignacion_v19'] = ['id_asignacion_vehiculo' => (int)$assignment['id_asignacion_vehiculo'], 'fecha_inicio' => $assignment['fecha_inicio']];
+        $context['estado_v19'] = 'vigente';
+        if (!$vehicle) return $context;
+        $vehicle['id_vehiculo'] = (int)$vehicle['id_vehiculo']; $vehicle['activo'] = (int)$vehicle['activo'];
+        $context['vehiculo'] = $vehicle;
+        $context['funcion_operativa'] = in_array($vehicle['funcion_operativa'], ['REGULAR', 'APOYO'], true) ? $vehicle['funcion_operativa'] : null;
+        if ($context['funcion_operativa'] === 'APOYO') { $context['estado_recorrido'] = 'no_requerido'; return $context; }
+        if ($context['funcion_operativa'] !== 'REGULAR') return $context;
+        $trips = $this->rows("SELECT DISTINCT re.id_recorrido,re.estado,r.nombre AS ruta_nombre FROM recorrido re
+            JOIN ruta r ON r.id_ruta=re.id_ruta JOIN participa p ON p.id_recorrido=re.id_recorrido JOIN usa u ON u.id_usa=p.id_usa
+            WHERE u.id_cuadrilla=? AND re.estado IN ('Pendiente','En Proceso')", [(int)$member['id_cuadrilla']]);
+        $context['estado_recorrido'] = !$trips ? 'sin_recorrido' : 'ambiguo';
+        if (count($trips) === 1) {
+            $links = $this->rows('SELECT u.id_cuadrilla,u.id_vehiculo,p.hora_fin FROM participa p JOIN usa u ON u.id_usa=p.id_usa WHERE p.id_recorrido=?', [$trips[0]['id_recorrido']]);
+            if (count($links) === 1 && (int)$links[0]['id_cuadrilla'] === (int)$member['id_cuadrilla'] && (int)$links[0]['id_vehiculo'] === $vehicle['id_vehiculo'] && $links[0]['hora_fin'] === null) {
+                $trips[0]['id_recorrido'] = (int)$trips[0]['id_recorrido'];
+                $context['recorrido'] = $trips[0]; $context['estado_recorrido'] = 'vigente';
+            }
+        }
+        return $context;
+    }
     public function pertenencia(int $id): ?array
     {
         return $this->rows('SELECT uc.id_usuario_cuadrilla, uc.id_cuadrilla, uc.fecha_inicio, c.nombre, c.turno

@@ -48,6 +48,9 @@
 .collection-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .collection-empty p { max-width: 65ch; }
 #collectionVehicles:empty, #collectionStatus:empty { display: none; }
+#ownIncidents { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 16px; }
+#ownIncidentDetail { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 16px 0; background: var(--surface); overflow-wrap: anywhere; }
+#ownIncidents textarea { display: block; box-sizing: border-box; width: 100%; padding: 12px; font: inherit; background: var(--surface-2); color: var(--text); border: 1px solid var(--muted); border-radius: 8px; }
 #squadNav .bi { font-size: 18px; line-height: 1; }
 #userEligibilityWarning { color: #f5d58c; padding: 12px; border-left: 3px solid currentColor; line-height: 1.5; }
 #squadExcluded { padding-left: 22px; line-height: 1.8; }

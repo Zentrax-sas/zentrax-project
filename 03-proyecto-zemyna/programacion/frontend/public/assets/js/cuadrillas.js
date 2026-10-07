@@ -26,6 +26,8 @@
   }
   const vehicles = rows => rows?.length ? rows.map(v => `${v.matricula}${Number(v.activo) === 0 ? ' · Baja lógica' : ''}`).join(', ') : 'Sin vehículo relacionado';
   const progress = t => t ? `${t.progreso.atendidos} de ${t.progreso.total} atendidos` : 'Sin recorrido';
+  let memberCount;
+  const memberCountText = count => `${count} ${Number(count) === 1 ? 'integrante activo' : 'integrantes activos'} · Turno ${selected.turno}`;
   const author = (trip, id) => { const u = trip.autores?.find(a => Number(a.id_usuario) === Number(id)); return u ? `${u.nombre} ${u.apellido}` : 'Sin autor registrado'; };
   function list(data) {
     el('squadList').hidden = false; el('squadDetail').hidden = true; el('squadPaging').hidden = false;
@@ -37,7 +39,10 @@
     selected = data.cuadrilla; const trip = data.recorrido_actual;
     window.VehicleAssignmentAdmin?.open(selected.id_cuadrilla);
     const card = node('article'); card.className = 'card squad-summary';
-    card.append(node('h3', trip?.estado || 'Sin recorrido disponible'), node('p', `${data.integrantes_activos} integrantes activos · Turno ${selected.turno}`), node('p', `Vehículos: ${vehicles(data.vehiculos)}`));
+    memberCount = node('p', memberCountText(data.integrantes_activos));
+    card.append(node('h3', trip?.estado || 'Sin recorrido disponible'), memberCount, node('p', `Vehículos: ${vehicles(data.vehiculos)}`));
+    if (permissions.integrantes) card.append(button('Ver y gestionar integrantes', () => { setTab('members'); el('squadMembersTab').focus(); }));
+    else card.append(node('p', 'No disponés de permisos para consultar o gestionar integrantes.'));
     if (trip) card.append(node('h3', trip.ruta_nombre), node('p', progress(trip)), node('p', `Inicio: ${trip.fecha_inicio} · Fin: ${trip.fecha_fin || 'Sin finalizar'}`));
     el('squadSummary').replaceChildren(card);
     el('squadName').textContent = selected.nombre;
@@ -69,6 +74,7 @@
   }
   function renderMembers(data, result) {
     members = data; permissions.modificar_integrantes = result.puede_gestionar === true;
+    if (memberCount) memberCount.textContent = memberCountText(data.historial.filter(u => !u.fecha_fin).length);
     el('squadActiveMembers').replaceChildren(memberRows(data.historial.filter(u => !u.fecha_fin), true));
     el('squadHistory').replaceChildren(memberRows(data.historial.filter(u => u.fecha_fin), false));
     el('squadAdd').hidden = !permissions.modificar_integrantes; el('squadUsers').hidden = !permissions.usuarios;

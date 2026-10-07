@@ -1,5 +1,47 @@
 # F4.1: consulta de incidencias propias
 
+## Extensión de contexto operativo (interfaz F4)
+
+Las respuestas 200 de listado y detalle agregan `contexto_operativo` sin cambiar
+`data`, `meta`, filtros, ownership ni contratos de escritura F4.2:
+
+```json
+{
+  "contexto_operativo": {
+    "puede_operar_incidencias": true,
+    "cuadrilla": {"id_cuadrilla": 1, "nombre": "Primera", "turno": "Matutino"},
+    "asignacion_v19": {"id_asignacion_vehiculo": 3, "fecha_inicio": "2026-10-05 08:00:00"},
+    "vehiculo": {"id_vehiculo": 2, "matricula": "ABC123", "estado": "Disponible", "activo": 1, "funcion_operativa": "APOYO"},
+    "funcion_operativa": "APOYO",
+    "estado_v19": "vigente",
+    "recorrido": null,
+    "estado_recorrido": "no_requerido"
+  }
+}
+```
+
+El contexto se deriva del usuario de sesión y su pertenencia abierta. El permiso
+es elegibilidad real más `incidencia.operar` en un rol vigente de OPERACIONES;
+no depende del nombre del rol ni del bypass TI. La ausencia de permiso permite
+lectura F4.1, con `puede_operar_incidencias:false`. Cada POST continúa revalidando.
+
+V19 se consulta por `fecha_fin IS NULL`. `estado_v19` es `sin_asignacion`,
+`vigente` o `ambiguo`; sin asignación inequívoca, asignación/vehículo/función son
+null. La función se toma del vehículo, nunca de la ausencia de recorrido.
+La asignación no expone autores ni historial. Un vehículo ausente se representa
+con null, sin inventar matrícula ni clasificación.
+
+Para REGULAR se devuelve `recorrido:{id_recorrido,estado,ruta_nombre}` solamente
+cuando hay un único recorrido Pendiente/En Proceso y una única participación
+abierta de la misma pareja cuadrilla/vehículo V19. `estado_recorrido` es
+`vigente`, `sin_recorrido`, `ambiguo`, `no_requerido` (APOYO) o `no_determinado`
+(sin función/V19 determinable). No se bloquea la consulta de incidencias por
+ausencia o ambigüedad de recorrido. Estas consultas son una vista actual, no una
+reserva: los escritores F4.2 conservan sus controles de concurrencia.
+
+No se agregan parámetros: identidad, cuadrilla y vehículo del cliente siguen
+rechazados. Se requiere la estructura V19 ya existente; no hay nueva migración.
+
 ## Autenticación y alcance
 
 Usar la cookie de sesión obtenida con `POST /backend/api/login.php`.

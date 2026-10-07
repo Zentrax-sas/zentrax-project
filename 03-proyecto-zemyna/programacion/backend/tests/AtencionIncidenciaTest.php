@@ -101,6 +101,18 @@ final class AtencionIncidenciaTest extends TestCase
         $this->assertSame(0,(int)$this->db->query('SELECT COUNT(*) FROM recorrido')->fetchColumn());
     }
     private function own(array $query=[]): array { return (new RecoleccionController($this->db))->consultar(['view'=>'incidencias_propias']+$query); }
+    public function testContextoRegularPropioYRecorridoAmbiguo(): void {
+        $context = $this->own()['contexto_operativo'];
+        $this->assertTrue($context['puede_operar_incidencias']);
+        $this->assertSame('REGULAR', $context['funcion_operativa']);
+        $this->assertSame(1, $context['recorrido']['id_recorrido']);
+        $this->assertSame('vigente', $context['estado_recorrido']);
+        $this->db->exec('INSERT INTO participa VALUES(3,2,1,NULL)');
+        $context = $this->own()['contexto_operativo'];
+        $this->assertNull($context['recorrido']);
+        $this->assertSame('ambiguo', $context['estado_recorrido']);
+        $this->assertNotEmpty($this->own()['data']);
+    }
 
     public function testCicloConAutoresServidorResolucionYConsumidores(): void {
         $before = (new Dashboard($this->db))->consultar(null,null);

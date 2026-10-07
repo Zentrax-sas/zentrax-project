@@ -479,6 +479,37 @@ test('cuadrillas navega listado resumen integrantes e historial con autores legi
   assert.match(text(h.elements.get('squadActiveMembers')),/Ana Gestión/);assert.match(text(h.elements.get('squadHistory')),/Anterior/);assert.doesNotMatch(text(h.elements.get('squadActiveMembers')),/Anterior/);
   h.click('squadTripsTab');assert.equal(h.elements.get('squadTrips').hidden,false);assert.match(text(h.elements.get('squadTripRows')),/Ruta propia/);
 });
+test('Resumen abre Integrantes mediante el acceso y presenta contador singular',async()=>{
+  const h=await adminReady();actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(2,200,detailBody());await tick();
+  assert.match(text(h.elements.get('squadSummary')),/1 integrante activo ·/);
+  actionIn(h,'squadSummary','Ver y gestionar integrantes').listeners.click();
+  assert.equal(h.elements.get('squadMembers').hidden,false);
+  assert.equal(new URL(h.requests[3].url).searchParams.get('view'),'integrantes');
+  h.reply(3,200,membersBody());await tick();assert.match(text(h.elements.get('squadActiveMembers')),/Operario Prueba/);
+});
+test('Resumen explica falta de permiso sin consultar ni mostrar integrantes',async()=>{
+  const h=collectionHarness(true);await tick();h.reply(0,200,{success:true,data:{administracion:true,integrantes:false}});await tick();h.open();await tick();h.reply(1,200,catalogBody());await tick();
+  actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(2,200,detailBody());await tick();
+  assert.match(text(h.elements.get('squadSummary')),/No disponés de permisos/);
+  assert.doesNotMatch(text(h.elements.get('squadSummary')),/Ver y gestionar integrantes|Operario Prueba/);
+  assert.equal(h.elements.get('squadMembersTab').hidden,true);assert.equal(h.requests.length,3);
+});
+test('operaciones de integrantes refrescan listado y contador desde la respuesta existente',async()=>{
+  for(const operation of ['asignar','trasladar','finalizar_pertenencia']){
+    const h=await adminMembers();
+    if(operation==='finalizar_pertenencia'){const b=actionIn(h,'squadActiveMembers','Finalizar pertenencia');b.listeners.click({currentTarget:b});}
+    else {h.click('squadAdd');h.elements.get('squadEligible').value=operation==='asignar'?4:3;h.elements.get('squadEligible').change();}
+    h.elements.get('squadAssignment').listeners.submit({preventDefault(){}});
+    assert.equal(JSON.parse(h.requests[4].options.body).accion,operation);
+    h.reply(4,200,{success:true});await tick();
+    const updated=membersBody();
+    if(operation==='finalizar_pertenencia')updated.data.historial[0].fecha_fin='2026-10-06';
+    else updated.data.historial.push({id_usuario:8,nombre:'Segundo',apellido:'Integrante',fecha_fin:null});
+    h.reply(5,200,updated);await tick();
+    assert.match(text(h.elements.get('squadSummary')),operation==='finalizar_pertenencia'?/0 integrantes activos/:/2 integrantes activos/);
+    assert.equal(h.requests.length,6);
+  }
+});
 test('asignación y traslado tienen confirmaciones específicas y bloquean pertenencia redundante',async()=>{
   const h=await adminMembers();h.click('squadAdd');assert.equal(h.elements.get('squadDialog').open,true);assert.match(h.elements.get('squadDialogTitle').textContent,/Agregar operario a Destino/);assert.match(h.elements.get('squadConfirmText').textContent,/Origen.*trasladarlo a Destino/);assert.equal(h.elements.get('squadConfirm').textContent,'Confirmar traslado');
   h.elements.get('squadEligible').value=5;h.elements.get('squadEligible').change();assert.equal(h.elements.get('squadConfirm').disabled,true);assert.match(h.elements.get('squadConfirmText').textContent,/ya pertenece/);
