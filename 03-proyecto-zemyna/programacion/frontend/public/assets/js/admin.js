@@ -95,7 +95,7 @@ menuButton.addEventListener('click', () => {
   menuButton.setAttribute('aria-expanded', String(opened));
 });
 
-const titles = { cuadrillas: 'Cuadrillas', 'reportar-problema': 'Reportar problema', 'informe-incidencias': 'Informe de incidencias', incidencias: 'Incidencias', resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', centros: 'Centros', maquinaria: 'Maquinaria', usuarios: 'Usuarios y roles' };
+const titles = { solicitudes: 'Solicitudes especiales', cuadrillas: 'Cuadrillas', 'reportar-problema': 'Reportar problema', 'informe-incidencias': 'Informe de incidencias', incidencias: 'Incidencias', resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', centros: 'Centros', maquinaria: 'Maquinaria', usuarios: 'Usuarios y roles' };
 function openView(viewName) {
   if (!titles[viewName]) return;
   document.querySelectorAll('.nav-link').forEach(item => item.classList.toggle('active', item.dataset.view === viewName));
@@ -107,6 +107,8 @@ function openView(viewName) {
   window.Dashboard?.pause();
   if (viewName === 'resumen') window.Dashboard?.open();
   window.SquadAdmin?.pause();
+  window.SolicitudesAdmin?.pause();
+  if (viewName === 'solicitudes') window.SolicitudesAdmin?.open();
   if (viewName === 'cuadrillas') window.SquadAdmin?.open();
   window.CrewReport?.pause();
   if (viewName === 'reportar-problema') window.CrewReport?.open();

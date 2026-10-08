@@ -33,6 +33,7 @@
         <a class="nav-link" href="#informe-incidencias" data-view="informe-incidencias"><span class="nav-icon">≡</span>Informe de incidencias</a>
         <a class="nav-link" href="#reportar-problema" data-view="reportar-problema"><span class="nav-icon">＋</span>Reportar problema</a>
         <a class="nav-link" href="#incidencias" data-view="incidencias"><span class="nav-icon">!</span>Incidencias</a>
+        <a class="nav-link" href="#solicitudes" data-view="solicitudes"><span class="nav-icon">≡</span>Solicitudes especiales</a>
         <a class="nav-link" href="#contenedores" data-view="contenedores"><span class="nav-icon">□</span>Contenedores</a>
         <a class="nav-link" href="#centros" data-view="centros"><span class="nav-icon">⌂</span>Centros</a>
         <a class="nav-link" href="#maquinaria" data-view="maquinaria"><span class="nav-icon">⚙</span>Maquinaria</a>
@@ -364,6 +365,21 @@
             <div class="form-actions"><button id="squadCancel" type="button">Cancelar</button><button class="primary-button" id="squadConfirm" type="submit">Confirmar asignación</button></div>
           </form></dialog>
         </section>
+        <section class="view" id="view-solicitudes">
+          <section class="card panel">
+            <div class="view-heading"><div><h2>Solicitudes especiales</h2><p>Consultá la clasificación y gestioná la asignación a cuadrillas APOYO.</p></div><button class="primary-button" id="requestsRefresh" type="button">Actualizar</button></div>
+            <form class="incident-filters" id="requestsFilters">
+              <label>Bandeja<select id="requestsState"><option value="Pendiente">Pendientes</option><option value="Programada">Programadas</option><option value="En atención">En atención</option><option value="Cerradas">Cerradas</option><option value="">Todas</option></select></label>
+              <label>Desde<input id="requestsFrom" type="date"></label><label>Hasta<input id="requestsTo" type="date"></label>
+              <label>Servicio<select id="requestsService"><option value="">Todos</option><option>Reciclables</option><option>Gran volumen</option></select></label>
+              <button class="primary-button" type="submit">Aplicar filtros</button>
+            </form>
+            <p id="requestsStatus" role="status" aria-live="polite"></p>
+            <div class="table-wrap" tabindex="0" role="region" aria-label="Listado de solicitudes especiales"><table><thead><tr><th>Referencia</th><th>Fecha</th><th>Servicio</th><th>Estado</th><th>Clasificación</th><th></th></tr></thead><tbody id="requestsRows"></tbody></table></div>
+            <div class="form-actions"><button class="link-button" id="requestsPrevious" type="button" disabled>Anterior</button><span id="requestsPage"></span><button class="link-button" id="requestsNext" type="button" disabled>Siguiente</button></div>
+            <article class="card panel" id="requestsDetail" hidden aria-label="Detalle de solicitud"></article>
+          </section>
+        </section>
         <section class="view" id="view-usuarios">
           <div class="view-heading"><div><h2>Usuarios y roles</h2><p>Vista administrativa de cuentas internas y permisos asignados.</p></div><button class="primary-button" id="newUserButton" type="button">＋ Registrar usuario</button></div>
           <form class="resource-form" id="userForm" hidden>
@@ -399,7 +415,8 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="assets/js/zemyna-map.js"></script>
   <script src="assets/js/user-eligibility.js"></script>
-  <script src="assets/js/admin.js?v=7"></script>
+  <script src="assets/js/admin.js?v=8"></script>
+  <script src="assets/js/solicitudes-admin.js?v=1"></script>
   <script src="assets/js/dashboard.js"></script>
   <script src="assets/js/asignaciones-vehiculo.js"></script>
   <script src="assets/js/cuadrillas.js?v=3"></script>
