@@ -241,6 +241,16 @@ class UsuarioController {
     }
 
     public function update($data) {
+        $id = $this->normalizePositiveId(($data ?? [])['id_usuario'] ?? null);
+        if ($id === null) return $this->updateWithinTransaction($data);
+        $result = $this->usuario->withContinuity($id, fn() => $this->updateWithinTransaction($data));
+        if (($result['statusCode'] ?? null) === 500 && empty($result['errors'])) {
+            return ['success'=>false,'data'=>null,'message'=>'No se pudo actualizar el usuario.','errors'=>['La actualización del usuario falló.'],'statusCode'=>500];
+        }
+        return $result;
+    }
+
+    private function updateWithinTransaction($data) {
         $data = $data ?? [];
         $errors = $this->validateUsuarioPayload($data, true);
         $hasAssignment = count(array_intersect(['id_rol', 'sector', 'fecha_desde', 'fecha_hasta'], array_keys($data))) > 0;
@@ -356,7 +366,6 @@ class UsuarioController {
             : null;
 
         try {
-            if ($assignmentChanged && !$this->usuario->beginTransaction()) throw new RuntimeException('transaction');
             $updated = $this->usuario->update();
             if (!$updated) throw new RuntimeException('update');
             if ($assignmentChanged) {
@@ -371,13 +380,9 @@ class UsuarioController {
                 } elseif (!$this->usuario->actualizarVigenciaAsignacion((int)$currentAssignment['id_usuario_rol'], $fechaHasta)) {
                     throw new RuntimeException('dates');
                 }
-                if (!$this->usuario->commit()) throw new RuntimeException('commit');
             }
         } catch (PDOException | RuntimeException $exception) {
-            $updated = false;
-            if ($assignmentChanged) {
-                try { $this->usuario->rollBack(); } catch (Throwable $ignored) {}
-            }
+            throw $exception;
         }
 
         if ($updated) {
@@ -433,6 +438,8 @@ class UsuarioController {
         try {
             $deleted = $this->usuario->delete();
         } catch (PDOException | RuntimeException $exception) {
+            $error = ContinuidadSolicitudOperativa::error($exception);
+            if ($error['statusCode'] !== 500) return $error;
             $deleted = false;
         }
 

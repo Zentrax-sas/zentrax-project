@@ -141,8 +141,15 @@ final class AtencionIncidenciaMariaDbTest extends TestCase
         else { $this->assertSame('Aceptada',$row['estado']); $this->assertSame(1,(int)$squad); $this->assertNull($row['fecha_cierre']); }
     }
     public function testReasignacionContraAceptacion(): void {
+        // Fixture actualizado al contrato F3/V19: permisos reales del administrador y V19 explícita.
+        $this->db->exec("INSERT INTO permiso(nombre) VALUES('incidencia.consultar'),('incidencia.modificar');
+            INSERT INTO rol_permiso SELECT 4,id_permiso FROM permiso WHERE nombre IN ('incidencia.consultar','incidencia.modificar');
+            INSERT INTO usuario_rol(id_usuario,id_rol,sector,fecha_desde) VALUES(3,4,'OPERACIONES','2020-01-01');
+            UPDATE vehiculo SET funcion_operativa='REGULAR';
+            INSERT INTO asignacion_vehiculo_operativa(id_asignacion_vehiculo,id_cuadrilla,id_vehiculo,fecha_inicio,id_usuario_asigna)
+            VALUES(1,1,1,'2020-01-01',3),(2,2,2,'2020-01-01',3);");
         $assign=['database'=>$this->database,'user'=>3,'admin'=>true,'body'=>['accion'=>'asignar','id_incidencia'=>1,'id_cuadrilla'=>2,
-            'id_recorrido'=>2,'id_usa'=>2,'cuadrilla_esperada'=>1,'estado_esperado'=>'Pendiente']];
+            'id_asignacion_vehiculo'=>2,'id_recorrido'=>2,'id_usa'=>2,'cuadrilla_esperada'=>1,'estado_esperado'=>'Pendiente']];
         $results=$this->race([$this->request(),$assign]);
         $this->assertSame(200,$results[1]['statusCode']); $this->assertContains($results[0]['statusCode'],[200,404]);
         $rows=(new AtencionIncidencia($this->db))->history(1);

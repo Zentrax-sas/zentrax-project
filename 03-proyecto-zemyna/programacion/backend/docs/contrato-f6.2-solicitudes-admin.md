@@ -3,6 +3,10 @@
 API independiente `api/solicitudes_admin.php`. No cambia alta pública,
 tracking, F4, V19, schema ni migraciones. No expone el CRUD legacy.
 
+Extensión compatible F6.3C.2: acción excepcional `recuperar`, capacidades y estado
+operativo esperado documentados en [continuidad y recuperación](contrato-f6.3c2-continuidad-recuperacion.md).
+Las demás acciones siguen bloqueadas En atención.
+
 ## Identidad y permisos
 
 Sesión PHP autenticada, usuario activo. Lectura exige `solicitud.consultar`;

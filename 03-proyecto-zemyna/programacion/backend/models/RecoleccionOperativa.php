@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/Recoleccion.php';
 require_once __DIR__ . '/AsignacionVehiculo.php';
+require_once __DIR__ . '/ContinuidadSolicitudOperativa.php';
 
 /** Cambios atómicos: usuario -> cuadrilla -> recorrido. Nunca usa identidad del cuerpo. */
 class RecoleccionOperativa extends Recoleccion
@@ -108,6 +109,8 @@ class RecoleccionOperativa extends Recoleccion
     public function asignar(int $actor, int $target, ?int $squad, string $action, ?int $membership): array
     {
         return $this->transaction(function () use ($actor, $target, $squad, $action, $membership) {
+            $continuity = new ContinuidadSolicitudOperativa($this->db);
+            $before = $continuity->before($target);
             $ids = array_unique([$actor, $target]); sort($ids);
             foreach ($ids as $id) $this->rows('SELECT id_usuario FROM usuario WHERE id_usuario = ?' . $this->lock(), [$id]);
             $this->lockUser($actor);
@@ -125,6 +128,7 @@ class RecoleccionOperativa extends Recoleccion
             $now = $this->now();
             if ($current) $this->execute('UPDATE usuario_cuadrilla SET fecha_fin = ?, id_usuario_finaliza = ? WHERE id_usuario_cuadrilla = ?', [$now, $actor, $current['id_usuario_cuadrilla']]);
             if ($action !== 'finalizar_pertenencia') $this->execute('INSERT INTO usuario_cuadrilla (id_usuario, id_cuadrilla, fecha_inicio, id_usuario_asigna) VALUES (?, ?, ?, ?)', [$target, $squad, $now, $actor]);
+            $continuity->after($before);
             return ['pertenencia' => $this->pertenencia($target)];
         });
     }

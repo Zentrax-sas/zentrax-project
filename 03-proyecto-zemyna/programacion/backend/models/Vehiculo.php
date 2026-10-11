@@ -112,6 +112,8 @@ class Vehiculo {
             $stmt->execute([$this->id_vehiculo]); $row=$stmt->fetch(PDO::FETCH_ASSOC);
             if (!$this->actualiza_funcion && $row) $this->funcion_operativa=$row['funcion_operativa'];
             (new AsignacionVehiculo($this->conn))->protectVehicle((int)$this->id_vehiculo,$this->funcion_operativa,$this->estado,$delete);
+            (new ProteccionSolicitudOperativa($this->conn))->assertVehicleCompatible((int)$this->id_vehiculo,
+                $delete ? null : (int)$this->id_tipo_residuo,$delete,$this->funcion_operativa,$this->estado);
             $ok=$delete?$this->deleteRow():$this->updateRow();
             $this->conn->commit(); return $ok;
         } catch (Throwable $e) { if ($this->conn->inTransaction()) $this->conn->rollBack(); throw $e; }

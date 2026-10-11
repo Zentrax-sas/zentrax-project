@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/RecoleccionOperativa.php';
+require_once __DIR__ . '/ProteccionSolicitudOperativa.php';
 
 /** Utilizacion temporal. Nunca crea usa ni modifica participa o atenciones. */
 class AsignacionVehiculo
@@ -82,6 +83,8 @@ class AsignacionVehiculo
             if ($action==='abrir' && $current) $this->fail('La cuadrilla ya tiene una utilizacion abierta.');
             if ($action!=='abrir' && (!$current || (int)$current['id_asignacion_vehiculo']!==$expected)) $this->fail('La utilizacion cambio o ya se cerro.');
             if ($action==='cambiar' && (int)$current['id_vehiculo']===$vehicle) $this->fail('Selecciona un vehiculo diferente.');
+            if ($current && in_array($action,['cerrar','cambiar'],true))
+                (new ProteccionSolicitudOperativa($this->db))->assertAssignmentCanClose((int)$current['id_asignacion_vehiculo']);
             if ($action!=='cerrar') {
                 if (!$eligible) $this->fail('La cuadrilla no tiene integrantes operativamente elegibles.');
                 $trips = $this->rows("SELECT re.id_recorrido,u.id_cuadrilla,u.id_vehiculo,p.hora_fin FROM recorrido re

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/RecoleccionOperativa.php';
+require_once __DIR__ . '/ContinuidadSolicitudOperativa.php';
 
 /** Administración F6.2. No utiliza el CRUD legacy ni modifica recursos V19. */
 final class SolicitudOperativa
@@ -58,12 +59,13 @@ final class SolicitudOperativa
         $this->authorize($actor); [$s, $a, $attempts, $version] = $this->snapshot($id);
         $modify = true; try { $this->authorize($actor, true); } catch (DomainException $e) { if ($e->getCode() !== 403) throw $e; $modify = false; }
         $editable = $modify && $this->coherent($s, $a, $attempts) && in_array($s['estado'], ['Pendiente','Programada'], true);
+        $recoverable = $modify && $s['estado']==='En atención' && $a && $a['estado']==='En atención' && (int)$a['id_cuadrilla']===(int)$s['id_cuadrilla'] && (new ContinuidadSolicitudOperativa($this->db))->eligible((int)$s['id_cuadrilla'],false)===0;
         $s['tipo_residuo'] = $this->rows('SELECT nombre FROM tipo_residuo WHERE id_tipo_residuo=?', [$s['id_tipo_residuo']])[0]['nombre'] ?? null;
         return ['solicitud' => $s, 'intento_actual' => $a, 'historial' => array_slice($attempts, ($page-1)*20, 20), 'historial_page' => $page, 'historial_has_more' => count($attempts) > $page*20,
             'historica_programada_sin_intento' => $s['estado'] === 'Programada' && !$attempts,
-            'estado_esperado' => $s['estado'], 'id_atencion_esperada' => $a ? (int)$a['id_atencion_solicitud'] : null, 'version_esperada' => $version,
+            'estado_esperado' => $s['estado'], 'estado_operativo_esperado' => $a['estado'] ?? null, 'id_atencion_esperada' => $a ? (int)$a['id_atencion_solicitud'] : null, 'version_esperada' => $version,
             'capacidades' => ['consultar'=>true, 'modificar'=>$modify, 'confirmar_residuo'=>$editable && !$a, 'asignar'=>$editable && !$a && $s['fecha_confirmacion_residuo'] !== null,
-                'reasignar'=>$editable && $a !== null, 'desasignar'=>$editable && $s['estado'] === 'Programada', 'cancelar'=>$editable],
+                'reasignar'=>$editable && $a !== null, 'desasignar'=>$editable && $s['estado'] === 'Programada', 'cancelar'=>$editable, 'recuperar'=>$recoverable],
             'motivo_bloqueo' => !$modify ? 'Acceso de solo lectura.' : (!$editable ? 'Estado terminal, atención iniciada o contexto operativo inconsistente.' : null)];
     }
     private function candidate(array $s, int $squad, int $assignment, int $use, bool $locking): array {
@@ -96,9 +98,21 @@ final class SolicitudOperativa
     public function mutate(int $actor, array $b): array {
         $this->db->beginTransaction();
         try {
+            $continuity = new ContinuidadSolicitudOperativa($this->db);
+            $continuity->gate();
             [$s, $a, $attempts, $version] = $this->snapshot((int)$b['id_solicitud'], true);
             $this->authorize($actor, true, true);
             if ($b['estado_esperado'] !== $s['estado'] || $b['version_esperada'] !== $version || $b['id_atencion_esperada'] !== ($a ? (int)$a['id_atencion_solicitud'] : null)) $this->fail('La solicitud cambió. Volvé a consultar.');
+            if ($b['accion'] === 'recuperar') {
+                if ($s['estado'] !== 'En atención' || !$a || $a['estado'] !== 'En atención' || (int)$a['id_cuadrilla'] !== (int)$s['id_cuadrilla'] || $b['estado_operativo_esperado'] !== $a['estado']) $this->fail('La solicitud no admite recuperación.');
+                $continuity->protectedWork((int)$s['id_cuadrilla']);
+                if ($continuity->eligible((int)$s['id_cuadrilla']) !== 0) $this->fail('La cuadrilla conserva integrantes habilitados. No corresponde recuperar.');
+                $now = self::now();
+                if ($a['fecha_inicio'] === null || $now < $a['fecha_inicio']) $this->fail('Cronología incompatible con el reloj del servidor.');
+                $this->write("UPDATE atencion_solicitud SET estado='Interrumpida',fecha_cierre=?,id_usuario_cierra=?,motivo_cierre=? WHERE id_atencion_solicitud=?", [$now,$actor,$b['motivo'],$a['id_atencion_solicitud']]);
+                $this->write("UPDATE solicitud SET estado='Pendiente',id_cuadrilla=NULL WHERE id_solicitud=?", [(int)$s['id_solicitud']]);
+                $result = $this->detail($actor,(int)$s['id_solicitud']);$this->db->commit();return $result;
+            }
             if (!in_array($s['estado'], ['Pendiente','Programada'], true) || !$this->coherent($s, $a, $attempts)) $this->fail('La solicitud no admite esta operación.');
             $action = $b['accion']; $id = (int)$s['id_solicitud'];
             if ($action === 'confirmar_residuo') {

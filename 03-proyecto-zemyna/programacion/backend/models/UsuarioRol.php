@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/ContinuidadSolicitudOperativa.php';
 
 class UsuarioRol {
     private $conn;
@@ -13,6 +14,16 @@ class UsuarioRol {
 
     public function __construct($db) {
         $this->conn = $db;
+    }
+
+    public function withContinuity(int|callable $user, callable $write): array {
+        if (!$this->conn) return ['success'=>false,'data'=>null,'message'=>'Servicio temporalmente no disponible.','errors'=>[],'statusCode'=>503];
+        return (new ContinuidadSolicitudOperativa($this->conn))->change($user,$write);
+    }
+
+    public function roleOwner(int $assignment): int {
+        $stmt=$this->conn->prepare('SELECT id_usuario FROM usuario_rol WHERE id_usuario_rol=?'.($this->conn->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'?' FOR UPDATE':''));
+        $stmt->execute([$assignment]);return (int)($stmt->fetchColumn()?:0);
     }
 
     public function readByUsuario($idUsuario) {

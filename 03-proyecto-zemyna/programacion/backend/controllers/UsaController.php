@@ -43,7 +43,19 @@ class UsaController {
         ];
     }
 
-    public function create($data) {
+    private function mutation(callable $fn): array {
+        try { return $fn(); }
+        catch (DomainException $e) { return ['success'=>false,'data'=>null,'message'=>$e->getMessage(),'errors'=>[],'statusCode'=>409]; }
+        catch (PDOException $e) {
+            $conflict = in_array((int)($e->errorInfo[1] ?? 0),[1062,1205,1213,1451],true);
+            return ['success'=>false,'data'=>null,'message'=>$conflict?'Conflicto con la relación operativa. Volvé a consultar.':'No se pudo modificar la relación.','errors'=>[],'statusCode'=>$conflict?409:500];
+        }
+    }
+    public function create($data) { return $this->mutation(fn()=>$this->createInternal($data)); }
+    public function update($data) { return $this->mutation(fn()=>$this->updateInternal($data)); }
+    public function delete($id) { return $this->mutation(fn()=>$this->deleteInternal($id)); }
+
+    private function createInternal($data) {
         $data = $data ?? [];
 
         $this->usa->id_cuadrilla = $data['id_cuadrilla'] ?? null;
@@ -97,7 +109,7 @@ class UsaController {
         ];
     }
 
-    public function update($data) {
+    private function updateInternal($data) {
         $data = $data ?? [];
 
         $this->usa->id_usa = $data['id_usa'] ?? null;
@@ -147,7 +159,7 @@ class UsaController {
         ];
     }
 
-    public function delete($id) {
+    private function deleteInternal($id) {
         $this->usa->id_usa = (int)$id;
 
         if ($this->usa->delete()) {

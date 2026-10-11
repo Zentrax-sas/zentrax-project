@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/ContinuidadSolicitudOperativa.php';
 
 class Usuario {
     private $conn;
@@ -94,6 +95,11 @@ class Usuario {
 
     public function beginTransaction(): bool {
         return $this->conn ? $this->conn->beginTransaction() : false;
+    }
+
+    public function withContinuity(int $user, callable $write): array {
+        if (!$this->conn) return ['success'=>false,'data'=>null,'message'=>'Servicio temporalmente no disponible.','errors'=>[],'statusCode'=>503];
+        return (new ContinuidadSolicitudOperativa($this->conn))->change($user,$write);
     }
 
     public function commit(): bool {
@@ -246,6 +252,11 @@ class Usuario {
     public function delete() {
         if (!$this->conn) return false;
 
+        // Suspensión de seguridad: comparte locks, pero nunca exige relevo.
+        $this->conn->beginTransaction();
+        try {
+        (new ContinuidadSolicitudOperativa($this->conn))->gate();
+
         $query = "UPDATE " . $this->table_name . "
                   SET activo = 'Inactivo'
                   WHERE id_usuario = :id_usuario";
@@ -253,7 +264,10 @@ class Usuario {
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id_usuario', $this->id_usuario);
 
-        return $stmt->execute();
+        $ok = $stmt->execute();
+        $this->conn->commit();
+        return $ok;
+        } catch (Throwable $e) { if ($this->conn->inTransaction()) $this->conn->rollBack(); throw $e; }
     }
 
     public function activar() {

@@ -30,6 +30,12 @@ class UsuarioRolController {
     }
 
     public function create($data) {
+        $id=$data['id_usuario']??null;
+        if (!$id || !ctype_digit((string)$id)) return $this->createWithinTransaction($data);
+        return $this->usuarioRol->withContinuity((int)$id,fn()=>$this->createWithinTransaction($data));
+    }
+
+    private function createWithinTransaction($data) {
         $data = $data ?? [];
         $errors = [];
 
@@ -98,6 +104,12 @@ class UsuarioRolController {
     }
 
     public function finalizar($data) {
+        $id=$data['id_usuario_rol']??null;
+        if (!$id || !ctype_digit((string)$id)) return $this->finalizarWithinTransaction($data);
+        return $this->usuarioRol->withContinuity(fn()=>$this->usuarioRol->roleOwner((int)$id),fn()=>$this->finalizarWithinTransaction($data));
+    }
+
+    private function finalizarWithinTransaction($data) {
         $id = $data['id_usuario_rol'] ?? null;
         $fechaHasta = $data['fecha_hasta'] ?? date('Y-m-d');
 

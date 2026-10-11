@@ -45,6 +45,9 @@ final class RecoleccionTest extends TestCase
             INSERT INTO rol_permiso VALUES (1,1),(1,2);
             INSERT INTO usuario_rol VALUES (3,1,'OPERACIONES','2020-01-01',NULL),(4,1,'OPERACIONES','2020-01-01',NULL);");
         $this->user(true);
+        // Lecturas del guard F6.3C.2; este fixture no contiene trabajos protegidos.
+        $this->db->exec("CREATE TABLE solicitud(id_solicitud INTEGER PRIMARY KEY,estado TEXT,id_cuadrilla INTEGER);
+            CREATE TABLE atencion_solicitud(id_atencion_solicitud INTEGER PRIMARY KEY,id_solicitud INTEGER,id_cuadrilla INTEGER,estado TEXT,fecha_cierre TEXT);");
     }
     protected function tearDown(): void {
         $_SESSION = $this->previous;

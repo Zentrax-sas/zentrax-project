@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ProteccionSolicitudOperativa.php';
 
 class Usa {
     private $conn;
@@ -60,7 +61,7 @@ class Usa {
         return $stmt;
     }
 
-    public function create() {
+    private function createRow() {
         if (!$this->conn) return false;
 
         if (empty($this->id_cuadrilla) || empty($this->id_vehiculo)) {
@@ -83,7 +84,7 @@ class Usa {
         return false;
     }
 
-    public function update() {
+    private function updateRow() {
         if (!$this->conn) return false;
 
         $query = "UPDATE " . $this->table_name . "
@@ -99,7 +100,7 @@ class Usa {
         return $stmt->execute();
     }
 
-    public function delete() {
+    private function deleteRow() {
         if (!$this->conn) return false;
 
         $query = "DELETE FROM " . $this->table_name . "
@@ -110,6 +111,34 @@ class Usa {
 
         return $stmt->execute();
     }
+
+    private function protectedWrite(string $action) {
+        if (!$this->conn) return false;
+        if ($action === 'create' && (empty($this->id_cuadrilla) || empty($this->id_vehiculo))) return false;
+        $this->conn->beginTransaction();
+        try {
+            $old = null;
+            if ($action !== 'create') {
+                $stmt = $this->conn->prepare('SELECT id_cuadrilla,id_vehiculo FROM usa WHERE id_usa=?');
+                $stmt->execute([$this->id_usa]); $old = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            }
+            $new = $action === 'delete' ? null : ['id_cuadrilla'=>$this->id_cuadrilla,'id_vehiculo'=>$this->id_vehiculo];
+            $guard = new ProteccionSolicitudOperativa($this->conn);
+            $guard->lockVehicles(array_column(array_filter([$old,$new]), 'id_vehiculo'));
+            if ($action !== 'create') {
+                $lock = $this->conn->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? ' FOR UPDATE' : '';
+                $stmt = $this->conn->prepare('SELECT id_cuadrilla,id_vehiculo FROM usa WHERE id_usa=?'.$lock);
+                $stmt->execute([$this->id_usa]); $current = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+                if ($old != $current) throw new DomainException('La relación cambió. Volvé a consultar.',409);
+            }
+            $guard->assertUseChange($old,$new);
+            $ok = match($action) { 'create'=>$this->createRow(), 'update'=>$this->updateRow(), 'delete'=>$this->deleteRow() };
+            $this->conn->commit(); return $ok;
+        } catch(Throwable $e) { if ($this->conn->inTransaction()) $this->conn->rollBack(); throw $e; }
+    }
+    public function create() { return $this->protectedWrite('create'); }
+    public function update() { return $this->protectedWrite('update'); }
+    public function delete() { return $this->protectedWrite('delete'); }
 
     public function existeRelacion($idCuadrilla, $idVehiculo) {
         if (!$this->conn) return false;

@@ -10,6 +10,12 @@
   const node = (tag, text = '') => { const n = document.createElement(tag); n.textContent = String(text); return n; };
   const button = (text, fn) => { const n = node('button', text); n.type = 'button'; n.className = 'link-button'; n.addEventListener('click', fn); return n; };
   const show = value => value == null || value === '' ? 'Sin registro' : String(value);
+  function denyAccess(code) {
+    listVersion++; detailVersion++; listRequest?.abort(); detailRequest?.abort();
+    data = null; token = ''; hasMore = false; rows.replaceChildren(); detail.replaceChildren(); detail.hidden = true;
+    status.textContent = code === 401 ? 'La sesión expiró. Iniciá sesión nuevamente.' : 'No disponés de permisos para consultar o gestionar solicitudes especiales.';
+    controls();
+  }
   function controls() {
     root.querySelectorAll('button,input,select,textarea').forEach(n => {
       if (busy) { if (!disabledBeforeSave.has(n)) disabledBeforeSave.set(n, n.disabled); n.disabled = true; }
@@ -24,7 +30,11 @@
       method: body ? 'PUT' : 'GET', cache: 'no-store', credentials: 'same-origin', signal,
       ...(body ? { headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token }, body: JSON.stringify(body) } : {})
     });
-    if (response.status === 401) window.location.replace(buildFrontendUrl('login.html'));
+    if (response.status === 401 || response.status === 403) {
+      denyAccess(response.status);
+      if (response.status === 401) window.location.replace(buildFrontendUrl('login.html'));
+      const e = new Error(status.textContent); e.status = response.status; throw e;
+    }
     const json = await response.json();
     if (!response.ok || !json.success) { const e = new Error(json.message || 'No se pudo completar la consulta.'); e.status = response.status; throw e; }
     if (!catalog && json.csrf_token) token = json.csrf_token;
@@ -75,7 +85,7 @@
     const prev = button('Historial anterior',()=>{if(!busy)openDetail(id,d.historial_page-1);}), next = button('Historial siguiente',()=>{if(!busy)openDetail(id,d.historial_page+1);});
     prev.disabled = d.historial_page <= 1; next.disabled = !d.historial_has_more; detail.append(prev,node('span',` Página ${d.historial_page} `),next);
     const message = node('p'); message.setAttribute('role','status'); message.setAttribute('aria-live','polite'); detail.append(message);
-    const editable = !['En atención','Finalizada','Cancelada'].includes(s.estado);
+    const editable = cap.modificar === true && !['En atención','Finalizada','Cancelada'].includes(s.estado);
     if (editable && cap.confirmar_residuo) addResidue(d,id,version,message);
     if (editable && (cap.asignar || cap.reasignar)) addAssignment(d,id,version,message,recoverOptions);
     for (const [action,label] of [['desasignar','Desasignar'],['cancelar','Cancelar solicitud']]) if (editable && cap[action]) {
@@ -84,6 +94,16 @@
       const labelNode = node('label',`Motivo para ${label.toLowerCase()} `); labelNode.append(reason);
       const submit = node('button',label); submit.type = 'submit'; submit.className = 'primary-button'; form.append(labelNode,submit);
       form.addEventListener('submit',e=>{e.preventDefault();save(d,id,version,action,{motivo:reason.value.trim()},message,`¿Confirmás ${label.toLowerCase()}?`);}); detail.append(form);
+    }
+    if (cap.modificar === true && cap.recuperar === true) {
+      const form = node('form'); form.className = 'resource-form';
+      form.append(node('p','Recuperar interrumpirá la atención actual y devolverá la solicitud a Pendiente, sin cuadrilla. Se conservará el historial operativo.'));
+      const reason = node('textarea'); reason.required = true; reason.maxLength = 500;
+      const label = node('label','Motivo de recuperación '); label.append(reason);
+      const submit = node('button','Recuperar solicitud'); submit.type = 'submit'; submit.className = 'primary-button';
+      form.append(label,submit);
+      form.addEventListener('submit',e=>{e.preventDefault();save(d,id,version,'recuperar',{motivo:reason.value.trim()},message,'¿Confirmás interrumpir la atención actual y recuperar la solicitud? Volverá a Pendiente y quedará sin cuadrilla.');});
+      detail.append(form);
     }
     title.focus(); controls();
   }
@@ -129,13 +149,19 @@
     catch(e){if(version===detailVersion && e.name!=='AbortError')detail.replaceChildren(node('p',e.status===403?'No disponés de permisos para consultar este detalle.':e.message));}
   }
   async function save(d,id,version,action,extra,message,confirmation) {
-    if(busy || version!==detailVersion || !active || data!==d || !d.capacidades[action])return;
+    if(busy || version!==detailVersion || !active || data!==d || d.capacidades.modificar!==true || !d.capacidades[action])return;
     if('motivo' in extra && (!extra.motivo || [...extra.motivo].length>500)){message.textContent='Indicá un motivo de entre 1 y 500 caracteres.';return;}
     if(!window.confirm(confirmation))return;
-    const body={accion:action,id_solicitud:id,estado_esperado:d.estado_esperado,version_esperada:d.version_esperada,id_atencion_esperada:d.id_atencion_esperada,...extra};
+    const body={accion:action,id_solicitud:id,estado_esperado:d.estado_esperado,version_esperada:d.version_esperada,id_atencion_esperada:d.id_atencion_esperada,...(action==='recuperar'?{estado_operativo_esperado:d.estado_operativo_esperado}:{}),...extra};
     busy=true;controls();message.textContent='Guardando…';
-    try {await api(null,body);if(active && version===detailVersion){busy=false;await Promise.all([loadList(),openDetail(id)]);status.textContent='Operación completada.';}}
-    catch(e){if(active && version===detailVersion){busy=false;await Promise.all([loadList(),openDetail(id)]);status.textContent=e.status===409?'La solicitud cambió. Se actualizaron el detalle y las opciones; revisá y confirmá nuevamente.':e.message;}}
+    try {await api(null,body);if(active && version===detailVersion){busy=false;await Promise.all([loadList(),openDetail(id)]);if(active && data)status.textContent='Operación completada.';}}
+    catch(e){if(active && version===detailVersion){
+      busy=false;
+      if(e.status===400){message.textContent=e.message;return;}
+      if(e.status===404){detailVersion++;data=null;detail.replaceChildren(node('p','La solicitud ya no está disponible.'));await loadList();status.textContent='La solicitud ya no está disponible.';return;}
+      await Promise.all([loadList(),openDetail(id)]);
+      if(data)status.textContent=e.status===409?'El estado o la elegibilidad cambió. Se actualizaron el detalle y las opciones; revisá y confirmá nuevamente.':e.message;
+    }}
     finally {busy=false;controls();}
   }
   function pause(){active=false;listVersion++;detailVersion++;listRequest?.abort();detailRequest?.abort();data=null;detail.hidden=true;}

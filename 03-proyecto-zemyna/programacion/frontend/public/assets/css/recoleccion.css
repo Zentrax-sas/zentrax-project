@@ -58,4 +58,8 @@
 #squadCreateDate { width: 100%; padding: 10px; min-height: 44px; color: var(--text); background: var(--surface); border: 1px solid var(--muted); border-radius: 8px; }
 #squadTripDialog form { min-width: 0; }
 #squadTripDialog select { max-width: 100%; }
+#solicitudes { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 16px; }
+#ownRequestDetail { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 16px 0; background: var(--surface); overflow-wrap: anywhere; }
+#solicitudes textarea { display: block; box-sizing: border-box; width: 100%; padding: 12px; font: inherit; background: var(--surface-2); color: var(--text); border: 1px solid var(--muted); border-radius: 8px; }
+#solicitudes .request-blocked { padding: 12px; border-left: 3px solid currentColor; color: #f5d58c; }
 @media (max-width: 600px) { .collection-actions > button { flex: 1 1 180px; } .squad-module dialog { padding: 16px; } }

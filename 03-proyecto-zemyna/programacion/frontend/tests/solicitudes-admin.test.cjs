@@ -23,7 +23,7 @@ function record() {
     estado_esperado: 'Pendiente', id_atencion_esperada: null, version_esperada: 'a'.repeat(64),
     capacidades: { consultar: true, modificar: true, confirmar_residuo: true, asignar: true, reasignar: false, desasignar: false, cancelar: true }, motivo_bloqueo: null };
 }
-function harness({ modify = true, candidates = true, putStatus = 200, deferred = false, listStatus = 200, optionsConflict = false } = {}) {
+function harness({ modify = true, candidates = true, putStatus = 200, deferred = false, listStatus = 200, optionsConflict = false, confirm = true, afterPut = () => {} } = {}) {
   const nodes = new Map(); for (const id of html.matchAll(/\bid="([^"]+)"/g)) nodes.set(id[1], new Element('div'));
   for (const id of ['requestsState', 'requestsService']) nodes.get(id).tag = 'select';
   for (const id of ['requestsFrom', 'requestsTo']) nodes.get(id).tag = 'input';
@@ -32,10 +32,10 @@ function harness({ modify = true, candidates = true, putStatus = 200, deferred =
   const calls = [], redirects = [], confirmations = []; let resolvePut;
   const d = record(); if (!modify) { for (const k of Object.keys(d.capacidades)) d.capacidades[k] = k === 'consultar'; d.motivo_bloqueo = 'Acceso de solo lectura.'; }
   const response = (data, status = 200) => ({ ok: status === 200, status, json: async () => ({ success: status === 200, data, csrf_token: 'token', message: 'Conflicto' }) });
-  const context = vm.createContext({ document: { getElementById: id => nodes.get(id), createElement: tag => new Element(tag) }, window: { location: { replace: u => redirects.push(u) }, confirm: text => { confirmations.push(text); return true; } }, URLSearchParams, AbortController, WeakMap, buildApiUrl: x => x, buildFrontendUrl: x => x,
+  const context = vm.createContext({ document: { getElementById: id => nodes.get(id), createElement: tag => new Element(tag) }, window: { location: { replace: u => redirects.push(u) }, confirm: text => { confirmations.push(text); return confirm; } }, URLSearchParams, AbortController, WeakMap, buildApiUrl: x => x, buildFrontendUrl: x => x,
     fetch: async (url, options) => {
       calls.push({ url, options });
-      if (options.method === 'PUT') { if (deferred) return new Promise(r => { resolvePut = () => r(response(d, putStatus)); }); return response(d, putStatus); }
+      if (options.method === 'PUT') { if (deferred) return new Promise(r => { resolvePut = () => { afterPut(d); r(response(d, putStatus)); }; }); afterPut(d); return response(d, putStatus); }
       if (url.includes('tipos_residuo')) return response([{ id_tipo_residuo: 38, nombre: 'Plástico' }, { id_tipo_residuo: 49, nombre: '<svg onload=x>' }]);
       const q = new URL(url, 'http://test').searchParams;
       if (q.has('opciones')) { if (optionsConflict) return response(null,409); return response({ items: candidates ? [{ id_cuadrilla: 7, nombre: '<img onerror=x>', id_vehiculo: 2, matricula: 'TEST', funcion_operativa: 'APOYO', id_asignacion_vehiculo: 9, id_usa: 4 }] : [], motivo: candidates ? null : 'No hay candidatas.' }); }
@@ -116,4 +116,69 @@ test('conflicto en opciones refresca una vez y evita bucle de consultas',async()
 });
 test('pausar descarta detalle anterior y no guarda desde formularios obsoletos',async()=>{
   const h=await ready();const f=formNamed(h,'Asignar');all(f).find(n=>n.tag==='select').value='9';h.api.pause();send(f);await tick();assert.equal(h.calls.some(c=>c.options.method==='PUT'),false);assert.equal(h.detail().hidden,true);
+});
+
+async function recovery(options, allowed = true) {
+  const h = harness(options);
+  h.d.solicitud.estado = h.d.estado_esperado = h.d.estado_operativo_esperado = 'En atención';
+  h.d.solicitud.id_cuadrilla = 25; h.d.id_atencion_esperada = 1;
+  h.d.intento_actual = { id_atencion_solicitud: 1, estado: 'En atención', id_cuadrilla: 25, id_asignacion_vehiculo: 4 };
+  h.d.capacidades.recuperar = allowed;
+  await h.api.open(); all(h.nodes.get('requestsRows')).find(n => n.textContent === 'Ver detalle').listeners.click(); await tick();
+  return h;
+}
+test('recuperación depende de capacidad explícita y autorización, conserva renderizado seguro', async () => {
+  const h = await recovery(); const f = formNamed(h,'Recuperar solicitud'); assert.ok(f);
+  assert.match(all(f).map(n=>n.textContent).join(' '),/interrumpirá la atención actual/);
+  assert.match(all(h.detail()).map(n=>n.textContent).join(' '),/<script>x<\/script>/);
+  assert.equal(formNamed(h,'Cancelar solicitud'),undefined);
+  for(const allowed of [false,undefined]) { const u = await recovery({},allowed); if(allowed===undefined){u.d.capacidades.recuperar=undefined;await u.api.open();all(u.nodes.get('requestsRows')).find(n=>n.textContent==='Ver detalle').listeners.click();await tick();} assert.equal(formNamed(u,'Recuperar solicitud'),undefined); }
+  const r = await recovery({modify:false}); assert.equal(formNamed(r,'Recuperar solicitud'),undefined);
+});
+test('recuperación exige motivo y confirmación antes de enviar', async () => {
+  const h = await recovery({confirm:false}); const f=formNamed(h,'Recuperar solicitud');
+  all(f).find(n=>n.tag==='textarea').value='   ';send(f);await tick();assert.equal(h.confirmations.length,0);
+  all(f).find(n=>n.tag==='textarea').value='x'.repeat(501);send(f);await tick();assert.equal(h.confirmations.length,0);
+  all(f).find(n=>n.tag==='textarea').value='Ausencia de operarios';send(f);await tick();
+  assert.match(h.confirmations[0],/interrumpir la atención actual/);assert.equal(h.calls.some(c=>c.options.method==='PUT'),false);
+});
+test('recuperar envía CSRF y expectativas exactas, evita doble envío y actualiza historial/detalle/listado', async () => {
+  const h = await recovery({deferred:true,afterPut:d=>{
+    d.historial=[{...d.intento_actual,estado:'Interrumpida',motivo_cierre:'<img onerror=x>',fecha_cierre:'2026-10-10',id_usuario_cierra:2}];
+    d.intento_actual=null;d.solicitud.estado=d.estado_esperado='Pendiente';d.solicitud.id_cuadrilla=null;d.capacidades.recuperar=false;
+  }});
+  h.nodes.get('requestsState').value='En atención';send(h.nodes.get('requestsFilters'));await tick();
+  all(h.nodes.get('requestsRows')).find(n=>n.textContent==='Ver detalle').listeners.click();await tick();
+  h.nodes.get('requestsNext').listeners.click();await tick();
+  const f=formNamed(h,'Recuperar solicitud');all(f).find(n=>n.tag==='textarea').value='  Sin operarios habilitados  ';send(f);send(f);await tick();
+  const puts=h.calls.filter(c=>c.options.method==='PUT');assert.equal(puts.length,1);assert.equal(h.confirmations.length,1);
+  assert.equal(puts[0].options.headers['X-CSRF-Token'],'token');assert.equal(puts[0].options.credentials,'same-origin');assert.equal(puts[0].options.cache,'no-store');
+  assert.deepEqual(JSON.parse(puts[0].options.body),{accion:'recuperar',id_solicitud:14,estado_esperado:'En atención',version_esperada:'a'.repeat(64),id_atencion_esperada:1,estado_operativo_esperado:'En atención',motivo:'Sin operarios habilitados'});
+  assert.equal(all(f).find(n=>n.tag==='button').disabled,true);h.finish();await tick();
+  assert.equal(formNamed(h,'Recuperar solicitud'),undefined);
+  const text=all(h.detail()).map(n=>n.textContent).join(' ');assert.match(text,/Interrumpida/);assert.match(text,/Sin intento abierto/);assert.match(text,/<img onerror=x>/);assert.match(text,/Sin asignar/);
+  assert.match(all(h.nodes.get('requestsRows')).map(n=>n.textContent).join(' '),/Pendiente/);
+  const list=h.calls.findLast(c=>c.options.method==='GET' && c.url.includes('solicitudes_admin.php') && !c.url.includes('id='));assert.match(list.url,/page=2/);assert.match(list.url,/estado=En/);
+});
+test('recuperación 409 reconsulta capacidades sin reintentar y retira la acción si perdió elegibilidad', async () => {
+  const h=await recovery({putStatus:409,afterPut:d=>{d.capacidades.recuperar=false;}});
+  const f=formNamed(h,'Recuperar solicitud');all(f).find(n=>n.tag==='textarea').value='Motivo';send(f);await tick();
+  assert.equal(h.calls.filter(c=>c.options.method==='PUT').length,1);assert.equal(h.calls.filter(c=>c.url.includes('historial_page=')).length,2);
+  assert.equal(formNamed(h,'Recuperar solicitud'),undefined);assert.match(h.nodes.get('requestsStatus').textContent,/elegibilidad cambió/);
+  send(f);await tick();assert.equal(h.calls.filter(c=>c.options.method==='PUT').length,1);
+});
+test('recuperación 401/403 limpia datos y controles protegidos sin recargar ni reintentar', async () => {
+  for(const putStatus of [401,403]) {
+    const h=await recovery({putStatus});const f=formNamed(h,'Recuperar solicitud');all(f).find(n=>n.tag==='textarea').value='Motivo';const count=h.calls.length;send(f);await tick();
+    assert.equal(h.calls.length,count+1);assert.equal(h.detail().children.length,0);assert.equal(h.nodes.get('requestsRows').children.length,0);assert.equal(h.detail().hidden,true);
+    assert.match(h.nodes.get('requestsStatus').textContent,putStatus===401?/sesión expiró/:/No disponés de permisos/);
+    assert.deepEqual(h.redirects,putStatus===401?['login.html']:[]);send(f);await tick();assert.equal(h.calls.length,count+1);
+  }
+});
+test('recuperación 400 conserva motivo para corregir; 404 retira el trabajo perdido', async () => {
+  for(const putStatus of [400,404]) {
+    const h=await recovery({putStatus});const f=formNamed(h,'Recuperar solicitud');const reason=all(f).find(n=>n.tag==='textarea');reason.value='Motivo';send(f);await tick();
+    if(putStatus===400){assert.equal(formNamed(h,'Recuperar solicitud'),f);assert.equal(reason.value,'Motivo');assert.match(all(h.detail()).map(n=>n.textContent).join(' '),/Conflicto/);}
+    else {assert.equal(formNamed(h,'Recuperar solicitud'),undefined);assert.match(all(h.detail()).map(n=>n.textContent).join(' '),/ya no está disponible/);assert.equal(h.calls.filter(c=>c.url.includes('historial_page=')).length,1);}
+  }
 });

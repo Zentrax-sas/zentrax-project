@@ -2,7 +2,7 @@
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mi recolección | Zemyna</title>
-<link rel="stylesheet" href="assets/css/admin.css"><link rel="stylesheet" href="assets/css/recoleccion.css?v=4">
+<link rel="stylesheet" href="assets/css/admin.css"><link rel="stylesheet" href="assets/css/recoleccion.css?v=5">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 </head>
@@ -10,6 +10,7 @@
 <a id="collectionBack" href="admin.html">← Volver al panel</a>
 <header class="view-heading"><div><h1>Mi recolección</h1><p>Tu cuadrilla, tu recorrido y los contenedores por atender.</p></div>
 </header>
+<a href="#solicitudes">Solicitudes especiales</a>
 <p class="result-count" id="collectionTimezone" hidden>Horarios de Montevideo</p>
 <p id="collectionStatus" role="status" aria-live="polite">Cargando tu recolección…</p>
 <a id="collectionLogin" href="login.html" hidden>Iniciar sesión</a>
@@ -22,6 +23,18 @@
   <div id="ownIncidentList"></div>
   <nav aria-label="Páginas de incidencias"><button id="ownIncidentPrevious" type="button" disabled>Anterior</button><span id="ownIncidentPage"></span><button id="ownIncidentNext" type="button" disabled>Siguiente</button><button id="ownIncidentRefresh" type="button">Actualizar incidencias</button></nav>
   <section id="ownIncidentDetail" hidden aria-label="Detalle de incidencia" tabindex="-1"></section>
+</section>
+<section id="solicitudes" aria-labelledby="ownRequestHeading" tabindex="-1">
+  <h2 id="ownRequestHeading">Solicitudes especiales</h2>
+  <p id="ownRequestStatus" role="status" aria-live="polite">Consultando solicitudes…</p>
+  <div id="ownRequestList"></div>
+  <nav aria-label="Páginas de solicitudes especiales">
+    <button id="ownRequestPrevious" type="button" disabled>Anterior</button>
+    <span id="ownRequestPage"></span>
+    <button id="ownRequestNext" type="button" disabled>Siguiente</button>
+    <button id="ownRequestRefresh" type="button">Actualizar solicitudes</button>
+  </nav>
+  <section id="ownRequestDetail" hidden aria-label="Detalle de solicitud especial" tabindex="-1"></section>
 </section>
         <section id="collectionReport" hidden>
           <section class="card panel crew-report">
@@ -60,5 +73,6 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="assets/js/recoleccion.js?v=4"></script>
 <script src="assets/js/recoleccion-incidencias.js?v=1"></script>
+<script src="assets/js/recoleccion-solicitudes.js?v=1"></script>
 <script src="assets/js/recoleccion-report.js"></script><script src="assets/js/crew-report.js"></script>
 </body></html>

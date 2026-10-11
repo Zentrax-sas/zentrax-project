@@ -22,8 +22,16 @@ class UsuarioControllerTest extends TestCase
                 'getAsignacionVigente', 'finalizarAsignacion',
                 'actualizarVigenciaAsignacion',
                 'actualizarAsignacion',
+                'withContinuity',
             ])
             ->getMock();
+
+        // El guard real y su rollback se prueban en MariaDB descartable.
+        // Este doble mantiene exclusivamente los contratos del controlador.
+        $this->usuario->method('withContinuity')->willReturnCallback(function (int $id, callable $write): array {
+            try { return $write(); }
+            catch (Throwable $e) { return ContinuidadSolicitudOperativa::error($e); }
+        });
 
         $controllerClass = new ReflectionClass(UsuarioController::class);
         $this->controller = $controllerClass->newInstanceWithoutConstructor();
@@ -369,11 +377,9 @@ class UsuarioControllerTest extends TestCase
         $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment());
         $this->usuario->method('findRoleById')->willReturn(['id_rol' => $changes['id_rol'] ?? 4]);
         $this->usuario->method('findSectorByName')->willReturn(['nombre' => $changes['sector'] ?? 'OPERACIONES']);
-        $this->usuario->expects($this->once())->method('beginTransaction')->willReturn(true);
         $this->usuario->expects($this->once())->method('update')->willReturn(true);
         $this->usuario->expects($this->once())->method('finalizarAsignacion')->with(12, '2026-01-31')->willReturn(true);
         $this->usuario->expects($this->once())->method('assignRole')->willReturn(true);
-        $this->usuario->expects($this->once())->method('commit')->willReturn(true);
 
         $result = $this->controller->update($this->validUpdateWithAssignment(array_merge(['fecha_desde' => '2026-02-01'], $changes)));
 
@@ -396,12 +402,10 @@ class UsuarioControllerTest extends TestCase
         $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment());
         $this->usuario->method('findRoleById')->willReturn(['id_rol' => 4]);
         $this->usuario->method('findSectorByName')->willReturn(['nombre' => 'OPERACIONES']);
-        $this->usuario->method('beginTransaction')->willReturn(true);
         $this->usuario->method('update')->willReturn(true);
         $this->usuario->expects($this->once())->method('actualizarVigenciaAsignacion')->with(12, '2026-12-31')->willReturn(true);
         $this->usuario->expects($this->never())->method('finalizarAsignacion');
         $this->usuario->expects($this->never())->method('assignRole');
-        $this->usuario->expects($this->once())->method('commit')->willReturn(true);
         $result = $this->controller->update($this->validUpdateWithAssignment(['fecha_hasta' => '2026-12-31']));
         $this->assertResponse($result, true, 200, 'Usuario actualizado con éxito.');
     }
@@ -440,11 +444,9 @@ class UsuarioControllerTest extends TestCase
         $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment());
         $this->usuario->method('findRoleById')->willReturn(['id_rol' => 5]);
         $this->usuario->method('findSectorByName')->willReturn(['nombre' => 'INSPECCION']);
-        $this->usuario->method('beginTransaction')->willReturn(true);
         $this->usuario->method('update')->willReturn(true);
         $this->usuario->method('finalizarAsignacion')->willReturn($failure !== 'cierre');
         $this->usuario->method('assignRole')->willReturn($failure !== 'creación');
-        $this->usuario->expects($this->once())->method('rollBack')->willReturn(true);
 
         $result = $this->controller->update($this->validUpdateWithAssignment(['id_rol' => 5, 'sector' => 'INSPECCION', 'fecha_desde' => '2026-02-01']));
 
@@ -494,13 +496,11 @@ class UsuarioControllerTest extends TestCase
         $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment(['fecha_desde' => $today]));
         $this->usuario->method('findRoleById')->willReturn(['id_rol' => $changes['id_rol'] ?? 4]);
         $this->usuario->method('findSectorByName')->willReturn(['nombre' => $changes['sector'] ?? 'OPERACIONES']);
-        $this->usuario->method('beginTransaction')->willReturn(true);
         $this->usuario->method('update')->willReturn(true);
         $this->usuario->expects($this->once())->method('actualizarAsignacion')
             ->with(12, $changes['id_rol'] ?? 4, $changes['sector'] ?? 'OPERACIONES', $today, null)->willReturn(true);
         $this->usuario->expects($this->never())->method('finalizarAsignacion');
         $this->usuario->expects($this->never())->method('assignRole');
-        $this->usuario->expects($this->once())->method('commit')->willReturn(true);
 
         $result = $this->controller->update($this->validUpdateWithAssignment(array_merge(['fecha_desde' => $today], $changes)));
 
@@ -524,11 +524,9 @@ class UsuarioControllerTest extends TestCase
         $this->usuario->method('getAsignacionVigente')->willReturn($this->validAssignment(['fecha_desde' => $today]));
         $this->usuario->method('findRoleById')->willReturn(['id_rol' => 5]);
         $this->usuario->method('findSectorByName')->willReturn(['nombre' => 'OPERACIONES']);
-        $this->usuario->method('beginTransaction')->willReturn(true);
         $this->usuario->method('update')->willReturn(true);
         $this->usuario->expects($this->once())->method('actualizarAsignacion')->willReturn(false);
         $this->usuario->expects($this->never())->method('assignRole');
-        $this->usuario->expects($this->once())->method('rollBack')->willReturn(true);
 
         $result = $this->controller->update($this->validUpdateWithAssignment(['id_rol' => 5, 'fecha_desde' => $today]));
 
@@ -663,13 +661,13 @@ class UsuarioControllerTest extends TestCase
         ];
     }
 
-    public function testUpdateNoOcultaErroresDeProgramacion(): void
+    public function testUpdateNoExponeErroresDeProgramacion(): void
     {
         $this->usuario->expects($this->once())->method('read')
             ->willThrowException(new TypeError('Defecto de programación'));
-        $this->expectException(TypeError::class);
-
-        $this->controller->update($this->validUpdateData());
+        $result = $this->controller->update($this->validUpdateData());
+        $this->assertSame(500, $result['statusCode']);
+        $this->assertStringNotContainsString('Defecto', json_encode($result));
     }
 
     public function testUpdateConvierteExcepcionPdoAlBuscarEmailEnErrorSeguro(): void

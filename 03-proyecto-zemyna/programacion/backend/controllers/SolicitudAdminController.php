@@ -48,11 +48,13 @@ final class SolicitudAdminController
             $fields=['accion','id_solicitud','estado_esperado','version_esperada','id_atencion_esperada'];
             if($action==='confirmar_residuo')$fields[]='id_tipo_residuo';
             elseif(in_array($action,['asignar','reasignar'],true))$fields=array_merge($fields,['id_cuadrilla','id_asignacion_vehiculo','id_usa']);
-            elseif(!in_array($action,['desasignar','cancelar'],true))$this->invalid();
-            if(in_array($action,['reasignar','desasignar','cancelar'],true))$fields[]='motivo';
+            elseif(!in_array($action,['desasignar','cancelar','recuperar'],true))$this->invalid();
+            if(in_array($action,['reasignar','desasignar','cancelar','recuperar'],true))$fields[]='motivo';
+            if($action==='recuperar')$fields[]='estado_operativo_esperado';
             $this->only($b,$fields);foreach($fields as $key)if(!array_key_exists($key,$b))$this->invalid();
             foreach(['id_solicitud','id_tipo_residuo','id_cuadrilla','id_asignacion_vehiculo','id_usa'] as $key)if(array_key_exists($key,$b))$b[$key]=$this->integer($b[$key]);
             if($b['id_atencion_esperada']!==null)$b['id_atencion_esperada']=$this->integer($b['id_atencion_esperada']);
+            if($action==='recuperar' && ($b['id_atencion_esperada']===null || $b['estado_operativo_esperado']!=='En atención'))$this->invalid();
             if(!in_array($b['estado_esperado'],SolicitudOperativa::STATES,true) || !is_string($b['version_esperada']) || !preg_match('/^[a-f0-9]{64}$/D',$b['version_esperada']))$this->invalid();
             if(array_key_exists('motivo',$b)) { if(!is_string($b['motivo']))$this->invalid();$b['motivo']=trim($b['motivo']);if(mb_strlen($b['motivo'],'UTF-8')<1 || mb_strlen($b['motivo'],'UTF-8')>500)$this->invalid(); }
             return $m->mutate($actor,$b);
