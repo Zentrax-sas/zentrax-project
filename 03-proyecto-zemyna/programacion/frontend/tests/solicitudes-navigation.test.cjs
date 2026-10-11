@@ -39,7 +39,7 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 test('reproduce URL #solicitudes con Resumen visible al reutilizar admin.js anterior cacheado', async () => {
   const h = boot({ cached: true }); h.click(); await tick();
   assert.equal(h.location.hash, '#solicitudes'); assert.equal(h.nodes.get('view-resumen').classes.has('active'), true); assert.equal(h.nodes.get('view-solicitudes').classes.has('active'), false); assert.equal(h.calls.length, 0);
-  assert.match(html, /assets\/js\/admin\.js\?v=8/); // URL distinta de v7: el navegador solicita el router actualizado.
+  assert.match(html, /assets\/js\/admin\.js\?v=9/); // URL actual: solicita el router con F7.2 registrado.
 });
 test('clic con usuario sin permiso abre Solicitudes y muestra denegación, no Resumen ni datos', async () => {
   const h = boot(); h.click(); await tick();

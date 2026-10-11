@@ -41,7 +41,7 @@
 
       <div class="menu-caption administration-caption">Administración</div>
       <nav class="nav">
-        <a class="nav-link" href="#reportes"><span class="nav-icon">⌗</span>Reportes</a>
+        <a class="nav-link" href="#reportes" data-view="reportes"><span class="nav-icon">⌗</span>Reportes</a>
         <a class="nav-link" href="#usuarios" data-view="usuarios"><span class="nav-icon">♙</span>Usuarios y roles</a>
         <a class="nav-link" href="#configuracion"><span class="nav-icon">⚙</span>Configuración</a>
       </nav>
@@ -380,6 +380,20 @@
             <article class="card panel" id="requestsDetail" hidden aria-label="Detalle de solicitud"></article>
           </section>
         </section>
+        <section class="view dashboard" id="view-reportes" aria-labelledby="operationalReportsHeading">
+          <section class="card panel">
+            <div class="view-heading"><h2 id="operationalReportsHeading">Reportes operativos</h2><button id="operationalReportsRefresh" type="button" class="primary-button">Actualizar</button></div>
+            <form id="operationalReportsFilters" class="incident-filters">
+              <label>Informe<select id="operationalReportsType"><option value="solicitudes">Solicitudes especiales</option><option value="atencion">Atención operativa</option><option value="recorridos">Recorridos y contenedores</option><option value="todos">Vista general</option></select></label>
+              <label>Desde<input id="operationalReportsFrom" type="date" min="1000-01-01" max="9999-12-30"></label>
+              <label>Hasta<input id="operationalReportsTo" type="date" min="1000-01-01" max="9999-12-30"></label>
+              <button type="submit" class="primary-button">Consultar</button>
+            </form>
+            <p>Sin fechas se incluye toda la actividad con fechas conocidas. Los estados y diagnósticos actuales no se filtran por período. La vista general requiere autorización para todas sus fuentes.</p>
+            <p id="operationalReportsStatus" role="status" aria-live="polite"></p>
+            <div id="operationalReportsData" hidden></div>
+          </section>
+        </section>
         <section class="view" id="view-usuarios">
           <div class="view-heading"><div><h2>Usuarios y roles</h2><p>Vista administrativa de cuentas internas y permisos asignados.</p></div><button class="primary-button" id="newUserButton" type="button">＋ Registrar usuario</button></div>
           <form class="resource-form" id="userForm" hidden>
@@ -415,7 +429,8 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="assets/js/zemyna-map.js"></script>
   <script src="assets/js/user-eligibility.js"></script>
-  <script src="assets/js/admin.js?v=8"></script>
+  <script src="assets/js/admin.js?v=9"></script>
+  <script src="assets/js/reportes-operativos.js?v=1"></script>
   <script src="assets/js/solicitudes-admin.js?v=2"></script>
   <script src="assets/js/dashboard.js"></script>
   <script src="assets/js/asignaciones-vehiculo.js"></script>
