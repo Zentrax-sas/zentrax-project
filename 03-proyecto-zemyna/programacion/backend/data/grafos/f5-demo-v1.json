@@ -1,0 +1,24 @@
+{
+  "version": "f5-demo-v1",
+  "classification": "simulación académica",
+  "cost_unit": "unidades de costo simulado",
+  "weight_meaning": "Costo abstracto de recorrer una arista dirigida; no son metros ni minutos reales.",
+  "nodes": [
+    {"id": "A", "coordinates": {"x": 0, "y": 0}},
+    {"id": "B", "coordinates": {"x": 1, "y": 1}},
+    {"id": "C", "coordinates": {"x": 1, "y": -1}},
+    {"id": "D", "coordinates": {"x": 2, "y": 0}},
+    {"id": "E", "coordinates": {"x": 3, "y": 0}},
+    {"id": "F", "coordinates": {"x": 4, "y": 2}}
+  ],
+  "edges": [
+    {"from": "A", "to": "B", "weight": 2},
+    {"from": "A", "to": "C", "weight": 2},
+    {"from": "A", "to": "E", "weight": 12},
+    {"from": "B", "to": "D", "weight": 3},
+    {"from": "C", "to": "D", "weight": 3},
+    {"from": "C", "to": "E", "weight": 9},
+    {"from": "D", "to": "E", "weight": 1},
+    {"from": "E", "to": "D", "weight": 4}
+  ]
+}

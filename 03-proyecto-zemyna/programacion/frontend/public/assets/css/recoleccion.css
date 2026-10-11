@@ -62,4 +62,11 @@
 #ownRequestDetail { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 16px 0; background: var(--surface); overflow-wrap: anywhere; }
 #solicitudes textarea { display: block; box-sizing: border-box; width: 100%; padding: 12px; font: inherit; background: var(--surface-2); color: var(--text); border: 1px solid var(--muted); border-radius: 8px; }
 #solicitudes .request-blocked { padding: 12px; border-left: 3px solid currentColor; color: #f5d58c; }
+.incident-route { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.incident-route-map { height: 360px; min-height: 240px; width: 100%; border-radius: 8px; background: var(--surface-2); }
+.incident-route .route-warning { padding: 12px; border-left: 3px solid #f5d58c; }
+.incident-route .leaflet-container { color: #222; }
+.incident-route-map .leaflet-control-attribution a { min-height: 0; padding: 0; display: inline; }
+.incident-route-map .leaflet-control-zoom a { min-height: 0; padding: 0; }
+@media (max-width: 600px) { .incident-route-map { height: 280px; } }
 @media (max-width: 600px) { .collection-actions > button { flex: 1 1 180px; } .squad-module dialog { padding: 16px; } }

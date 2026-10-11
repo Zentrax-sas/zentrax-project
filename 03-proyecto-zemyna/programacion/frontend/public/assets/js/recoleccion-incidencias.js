@@ -6,6 +6,7 @@
   let listVersion = 0, detailVersion = 0, listRequest, detailRequest;
   const status = message => { el('ownIncidentStatus').textContent = message; };
   function closeDetail() {
+    window.IncidentRoute?.clear();
     selected = null; detailVersion++; detailRequest?.abort();
     el('ownIncidentDetail').replaceChildren(); el('ownIncidentDetail').hidden = true;
   }
@@ -73,6 +74,7 @@
   }
   async function detail(id) {
     if (saving || stopped) return false;
+    window.IncidentRoute?.clear();
     detailRequest?.abort(); detailRequest = new AbortController(); const version = ++detailVersion;
     selected = id; el('ownIncidentDetail').hidden = false; el('ownIncidentDetail').replaceChildren(node('p', 'Consultando detalle…'));
     try {
@@ -82,7 +84,8 @@
       const parent = el('ownIncidentDetail'), row = json.data[0]; parent.replaceChildren();
       summary(row, parent); parent.append(node('p', row.descripcion), node('p', `Reportada: ${row.fecha_reporte}`));
       if (row.ruta_nombre) parent.append(node('p', `Ruta: ${row.ruta_nombre}`));
-      actions(row, parent); button(parent, 'Cerrar detalle', closeDetail); parent.focus(); return true;
+      actions(row, parent); window.IncidentRoute?.mount(row, context, parent);
+      button(parent, 'Cerrar detalle', closeDetail); parent.focus(); return true;
     } catch (error) {
       if (version !== detailVersion || error.name === 'AbortError') return false;
       if (error.status === 401) expired();
@@ -116,6 +119,7 @@
   async function operate(row, action, reason) {
     if (saving || stopped || denied || context?.puede_operar_incidencias !== true) return;
     let restoreButtons = false;
+    window.IncidentRoute?.clear();
     saving = true; listVersion++; detailVersion++; listRequest?.abort(); detailRequest?.abort();
     const buttons = [...el('ownIncidents').querySelectorAll('button')].map(b => [b, b.disabled]); lock(); status('Guardando…');
     const body = { accion: action, id_incidencia: row.id_incidencia, id_atencion_incidencia: row.atencion.id_atencion_incidencia, estado_operativo_esperado: row.atencion.estado };
