@@ -10,6 +10,8 @@ final class DashboardTest extends TestCase
     private string $savePath;
     protected function setUp(): void
     {
+        // Dobles de autenticación para aislar reglas operativas; vigencia tiene pruebas propias.
+        AuthRequestContext::$resolver = fn(int $actor) => array_replace($_SESSION['usuario'] ?? [], ['id_usuario' => $actor]);
         $this->savePath = session_save_path();
         if (session_status() !== PHP_SESSION_ACTIVE) { session_save_path(sys_get_temp_dir()); session_start(); $this->started = true; }
         $this->session = $_SESSION ?? []; $_SESSION = ['usuario' => ['id_usuario' => 1]];
@@ -33,7 +35,8 @@ final class DashboardTest extends TestCase
             $stmt=$this->db->prepare('INSERT INTO permiso VALUES(?,?)');$stmt->execute([$i+1,$p]);$this->db->exec('INSERT INTO rol_permiso VALUES(1,'.($i+1).')');
         }
     }
-    protected function tearDown(): void { $_SESSION=$this->session; if($this->started){session_destroy();session_save_path($this->savePath);} }
+    protected function tearDown(): void {
+        AuthRequestContext::$resolver = null; $_SESSION=$this->session; if($this->started){session_destroy();session_save_path($this->savePath);} }
     private function get(array $query=[]): array { return (new DashboardController($this->db))->consultar($query); }
     private function fixture(): void
     {

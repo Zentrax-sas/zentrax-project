@@ -15,6 +15,8 @@ final class AtencionIncidenciaTest extends TestCase
     private string $savePath;
     protected function setUp(): void
     {
+        // Dobles de autenticación para aislar reglas operativas; vigencia tiene pruebas propias.
+        AuthRequestContext::$resolver = fn(int $actor) => array_replace($_SESSION['usuario'] ?? [], ['id_usuario' => $actor]);
         $this->savePath = session_save_path();
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_save_path(sys_get_temp_dir()); session_start(); $this->started = true;
@@ -69,6 +71,7 @@ final class AtencionIncidenciaTest extends TestCase
         $this->user();
     }
     protected function tearDown(): void {
+        AuthRequestContext::$resolver = null;
         $_SESSION = $this->previous;
         if ($this->started) { session_destroy(); session_save_path($this->savePath); }
     }

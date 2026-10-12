@@ -55,7 +55,46 @@ function normalizeRoleList(?array $roles): array {
     return array_values(array_unique($normalizados));
 }
 
-function requireAuth(): void {
+/** Conexión de la solicitud; permite inyección explícita de PDO en pruebas aisladas. */
+final class AuthRequestContext {
+    public static ?PDO $connection = null;
+    public static ?Closure $resolver = null;
+}
+
+function authIdentitySnapshot(): array {
+    $actor = $_SESSION['usuario']['id_usuario'] ?? null;
+    if ((!is_string($actor) && !is_int($actor)) || !preg_match('/^[1-9][0-9]{0,9}$/D', (string)$actor)
+        || (int)$actor > 2147483647) throw new DomainException('No autenticado.', 401);
+    try {
+        if (AuthRequestContext::$resolver !== null) {
+            $user = (AuthRequestContext::$resolver)((int)$actor);
+        } else {
+            require_once __DIR__ . '/../config/database.php';
+            require_once __DIR__ . '/../models/Usuario.php';
+            $db = AuthRequestContext::$connection ?? (new Database())->getConnection();
+            if (!$db) throw new RuntimeException('Conexión no disponible.');
+            // Reutilizar conexión, nunca el resultado de una autorización anterior.
+            AuthRequestContext::$connection = $db;
+            $user = (new Usuario($db))->getIdentidadAutorizada((int)$actor);
+        }
+    } catch (Throwable $error) {
+        throw new DomainException('No se pudo verificar la autorización. Volvé a intentar.', 503);
+    }
+    if (!$user) throw new DomainException('Sesión inválida o cuenta inactiva.', 401);
+    // Se refresca la presentación, pero nunca se usa este snapshot como autoridad posterior.
+    $_SESSION['usuario'] = array_replace($_SESSION['usuario'], $user);
+    return $user;
+}
+
+function authReject(DomainException $error): void {
+    http_response_code($error->getCode());
+    echo json_encode(['success' => false, 'data' => null, 'message' => $error->getMessage(),
+        'errors' => [], 'statusCode' => $error->getCode()], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+/** Solo logout: cerrar una sesión no depende del estado de la cuenta ni de la BD. */
+function requireSessionForLogout(): void {
     if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
         session_start();
     }
@@ -68,6 +107,12 @@ function requireAuth(): void {
         ]);
         exit;
     }
+}
+
+function requireAuth(): void {
+    if (session_status() === PHP_SESSION_NONE && !headers_sent()) session_start();
+    try { authIdentitySnapshot(); }
+    catch (DomainException $error) { authReject($error); }
 }
 
 function requireRole(array $rolesPermitidos): void {
@@ -97,7 +142,13 @@ function hasEffectivePermission(string $permiso, ?array $sectoresPermitidos = nu
         return false;
     }
 
-    $usuario = $_SESSION['usuario'];
+    try { $usuario = authIdentitySnapshot(); }
+    catch (DomainException $error) { authReject($error); }
+    return permissionFromSnapshot($usuario, $permiso, $sectoresPermitidos);
+}
+
+/** Evaluación pura de un snapshot verificado; conserva el bypass TI hasta F8.2B. */
+function permissionFromSnapshot(array $usuario, string $permiso, ?array $sectoresPermitidos = null): bool {
     $rolesUsuario = normalizeRoleList($usuario['roles'] ?? []);
     $autorizaciones = $usuario['autorizaciones'] ?? [];
     $permisoBuscado = normalizePermissionName($permiso);

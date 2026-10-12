@@ -11,6 +11,8 @@ final class RecoleccionTest extends TestCase
     private string $savePath;
     protected function setUp(): void
     {
+        // Dobles de autenticación para aislar reglas operativas; vigencia tiene pruebas propias.
+        AuthRequestContext::$resolver = fn(int $actor) => array_replace($_SESSION['usuario'] ?? [], ['id_usuario' => $actor]);
         $this->savePath = session_save_path();
         if (session_status() !== PHP_SESSION_ACTIVE) { session_save_path(sys_get_temp_dir()); session_start(); $this->started = true; }
         $this->previous = $_SESSION ?? [];
@@ -50,6 +52,7 @@ final class RecoleccionTest extends TestCase
             CREATE TABLE atencion_solicitud(id_atencion_solicitud INTEGER PRIMARY KEY,id_solicitud INTEGER,id_cuadrilla INTEGER,estado TEXT,fecha_cierre TEXT);");
     }
     protected function tearDown(): void {
+        AuthRequestContext::$resolver = null;
         $_SESSION = $this->previous;
         if ($this->started) { session_destroy(); session_save_path($this->savePath); }
     }

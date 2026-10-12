@@ -35,7 +35,7 @@ class AdminSessionContractTest extends TestCase
         $logoutApi = file_get_contents(__DIR__ . '/../api/logout.php');
         $this->assertStringContainsString("REQUEST_METHOD'] !== 'POST'", $logoutApi);
         $this->assertStringContainsString('http_response_code(405)', $logoutApi);
-        $this->assertStringContainsString('requireAuth();', $logoutApi);
+        $this->assertStringContainsString('requireSessionForLogout();', $logoutApi);
         $this->assertStringContainsString('$_SESSION = [];', $logoutApi);
         $this->assertStringContainsString('session_get_cookie_params()', $logoutApi);
         $this->assertStringContainsString('session_destroy()', $logoutApi);

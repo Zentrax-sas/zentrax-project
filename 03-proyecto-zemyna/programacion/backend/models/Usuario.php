@@ -19,6 +19,27 @@ class Usuario {
         $this->conn = $db;
     }
 
+    /** Lectura estricta: no convierte errores de infraestructura en permisos vacíos. */
+    public function getIdentidadAutorizada(int $actor): ?array {
+        if (!$this->conn) throw new RuntimeException('Autorización no disponible.');
+        $s = $this->conn->prepare('SELECT id_usuario, nombre, apellido, activo FROM usuario WHERE id_usuario=?');
+        if (!$s->execute([$actor])) throw new RuntimeException('Identidad no disponible.');
+        $user = $s->fetch(PDO::FETCH_ASSOC);
+        if (!$user || $user['activo'] !== 'Activo') return null;
+        $date = (new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d');
+        $s = $this->conn->prepare('SELECT r.nombre AS rol, ur.sector, p.nombre AS permiso
+            FROM usuario_rol ur JOIN rol r ON r.id_rol=ur.id_rol
+            LEFT JOIN rol_permiso rp ON rp.id_rol=ur.id_rol
+            LEFT JOIN permiso p ON p.id_permiso=rp.id_permiso
+            WHERE ur.id_usuario=? AND ur.fecha_desde<=? AND (ur.fecha_hasta IS NULL OR ur.fecha_hasta>=?)
+            ORDER BY r.nombre, ur.sector, p.nombre');
+        if (!$s->execute([$actor, $date, $date])) throw new RuntimeException('Permisos no disponibles.');
+        $rows = $s->fetchAll(PDO::FETCH_ASSOC);
+        $user['roles'] = array_values(array_unique(array_column($rows, 'rol')));
+        $user['autorizaciones'] = array_values(array_filter($rows, fn($row) => $row['permiso'] !== null));
+        return $user;
+    }
+
     public function read($id = null, $page = 1, $limit = 20) {
         if (!$this->conn) return null;
 

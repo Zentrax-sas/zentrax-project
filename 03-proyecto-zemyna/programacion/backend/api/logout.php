@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-requireAuth();
+requireSessionForLogout();
 
 $sessionUserId = isset($_SESSION['usuario']['id_usuario'])
     ? (int) $_SESSION['usuario']['id_usuario']

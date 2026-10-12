@@ -73,9 +73,9 @@ class AuthorizationLogicTest extends TestCase
     public function testAdminAccessAndSectorGuard(): void
     {
         $this->setUser(['ADMINISTRADOR_TI'], [['permiso' => 'usuario.crear', 'sector' => 'TI']]);
-        $this->assertTrue(hasEffectivePermission('usuario.crear', ['TI']));
-        $this->assertTrue(hasEffectivePermission('usuario.crear', ['LOGISTICA']));
-        $this->assertTrue(hasEffectivePermission('contenedor.consultar', ['LOGISTICA']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['TI']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['LOGISTICA']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'contenedor.consultar', ['LOGISTICA']));
     }
 
     public function testResponsableSectorialWithMatchingSector(): void
@@ -84,9 +84,9 @@ class AuthorizationLogicTest extends TestCase
             ['permiso' => 'contenedor.consultar', 'sector' => 'PUNTOS_Y_DESTINOS'],
             ['permiso' => 'vehiculo.consultar', 'sector' => 'LOGISTICA'],
         ]);
-        $this->assertTrue(hasEffectivePermission('contenedor.consultar', ['PUNTOS_Y_DESTINOS']));
-        $this->assertTrue(hasEffectivePermission('vehiculo.consultar', ['LOGISTICA']));
-        $this->assertFalse(hasEffectivePermission('contenedor.consultar', ['LOGISTICA']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'contenedor.consultar', ['PUNTOS_Y_DESTINOS']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'vehiculo.consultar', ['LOGISTICA']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'contenedor.consultar', ['LOGISTICA']));
     }
 
     public function testOperarioWithValidAndInvalidSectors(): void
@@ -95,17 +95,17 @@ class AuthorizationLogicTest extends TestCase
             ['permiso' => 'contenedor.cambiar_estado', 'sector' => 'OPERACIONES'],
             ['permiso' => 'incidencia.adjuntar_evidencia', 'sector' => 'INSPECCION'],
         ]);
-        $this->assertTrue(hasEffectivePermission('contenedor.cambiar_estado', ['OPERACIONES']));
-        $this->assertTrue(hasEffectivePermission('incidencia.adjuntar_evidencia', ['INSPECCION']));
-        $this->assertFalse(hasEffectivePermission('contenedor.cambiar_estado', ['INSPECCION']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'contenedor.cambiar_estado', ['OPERACIONES']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'incidencia.adjuntar_evidencia', ['INSPECCION']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'contenedor.cambiar_estado', ['INSPECCION']));
     }
 
     public function testInspectorReadOnlyGuards(): void
     {
         $this->setUser(['INSPECTOR'], [['permiso' => 'incidencia.consultar', 'sector' => 'INSPECCION']]);
-        $this->assertTrue(hasEffectivePermission('incidencia.consultar', ['INSPECCION']));
-        $this->assertFalse(hasEffectivePermission('usuario.modificar', ['TI']));
-        $this->assertFalse(hasEffectivePermission('contenedor.modificar', ['PUNTOS_Y_DESTINOS']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'incidencia.consultar', ['INSPECCION']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.modificar', ['TI']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'contenedor.modificar', ['PUNTOS_Y_DESTINOS']));
     }
 
     public function testLegacyCompatibilityMapsOldRoles(): void
@@ -126,8 +126,8 @@ class AuthorizationLogicTest extends TestCase
     public function testPermissionChecksOnArrayOfRoles(): void
     {
         $this->setUser(['OPERARIO', 'INSPECTOR'], [['permiso' => 'incidencia.crear', 'sector' => 'INSPECCION']]);
-        $this->assertTrue(hasEffectivePermission('incidencia.crear', ['INSPECCION']));
-        $this->assertFalse(hasEffectivePermission('usuario.crear', ['TI']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'incidencia.crear', ['INSPECCION']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['TI']));
     }
 
     public function testDuplicateEntriesAndEmptyValuesGuard(): void
@@ -136,28 +136,28 @@ class AuthorizationLogicTest extends TestCase
             ['permiso' => 'usuario.consultar', 'sector' => 'TI'],
             ['permiso' => 'usuario.consultar', 'sector' => 'TI'],
         ]);
-        $this->assertTrue(hasEffectivePermission('usuario.consultar', ['TI']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.consultar', ['TI']));
         $this->assertSame(['OPERARIO'], normalizeRoleList(['', '   ', 'OPERARIO']));
     }
 
     public function testNegativeGrantScenarios(): void
     {
         $this->setUser(['OPERARIO'], [['permiso' => 'incidencia.crear', 'sector' => 'OPERACIONES']]);
-        $this->assertFalse(hasEffectivePermission('usuario.modificar', ['TI']));
-        $this->assertFalse(hasEffectivePermission('vehiculo.modificar', ['LOGISTICA']));
-        $this->assertFalse(hasEffectivePermission('contenedor.baja', ['PUNTOS_Y_DESTINOS']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.modificar', ['TI']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'vehiculo.modificar', ['LOGISTICA']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'contenedor.baja', ['PUNTOS_Y_DESTINOS']));
     }
 
     public function testAdminCompatibilityWithLegacyName(): void
     {
         $this->setUser(['Superusuario']);
-        $this->assertTrue(hasEffectivePermission('usuario.crear', ['TI']));
-        $this->assertTrue(hasEffectivePermission('usuario.crear', ['LOGISTICA']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['TI']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['LOGISTICA']));
     }
 
     public function testEmptySessionDeniesAccess(): void
     {
-        $this->assertFalse(hasEffectivePermission('usuario.consultar', ['TI']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.consultar', ['TI']));
     }
 
     public function testSpecialRolesRemainUppercaseSafe(): void
@@ -180,9 +180,9 @@ class AuthorizationLogicTest extends TestCase
             ['permiso' => 'lugar.crear', 'sector' => 'PUNTOS_Y_DESTINOS'],
             ['permiso' => 'vehiculo.asignar', 'sector' => 'LOGISTICA'],
         ]);
-        $this->assertTrue(hasEffectivePermission('lugar.crear', ['PUNTOS_Y_DESTINOS']));
-        $this->assertTrue(hasEffectivePermission('vehiculo.asignar', ['LOGISTICA']));
-        $this->assertFalse(hasEffectivePermission('lugar.crear', ['LOGISTICA']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'lugar.crear', ['PUNTOS_Y_DESTINOS']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'vehiculo.asignar', ['LOGISTICA']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'lugar.crear', ['LOGISTICA']));
     }
 
     public function testRoleListGeneralization(): void
@@ -193,8 +193,8 @@ class AuthorizationLogicTest extends TestCase
     public function testNegativeEmptyAuthData(): void
     {
         $this->setUser([]);
-        $this->assertFalse(hasEffectivePermission('usuario.consultar', ['TI']));
-        $this->assertFalse(hasEffectivePermission('contenedor.consultar', null));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.consultar', ['TI']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'contenedor.consultar', null));
     }
 
     public function testSectorNamesWithDifferentEncodingsAreNormalized(): void
@@ -207,15 +207,15 @@ class AuthorizationLogicTest extends TestCase
     public function testCrossSectorCheckForInspector(): void
     {
         $this->setUser(['INSPECTOR'], [['permiso' => 'incidencia.consultar', 'sector' => 'INSPECCION']]);
-        $this->assertTrue(hasEffectivePermission('incidencia.consultar', ['INSPECCION']));
-        $this->assertFalse(hasEffectivePermission('incidencia.consultar', ['MANTENIMIENTO']));
-        $this->assertFalse(hasEffectivePermission('maquinaria.consultar', ['MANTENIMIENTO']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'incidencia.consultar', ['INSPECCION']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'incidencia.consultar', ['MANTENIMIENTO']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'maquinaria.consultar', ['MANTENIMIENTO']));
     }
 
     public function testPermissionGrantWhenSectorListIsNull(): void
     {
         $this->setUser(['ADMINISTRADOR_TI'], [['permiso' => 'usuario.consultar', 'sector' => 'TI']]);
-        $this->assertTrue(hasEffectivePermission('usuario.consultar', null));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.consultar', null));
     }
 
     public function testPermissionArrayValuesAreNotMutated(): void
@@ -227,7 +227,7 @@ class AuthorizationLogicTest extends TestCase
             ['permiso' => 'contenedor.consultar', 'sector' => 'PUNTOS_Y_DESTINOS'],
         ]);
         $this->assertSame($original, $copy);
-        $this->assertTrue(hasEffectivePermission('usuario.crear', ['TI']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['TI']));
     }
 
     public function testNormalizationOfSeveralNamesWithExtraSpaces(): void
@@ -245,7 +245,7 @@ class AuthorizationLogicTest extends TestCase
     public function testLastNegativeCheckForNoSectorMatch(): void
     {
         $this->setUser(['RESPONSABLE_SECTORIAL'], [['permiso' => 'maquinaria.consultar', 'sector' => 'MANTENIMIENTO']]);
-        $this->assertFalse(hasEffectivePermission('maquinaria.consultar', ['LOGISTICA']));
-        $this->assertTrue(hasEffectivePermission('maquinaria.consultar', ['MANTENIMIENTO']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'maquinaria.consultar', ['LOGISTICA']));
+        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'maquinaria.consultar', ['MANTENIMIENTO']));
     }
 }

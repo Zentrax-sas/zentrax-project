@@ -10,6 +10,7 @@ final class IncidenciaApiAccessTest extends TestCase
     /** @dataProvider requests */
     public function testAccesoYRuteo(string $method, array $query, array $session, int $status, ?string $operation, array $body = []): void
     {
+        if (isset($session['usuario'])) $session['usuario']['id_usuario'] ??= 1;
         $script = tempnam(sys_get_temp_dir(), 'inc_access_');
         $endpoint = realpath(__DIR__ . '/../api/incidencias.php');
         $code = <<<'PHP'
@@ -46,6 +47,9 @@ PHP;
         $code .= PHP_EOL . '$_SERVER["REQUEST_METHOD"] = ' . var_export($method, true) . ';';
         $code .= PHP_EOL . '$_GET = ' . var_export($query, true) . ';';
         $code .= PHP_EOL . '$_SESSION = ' . var_export($session, true) . ';';
+        // Este contrato aísla ruteo y permisos; el resolver estricto tiene pruebas propias.
+        $code .= PHP_EOL . 'require_once ' . var_export(realpath(__DIR__ . '/../helpers/auth.php'), true) . ';';
+        $code .= PHP_EOL . 'AuthRequestContext::$resolver = fn(int $actor) => $_SESSION["usuario"];';
         if ($body) {
             $code .= <<<'PHP'
 

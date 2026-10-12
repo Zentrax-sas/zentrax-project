@@ -16,6 +16,8 @@ final class IncidenciasPropiasTest extends TestCase
 
     protected function setUp(): void
     {
+        // Dobles de autenticación para aislar reglas operativas; vigencia tiene pruebas propias.
+        AuthRequestContext::$resolver = fn(int $actor) => array_replace($_SESSION['usuario'] ?? [], ['id_usuario' => $actor]);
         $this->savePath = session_save_path();
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_save_path(sys_get_temp_dir()); session_start(); $this->started = true;
@@ -58,6 +60,7 @@ final class IncidenciasPropiasTest extends TestCase
 
     protected function tearDown(): void
     {
+        AuthRequestContext::$resolver = null;
         $_SESSION = $this->previous;
         if ($this->started) { session_destroy(); session_save_path($this->savePath); }
     }
@@ -357,8 +360,9 @@ PHP;
     {
         return [
             ['GET', false, [], 401], ['GET', true, [], 503],
-            ['GET', true, ['id_usuario' => 2], 400], ['GET', true, ['id_cuadrilla' => 2], 400],
-            ['POST', true, [], 405], ['PUT', true, [], 405], ['DELETE', true, [], 405],
+            // La autorización privada se verifica antes de parámetros o acciones.
+            ['GET', true, ['id_usuario' => 2], 503], ['GET', true, ['id_cuadrilla' => 2], 503],
+            ['POST', true, [], 503], ['PUT', true, [], 503], ['DELETE', true, [], 503],
         ];
     }
 }
