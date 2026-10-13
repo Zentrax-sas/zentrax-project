@@ -74,8 +74,8 @@ class AuthorizationLogicTest extends TestCase
     {
         $this->setUser(['ADMINISTRADOR_TI'], [['permiso' => 'usuario.crear', 'sector' => 'TI']]);
         $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['TI']));
-        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['LOGISTICA']));
-        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'contenedor.consultar', ['LOGISTICA']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['LOGISTICA']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'contenedor.consultar', ['LOGISTICA']));
     }
 
     public function testResponsableSectorialWithMatchingSector(): void
@@ -151,8 +151,8 @@ class AuthorizationLogicTest extends TestCase
     public function testAdminCompatibilityWithLegacyName(): void
     {
         $this->setUser(['Superusuario']);
-        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['TI']));
-        $this->assertTrue(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['LOGISTICA']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['TI']));
+        $this->assertFalse(permissionFromSnapshot($_SESSION['usuario'] ?? [], 'usuario.crear', ['LOGISTICA']));
     }
 
     public function testEmptySessionDeniesAccess(): void

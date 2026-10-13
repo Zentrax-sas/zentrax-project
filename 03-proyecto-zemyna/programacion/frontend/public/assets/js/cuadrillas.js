@@ -98,7 +98,7 @@
     el('squadEligible').replaceChildren();
     for (const u of members.elegibles) { const o = node('option', `${u.nombre} ${u.apellido}`); o.value = u.id_usuario; el('squadEligible').append(o); }
     el('squadExcluded').replaceChildren(...(members.no_elegibles || []).map(u => node('li', `${u.nombre} ${u.apellido} — ${u.motivo}`)));
-    if (!members.no_elegibles?.length) el('squadExcluded').append(node('li', 'No hay usuarios excluidos.'));
+    if (!members.no_elegibles?.length) el('squadExcluded').append(node('li', 'Solo se muestran personas con habilitación operativa vigente.'));
     el('squadDialogUsers').hidden = !permissions.usuarios;
     el('squadEligible').value = members.elegibles[0]?.id_usuario || ''; chooseUser(); showDialog(el('squadAdd')); el('squadEligible').focus();
   }

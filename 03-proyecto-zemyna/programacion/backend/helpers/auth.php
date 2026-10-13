@@ -147,16 +147,11 @@ function hasEffectivePermission(string $permiso, ?array $sectoresPermitidos = nu
     return permissionFromSnapshot($usuario, $permiso, $sectoresPermitidos);
 }
 
-/** Evaluación pura de un snapshot verificado; conserva el bypass TI hasta F8.2B. */
+/** Evaluación de permisos explícitos y sectores de un snapshot verificado. */
 function permissionFromSnapshot(array $usuario, string $permiso, ?array $sectoresPermitidos = null): bool {
-    $rolesUsuario = normalizeRoleList($usuario['roles'] ?? []);
     $autorizaciones = $usuario['autorizaciones'] ?? [];
     $permisoBuscado = normalizePermissionName($permiso);
     $sectoresNormalizados = $sectoresPermitidos !== null ? array_map('strtoupper', array_map('trim', $sectoresPermitidos)) : null;
-
-    if (in_array('ADMINISTRADOR_TI', $rolesUsuario, true) && $sectoresPermitidos !== null) {
-        return true;
-    }
 
     foreach ($autorizaciones as $autorizacion) {
         if (normalizePermissionName($autorizacion['permiso'] ?? null) !== $permisoBuscado) {

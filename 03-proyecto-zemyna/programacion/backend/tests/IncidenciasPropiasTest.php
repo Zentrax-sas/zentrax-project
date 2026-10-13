@@ -208,6 +208,8 @@ final class IncidenciasPropiasTest extends TestCase
         $this->user(5, true); $this->assertSame(403, $this->get()['statusCode']);
         $this->user(4, true); $this->assertSame(409, $this->get()['statusCode']);
         $this->user(1, true); $_SESSION['usuario']['autorizaciones'] = [];
+        $this->assertSame(403, $this->get()['statusCode']);
+        $this->user(1, true); // El acceso propio se conserva solo con permisos explícitos.
         $this->assertSame([1,2], $this->ids());
         $this->assertSame(404, $this->get(['id_incidencia' => 4])['statusCode']);
         $this->assertSame(400, $this->get(['id_cuadrilla' => 2])['statusCode']);

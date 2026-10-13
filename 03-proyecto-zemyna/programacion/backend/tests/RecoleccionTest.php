@@ -254,7 +254,7 @@ final class RecoleccionTest extends TestCase
         $this->db->exec("UPDATE usuario_rol SET sector='PUNTOS_Y_DESTINOS' WHERE id_usuario=3");
         $r = $this->get(['view'=>'integrantes','id_cuadrilla'=>3]);
         $this->assertSame(200,$r['statusCode']); $this->assertCount(1,$r['data']['elegibles']);
-        foreach ($r['data']['no_elegibles'] as $u) $this->assertSame(['nombre','apellido','motivo'],array_keys($u));
+        $this->assertSame([], $r['data']['no_elegibles']);
         $this->operator(); $denied=$this->get(['view'=>'integrantes','id_cuadrilla'=>3]);
         $this->assertSame(403,$denied['statusCode']);$this->assertArrayNotHasKey('data',$denied);
         $_SESSION=[];$this->assertSame(401,$this->get(['view'=>'integrantes','id_cuadrilla'=>3])['statusCode']);

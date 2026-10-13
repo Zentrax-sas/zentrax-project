@@ -95,10 +95,10 @@ final class AutorizacionVigenteTest extends TestCase
         $this->assertSame(403,$result['status']);
         $this->assertSame(['OPERARIO'],$result['session']['usuario']['roles']);
     }
-    public function testBypassTiSeConservaSoloParaRolVigente(): void {
+    public function testTiSinPermisoExplicitoEsRechazado(): void {
         $result=$this->request('requirePermission("permiso.no.asignado",["OPERACIONES"]); http_response_code(200);',
             '$db->exec("UPDATE rol SET nombre=\'ADMINISTRADOR_TI\'; DELETE FROM rol_permiso");');
-        $this->assertSame(200,$result['status']);
+        $this->assertSame(403,$result['status']);
     }
     public function testSessionDevuelveIdentidadActualSinPermisosPublicos(): void {
         $result=$this->request('require ' . var_export($this->root.'/api/session.php',true) . ';');

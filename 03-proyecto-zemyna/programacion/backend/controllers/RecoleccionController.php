@@ -41,7 +41,7 @@ class RecoleccionController
                 'administracion' => $admin, 'integrantes' => $this->canMembers(false), 'modificar_integrantes' => $this->canMembers(true),
                 'asignar_recorridos' => $this->canAssignTrips(),
                 'crear_recorridos' => hasEffectivePermission('recorrido.crear', ['OPERACIONES', 'LOGISTICA']) && hasEffectivePermission('ruta.consultar', ['OPERACIONES', 'LOGISTICA']),
-                'usuarios' => hasEffectivePermission('usuario.consultar', ['TI', 'OPERACIONES', 'LOGISTICA'])]];
+                'usuarios' => hasEffectivePermission('usuario.consultar', ['TI'])]];
             if (($query['view'] ?? '') === 'asignables') {
                 if (!isset($query['id_cuadrilla'])) return $this->failure(400, 'Indicá la cuadrilla.');
                 return ['success' => true, 'statusCode' => 200, 'data' => $model->asignables((int) $query['id_cuadrilla'], (int) ($query['page'] ?? 1))];
@@ -158,8 +158,9 @@ class RecoleccionController
     }
     private function canMembers(bool $write): bool
     {
-        return hasEffectivePermission('usuario.consultar', ['TI', 'OPERACIONES', 'LOGISTICA'])
-            && hasEffectivePermission($write ? 'cuadrilla.modificar' : 'cuadrilla.consultar', ['OPERACIONES']);
+        // El directorio limitado es una herramienta de gestión de cuadrillas, no de usuarios.
+        return hasEffectivePermission('cuadrilla.consultar', ['OPERACIONES'])
+            && hasEffectivePermission('cuadrilla.modificar', ['OPERACIONES']);
     }
     public function modificar(array $body): array
     {

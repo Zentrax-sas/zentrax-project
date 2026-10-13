@@ -98,13 +98,22 @@ class RecoleccionOperativa extends Recoleccion
             LEFT JOIN usuario asignador ON asignador.id_usuario = uc.id_usuario_asigna
             LEFT JOIN usuario finalizador ON finalizador.id_usuario = uc.id_usuario_finaliza
             WHERE uc.id_cuadrilla = ? ORDER BY uc.fecha_inicio DESC, uc.id_usuario_cuadrilla DESC', [$squad]);
-        $eligible = []; $excluded = [];
-        foreach ($this->rows("SELECT id_usuario, nombre, apellido FROM usuario ORDER BY nombre, id_usuario", []) as $user) {
+        $eligible = [];
+        $date = substr($this->now(), 0, 10);
+        // No consultar ni devolver el directorio de personas sin habilitación operativa.
+        foreach ($this->rows("SELECT u.id_usuario, u.nombre, u.apellido FROM usuario u
+            JOIN usuario_rol ur ON ur.id_usuario=u.id_usuario
+            JOIN rol_permiso rp ON rp.id_rol=ur.id_rol JOIN permiso p ON p.id_permiso=rp.id_permiso
+            WHERE u.activo='Activo' AND ur.sector='OPERACIONES' AND ur.fecha_desde<=?
+            AND (ur.fecha_hasta IS NULL OR ur.fecha_hasta>=?)
+            GROUP BY u.id_usuario,u.nombre,u.apellido
+            HAVING MAX(p.nombre='recorrido.consultar')=1
+            AND MAX(p.nombre IN ('recorrido.operar','recorrido.modificar'))=1
+            ORDER BY u.nombre,u.id_usuario", [$date,$date]) as $user) {
             $eligibility = $this->elegibilidad((int) $user['id_usuario']);
             if ($eligibility['elegible']) { $user['pertenencia'] = $this->pertenencia((int) $user['id_usuario']); $eligible[] = $user; }
-            else $excluded[] = ['nombre' => $user['nombre'], 'apellido' => $user['apellido'], 'motivo' => $eligibility['motivo']];
         }
-        return ['historial' => $history, 'elegibles' => $eligible, 'no_elegibles' => $excluded];
+        return ['historial' => $history, 'elegibles' => $eligible, 'no_elegibles' => []];
     }
     public function asignar(int $actor, int $target, ?int $squad, string $action, ?int $membership): array
     {
