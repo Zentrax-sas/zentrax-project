@@ -2,15 +2,16 @@
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mi recolección | Zemyna</title>
-<link rel="stylesheet" href="assets/css/admin.css"><link rel="stylesheet" href="assets/css/recoleccion.css?v=6">
+<link rel="stylesheet" href="assets/css/admin.css"><link rel="stylesheet" href="assets/css/recoleccion.css?v=11">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 </head>
 <body><main class="collection-shell">
 <a id="collectionBack" href="admin.html">← Volver al panel</a>
-<header class="view-heading"><div><h1>Mi recolección</h1><p>Tu cuadrilla, tu recorrido y los contenedores por atender.</p></div>
+<header class="view-heading"><div><h1>Mi recolección</h1><p>Registrá las atenciones de tu cuadrilla durante la jornada.</p></div>
 </header>
-<a href="#ownIncidents">Incidencias asignadas</a><a href="#solicitudes">Solicitudes especiales</a>
+<nav class="collection-sections" aria-label="Trabajo de la cuadrilla"><a href="#collectionPanel">Mi recorrido</a><a href="#ownIncidents">Incidencias asignadas</a><a href="#solicitudes">Solicitudes especiales</a></nav>
 <p class="result-count" id="collectionTimezone" hidden>Horarios de Montevideo</p>
 <p id="collectionStatus" role="status" aria-live="polite">Cargando tu recolección…</p>
 <a id="collectionLogin" href="login.html" hidden>Iniciar sesión</a>
@@ -71,7 +72,8 @@
 </main><script src="config.js?v=3"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="assets/js/recoleccion.js?v=4"></script>
+<script src="assets/js/recoleccion-mapa.js?v=4"></script>
+<script src="assets/js/recoleccion.js?v=9"></script>
 <script src="assets/js/ruta-incidencia.js?v=2"></script>
 <script src="assets/js/recoleccion-incidencias.js?v=2"></script>
 <script src="assets/js/recoleccion-solicitudes.js?v=1"></script>
