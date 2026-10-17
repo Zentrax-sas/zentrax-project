@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Panel operativo interno de Zemyna - Sistema de Gestión de Residuos Urbanos">
   <title>Resumen operativo | Zemyna</title>
-  <link rel="stylesheet" href="assets/css/admin.css">
+  <link rel="stylesheet" href="assets/css/admin.css?v=a2-tabs">
   <link rel="stylesheet" href="assets/css/dashboard.css">
   <link rel="stylesheet" href="assets/css/recoleccion.css?v=4">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -324,17 +324,19 @@
           <nav id="squadPaging" hidden aria-label="Páginas de cuadrillas"><button id="squadPrev" type="button">Anterior</button><span id="squadPage"></span><button id="squadNext" type="button">Siguiente</button></nav>
           <section id="squadDetail" hidden aria-labelledby="squadName">
             <button id="squadBack" type="button" class="link-button">Volver a cuadrillas</button><h2 id="squadName"></h2>
-            <nav class="squad-tabs" aria-label="Secciones de la cuadrilla">
-              <button id="squadSummaryTab" type="button" aria-pressed="true">Resumen</button><button id="squadMembersTab" type="button" aria-pressed="false" hidden>Integrantes</button><button id="squadTripsTab" type="button" aria-pressed="false">Recorridos</button>
+            <nav class="squad-tabs" role="tablist" aria-label="Secciones de la cuadrilla">
+              <button id="squadSummaryTab" type="button" role="tab" aria-selected="true" aria-controls="squadSummaryPanel" tabindex="0">Resumen</button><button id="squadMembersTab" type="button" role="tab" aria-selected="false" aria-controls="squadMembers" tabindex="-1" hidden>Integrantes</button><button id="squadTripsTab" type="button" role="tab" aria-selected="false" aria-controls="squadTrips" tabindex="-1">Recorridos</button>
             </nav>
+            <section id="squadSummaryPanel" role="tabpanel" aria-labelledby="squadSummaryTab" tabindex="0">
             <div id="squadSummary"></div>
             <section id="vehicleAssignment" hidden aria-label="Utilización de vehículo"></section>
-            <section id="squadMembers" hidden><div class="view-heading"><h3>Integrantes activos</h3><button class="primary-button" id="squadAdd" type="button" hidden>Agregar operario</button></div>
+            </section>
+            <section id="squadMembers" role="tabpanel" aria-labelledby="squadMembersTab" tabindex="0" hidden><div class="view-heading"><h3>Integrantes con pertenencia vigente</h3><button class="primary-button" id="squadAdd" type="button" hidden>Agregar operario</button></div>
               <p>Para trasladar un integrante, agregalo desde la cuadrilla de destino.</p>
               <a href="#usuarios" id="squadUsers" hidden>Gestionar usuarios</a><div id="squadActiveMembers"></div>
               <details><summary>Historial de integrantes</summary><div id="squadHistory"></div></details>
             </section>
-            <section id="squadTrips" hidden><div class="view-heading"><h3>Recorridos</h3><button id="squadAssignTrip" type="button" class="primary-button" hidden>Asignar recorrido</button></div><label for="squadState">Estado del recorrido</label><select id="squadState"><option value="">Todos</option><option>Pendiente</option><option>En Proceso</option><option>Finalizado</option><option>Cancelado</option></select><div id="squadTripRows"></div>
+            <section id="squadTrips" role="tabpanel" aria-labelledby="squadTripsTab" tabindex="0" hidden><div class="view-heading"><h3>Recorridos</h3><button id="squadAssignTrip" type="button" class="primary-button" hidden>Asignar recorrido</button></div><label for="squadState">Estado del recorrido</label><select id="squadState"><option value="">Todos</option><option>Pendiente</option><option>En Proceso</option><option>Finalizado</option><option>Cancelado</option></select><div id="squadTripRows"></div>
               <nav aria-label="Páginas de recorridos"><button id="squadTripPrev" type="button">Anterior</button><span id="squadTripPage"></span><button id="squadTripNext" type="button">Siguiente</button></nav><div id="squadTripDetail"></div>
             </section>
             <details class="squad-help"><summary>Acerca de las asignaciones</summary><p>Los vehículos relacionados no tienen fechas de vigencia. Los recorridos pueden ser históricos. El estado mostrado corresponde al recorrido; la cuadrilla no tiene un estado operativo propio.</p></details>
@@ -433,8 +435,8 @@
   <script src="assets/js/reportes-operativos.js?v=1"></script>
   <script src="assets/js/solicitudes-admin.js?v=2"></script>
   <script src="assets/js/dashboard.js"></script>
-  <script src="assets/js/asignaciones-vehiculo.js"></script>
-  <script src="assets/js/cuadrillas.js?v=3"></script>
+  <script src="assets/js/asignaciones-vehiculo.js?v=3"></script>
+  <script src="assets/js/cuadrillas.js?v=8"></script>
   <script src="assets/js/incidence-report.js"></script>
   <script src="assets/js/crew-report.js"></script>
 </body>

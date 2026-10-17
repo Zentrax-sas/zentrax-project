@@ -495,3 +495,60 @@ td strong { color: var(--text); font-size: 10px; }
 @media (max-width: 600px) { #crewMap { height: 300px; } .crew-report .form-grid { grid-template-columns: 1fr; } }
 
 .incident-evidence img { display: block; max-width: 100%; max-height: 320px; object-fit: contain; margin: 12px 0; }
+
+/* A1: resumen operativo contextual de cuadrillas. */
+.squad-module .squad-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.squad-module .squad-tabs button { min-width: 0; min-height: 44px; padding: 10px 6px; white-space: normal; overflow-wrap: anywhere; }
+.squad-module .squad-tabs button[aria-selected="true"] { border-color: var(--green); box-shadow: inset 0 -3px var(--green); font-weight: 700; }
+.squad-module [role="tabpanel"] { min-width: 0; margin-top: 12px; }
+.squad-module [role="tabpanel"]:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.squad-summary { overflow-wrap: anywhere; }
+.squad-summary h4 { margin: 1rem 0 .35rem; font-size: 1rem; }
+.squad-member-names { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; padding-left: 1.25rem; }
+.squad-summary button { min-height: 44px; max-width: 100%; white-space: normal; }
+@media (max-width: 600px) {
+  .squad-member-names { display: block; }
+  .squad-summary button { width: 100%; }
+}
+
+/* A1.1: jerarquía acotada al detalle de cuadrilla y su utilización. */
+/* A2: guía informativa; las operaciones permanecen en sus herramientas. */
+#squadSummary .squad-preparation { margin: 1rem 0; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; }
+#squadSummary .squad-preparation[hidden] { display: none; }
+#squadSummary .squad-preparation h3 { font-size: 1.125rem; margin: 0 0 .5rem; }
+#squadSummary .squad-preparation ol { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem 2rem; padding-left: 1.5rem; }
+#squadSummary .squad-preparation li { min-width: 0; padding: .25rem; }
+#squadSummary .squad-preparation p { font-size: .9375rem; line-height: 1.5; }
+#squadSummary .squad-preparation-tools { display: flex; flex-wrap: wrap; gap: .75rem; }
+@media (max-width: 768px) {
+  #squadSummary .squad-preparation ol { grid-template-columns: minmax(0, 1fr); }
+}
+#squadName { font-size: 1.5rem; line-height: 1.25; overflow-wrap: anywhere; }
+#squadSummary .squad-secondary { color: var(--muted, #bac0ce); font-size: .9375rem; }
+#squadSummary .squad-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+#squadSummary .squad-overview-block { min-width: 0; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+#squadSummary .squad-overview-block h4 { margin: 0 0 .75rem; color: var(--text); font-size: 1rem; }
+#squadSummary .squad-overview-block strong { display: block; font-size: 1.25rem; line-height: 1.4; color: var(--text); }
+#squadSummary .squad-overview-block p { margin: .5rem 0; }
+#squadSummary [role="status"] span { display: block; margin-top: .4rem; }
+#squadSummary .squad-member-names { margin: .5rem 0 1rem; line-height: 1.6; }
+#vehicleAssignment.vehicle-utilization-panel { margin: 1rem 0; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; overflow-wrap: anywhere; }
+#vehicleAssignment h3 { font-size: 1.125rem; margin: 0 0 .75rem; }
+#vehicleAssignment p { font-size: .9375rem; line-height: 1.5; }
+#vehicleAssignment .vehicle-utilization-form { display: grid; gap: .75rem; padding: 1rem 0; border-top: 1px solid var(--line); }
+#vehicleAssignment label { display: grid; gap: .5rem; min-width: 0; }
+#vehicleAssignment select, #vehicleAssignment input { width: 100%; min-width: 0; min-height: 44px; padding: .65rem; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-sizing: border-box; }
+#vehicleAssignment .vehicle-utilization-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+#vehicleAssignment button, #vehicleAssignment summary { min-height: 44px; padding: .65rem .85rem; font: inherit; }
+#vehicleAssignment button { max-width: 100%; white-space: normal; }
+#vehicleAssignment .vehicle-utilization-close { border-style: dashed; }
+#vehicleAssignment .vehicle-utilization-refresh { background: transparent; }
+#vehicleAssignment .vehicle-utilization-history { margin-top: 1rem; border-top: 1px solid var(--line); }
+#vehicleAssignment .vehicle-utilization-history summary { cursor: pointer; }
+#vehicleAssignment .vehicle-utilization-record { margin: .75rem 0; padding: 1rem; border: 1px solid var(--line); border-radius: 8px; }
+#vehicleAssignment .vehicle-utilization-record strong { font-size: 1.125rem; }
+#vehicleAssignment button:focus-visible, #vehicleAssignment summary:focus-visible, #squadSummary button:focus-visible { outline: 2px solid #b5a1ff; outline-offset: 3px; }
+@media (max-width: 600px) {
+  #squadSummary .squad-overview-grid { grid-template-columns: minmax(0, 1fr); }
+  #vehicleAssignment .vehicle-utilization-actions button { flex: 1 1 140px; }
+}
