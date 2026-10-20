@@ -27,7 +27,7 @@ ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS
-    sesion, mantenimiento, atencion_solicitud, solicitud, maquinaria, vertedero, acopio, foto,
+    tramite_edicion, sesion, mantenimiento, atencion_solicitud, solicitud, maquinaria, vertedero, acopio, foto,
     denuncia, asignacion_vehiculo_operativa, atencion_incidencia, incidencia, atencion_contenedor, usuario_cuadrilla, participa, recorrido, usa, cuadrilla, vehiculo,
     incidencia_upload_token, geocodificacion_cache, contenedor, usuario_rol, rol_permiso, permiso,
     sector, rol, usuario, ruta, tipo_residuo, centro, vecino;
@@ -414,14 +414,20 @@ CREATE TABLE incidencia (
     tracking_number VARCHAR(20) NOT NULL,
     descripcion TEXT NOT NULL,
     fecha_reporte DATETIME NOT NULL,
+    fecha_cancelacion DATETIME(6) NULL,
+    updated_at DATETIME(6) NULL,
+    revision INT UNSIGNED NOT NULL DEFAULT 0,
     fecha_resolucion DATETIME NULL DEFAULT NULL,
     latitud DECIMAL(10,7) NULL DEFAULT NULL,
     longitud DECIMAL(10,7) NULL DEFAULT NULL,
 
+
+
     estado ENUM(
         'Pendiente',
         'En Proceso',
-        'Resuelta'
+        'Resuelta',
+        'Cancelada'
     ) NOT NULL,
 
     prioridad ENUM(
@@ -582,6 +588,9 @@ CREATE TABLE solicitud (
     id_solicitud INT NOT NULL AUTO_INCREMENT,
     tracking_number VARCHAR(20) NOT NULL,
     fecha DATETIME NOT NULL,
+    fecha_cancelacion DATETIME(6) NULL,
+    updated_at DATETIME(6) NULL,
+    revision INT UNSIGNED NOT NULL DEFAULT 0,
     descripcion TEXT NOT NULL,
     direccion VARCHAR(150) NOT NULL,
 
@@ -593,13 +602,15 @@ CREATE TABLE solicitud (
     ) NOT NULL,
 
     id_tipo_residuo INT NOT NULL,
-    email VARCHAR(100) NOT NULL,
-    telefono VARCHAR(20) NOT NULL,
+    email VARCHAR(100) NULL,
+    telefono VARCHAR(20) NULL,
 
     tipo_solicitud ENUM(
         'Gran volumen',
         'Reciclables'
     ) NOT NULL,
+    tipo_residuo_solicitado VARCHAR(60) NULL,
+    foto_url VARCHAR(255) NULL,
 
     PRIMARY KEY (id_solicitud),
     UNIQUE KEY uk_solicitud_tracking_number (tracking_number),
@@ -848,7 +859,6 @@ ALTER TABLE solicitud
  MODIFY estado ENUM('Pendiente','Programada','En atención','Finalizada','Cancelada') NOT NULL,
  ADD id_cuadrilla INT NULL,
  ADD fecha_finalizacion DATETIME NULL,
- ADD fecha_cancelacion DATETIME NULL,
  ADD id_usuario_cancela INT NULL,
  ADD motivo_cancelacion VARCHAR(500) NULL,
  ADD fecha_confirmacion_residuo DATETIME NULL,
@@ -861,7 +871,7 @@ ALTER TABLE solicitud
  ADD CONSTRAINT chk_solicitud_finalizacion CHECK (fecha_finalizacion IS NULL OR (estado='Finalizada' AND fecha_finalizacion>=fecha)),
  ADD CONSTRAINT chk_solicitud_cancelacion CHECK (
    (fecha_cancelacion IS NULL AND id_usuario_cancela IS NULL AND motivo_cancelacion IS NULL) OR
-   (estado='Cancelada' AND fecha_cancelacion IS NOT NULL AND id_usuario_cancela IS NOT NULL AND motivo_cancelacion IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_cancelacion)) BETWEEN 1 AND 500 AND fecha_cancelacion>=fecha)),
+   (estado='Cancelada' AND fecha_cancelacion IS NOT NULL AND fecha_cancelacion>=fecha AND ((id_usuario_cancela IS NULL AND motivo_cancelacion IS NULL) OR (id_usuario_cancela IS NOT NULL AND motivo_cancelacion IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_cancelacion)) BETWEEN 1 AND 500)))),
  ADD CONSTRAINT chk_solicitud_confirmacion CHECK (
    (fecha_confirmacion_residuo IS NULL AND id_usuario_confirma_residuo IS NULL) OR
    (fecha_confirmacion_residuo IS NOT NULL AND fecha_confirmacion_residuo>=fecha));
@@ -902,3 +912,98 @@ CREATE TABLE atencion_solicitud (
  CONSTRAINT chk_as_motivo CHECK ((estado IN ('Rechazada','Interrumpida') AND motivo_cierre IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_cierre)) BETWEEN 1 AND 500) OR (estado NOT IN ('Rechazada','Interrumpida') AND motivo_cierre IS NULL)),
  CONSTRAINT chk_as_fechas CHECK ((fecha_aceptacion IS NULL OR fecha_aceptacion>=fecha_asignacion) AND (fecha_inicio IS NULL OR (fecha_aceptacion IS NOT NULL AND fecha_inicio>=fecha_aceptacion)) AND (fecha_cierre IS NULL OR fecha_cierre>=COALESCE(fecha_inicio,fecha_aceptacion,fecha_asignacion)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+
+-- V22 STRUCTURE: misma definicion que migration_v22_compatibilidad_movil.sql
+-- V22: compatibilidad movil/local + V21. Aplicar despues de V21 con escritores detenidos.
+-- Conserva fechas, autores y filas originales. NULL en origen significa historico no acreditado.
+ALTER TABLE incidencia
+ ADD COLUMN IF NOT EXISTS telefono VARCHAR(20) NULL,
+ ADD COLUMN IF NOT EXISTS consentimiento_whatsapp TINYINT(1) NOT NULL DEFAULT 0,
+ ADD COLUMN IF NOT EXISTS fecha_cancelacion DATETIME(6) NULL,
+ ADD COLUMN IF NOT EXISTS updated_at DATETIME(6) NULL,
+ ADD COLUMN IF NOT EXISTS revision INT UNSIGNED NOT NULL DEFAULT 0,
+ ADD COLUMN IF NOT EXISTS origen_cancelacion ENUM('CIUDADANA','OPERATIVA') NULL,
+ ADD COLUMN IF NOT EXISTS id_usuario_cancela INT NULL,
+ ADD COLUMN IF NOT EXISTS motivo_cancelacion VARCHAR(500) NULL;
+ALTER TABLE incidencia MODIFY estado ENUM('Pendiente','En Proceso','Resuelta','Cancelada') NOT NULL;
+ALTER TABLE solicitud
+ MODIFY email VARCHAR(100) NULL,
+ MODIFY telefono VARCHAR(20) NULL,
+ MODIFY fecha_cancelacion DATETIME(6) NULL,
+ ADD COLUMN IF NOT EXISTS tipo_residuo_solicitado VARCHAR(60) NULL,
+ ADD COLUMN IF NOT EXISTS foto_url VARCHAR(255) NULL,
+ ADD COLUMN IF NOT EXISTS consentimiento_whatsapp TINYINT(1) NOT NULL DEFAULT 0,
+ ADD COLUMN IF NOT EXISTS calle VARCHAR(150) NULL,
+ ADD COLUMN IF NOT EXISTS numero_referencia VARCHAR(150) NULL,
+ ADD COLUMN IF NOT EXISTS latitud DECIMAL(10,7) NULL,
+ ADD COLUMN IF NOT EXISTS longitud DECIMAL(10,7) NULL,
+ ADD COLUMN IF NOT EXISTS updated_at DATETIME(6) NULL,
+ ADD COLUMN IF NOT EXISTS revision INT UNSIGNED NOT NULL DEFAULT 0,
+ ADD COLUMN IF NOT EXISTS origen_cancelacion ENUM('CIUDADANA','OPERATIVA') NULL;
+CREATE TABLE IF NOT EXISTS tramite_edicion (
+ tracking_number VARCHAR(32) PRIMARY KEY,
+ token_hash CHAR(64) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+ALTER TABLE solicitud DROP CONSTRAINT IF EXISTS chk_solicitud_cancelacion;
+ALTER TABLE solicitud DROP CONSTRAINT IF EXISTS chk_solicitud_cancelacion_origen;
+ALTER TABLE solicitud ADD CONSTRAINT chk_solicitud_cancelacion_origen CHECK (
+ (origen_cancelacion IS NULL AND id_usuario_cancela IS NULL AND motivo_cancelacion IS NULL
+   AND (fecha_cancelacion IS NULL OR (estado='Cancelada' AND fecha_cancelacion>=fecha)))
+ OR (origen_cancelacion IS NOT NULL AND estado='Cancelada' AND fecha_cancelacion IS NOT NULL AND fecha_cancelacion>=fecha AND (
+   (origen_cancelacion='CIUDADANA' AND id_usuario_cancela IS NULL AND motivo_cancelacion IS NULL)
+   OR (origen_cancelacion='OPERATIVA' AND id_usuario_cancela IS NOT NULL AND motivo_cancelacion IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_cancelacion)) BETWEEN 1 AND 500)))
+);
+DELIMITER $$
+CREATE TRIGGER IF NOT EXISTS trg_solicitud_cancelacion_insert
+BEFORE INSERT ON solicitud FOR EACH ROW
+BEGIN
+ IF NEW.estado='Cancelada' AND NEW.origen_cancelacion IS NULL THEN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Una cancelacion nueva requiere origen acreditado.';
+ END IF;
+END$$
+CREATE TRIGGER IF NOT EXISTS trg_solicitud_cancelacion_update
+BEFORE UPDATE ON solicitud FOR EACH ROW
+BEGIN
+ IF NEW.estado='Cancelada' AND NEW.origen_cancelacion IS NULL AND NOT (
+   OLD.estado='Cancelada' AND OLD.origen_cancelacion IS NULL
+   AND NEW.fecha_cancelacion <=> OLD.fecha_cancelacion
+   AND NEW.id_usuario_cancela <=> OLD.id_usuario_cancela
+   AND NEW.motivo_cancelacion <=> OLD.motivo_cancelacion) THEN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='No se puede fabricar una cancelacion historica.';
+ END IF;
+END$$
+DELIMITER ;
+ALTER TABLE incidencia DROP CONSTRAINT IF EXISTS chk_incidencia_cancelacion_origen;
+ALTER TABLE incidencia ADD CONSTRAINT chk_incidencia_cancelacion_origen CHECK (
+ (origen_cancelacion IS NULL AND id_usuario_cancela IS NULL AND motivo_cancelacion IS NULL
+   AND (fecha_cancelacion IS NULL OR (estado='Cancelada' AND fecha_cancelacion>=fecha_reporte)))
+ OR (origen_cancelacion IS NOT NULL AND estado='Cancelada' AND fecha_cancelacion IS NOT NULL AND fecha_cancelacion>=fecha_reporte AND (
+   (origen_cancelacion='CIUDADANA' AND id_usuario_cancela IS NULL AND motivo_cancelacion IS NULL)
+   OR (origen_cancelacion='OPERATIVA' AND id_usuario_cancela IS NOT NULL AND motivo_cancelacion IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_cancelacion)) BETWEEN 1 AND 500)))
+);
+DELIMITER $$
+CREATE TRIGGER IF NOT EXISTS trg_incidencia_cancelacion_insert
+BEFORE INSERT ON incidencia FOR EACH ROW
+BEGIN
+ IF NEW.estado='Cancelada' AND NEW.origen_cancelacion IS NULL THEN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Una cancelacion nueva requiere origen acreditado.';
+ END IF;
+END$$
+CREATE TRIGGER IF NOT EXISTS trg_incidencia_cancelacion_update
+BEFORE UPDATE ON incidencia FOR EACH ROW
+BEGIN
+ IF NEW.estado='Cancelada' AND NEW.origen_cancelacion IS NULL AND NOT (
+   OLD.estado='Cancelada' AND OLD.origen_cancelacion IS NULL
+   AND NEW.fecha_cancelacion <=> OLD.fecha_cancelacion
+   AND NEW.id_usuario_cancela <=> OLD.id_usuario_cancela
+   AND NEW.motivo_cancelacion <=> OLD.motivo_cancelacion) THEN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='No se puede fabricar una cancelacion historica.';
+ END IF;
+END$$
+DELIMITER ;
+ALTER TABLE incidencia ADD CONSTRAINT fk_incidencia_cancela FOREIGN KEY (id_usuario_cancela) REFERENCES usuario(id_usuario) ON DELETE RESTRICT;
+
+-- Extension local ya existente en la copia real; preserva direcciones completas.
+ALTER TABLE geocodificacion_cache MODIFY COLUMN direccion TEXT NOT NULL;

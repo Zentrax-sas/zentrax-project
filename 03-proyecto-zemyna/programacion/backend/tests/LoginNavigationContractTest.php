@@ -61,7 +61,7 @@ class LoginNavigationContractTest extends TestCase
     }
     public function testComportamientoLoginYSesionEnJavaScript(): void
     {
-        $process = proc_open(['node', '--test', __DIR__ . '/../../frontend/tests/login-session.test.cjs'],
+        $process = proc_open(['node', '--test', '--test-reporter=tap', __DIR__ . '/../../frontend/tests/login-session.test.cjs'],
             [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         $this->assertIsResource($process);
         fclose($pipes[0]);

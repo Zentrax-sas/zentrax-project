@@ -156,7 +156,7 @@ PHP;
             'asignación sin permiso' => ['PUT', [], $none, 403, null],
             'asignación solo consulta no permite modificar' => ['PUT', [], $opsReader, 403, null],
             'asignación OPERACIONES alcanza validación del cuerpo' => ['PUT', [], $opsWriter, 400, null],
-            'PUT TI sin cuerpo conserva validación administrativa' => ['PUT', [], $tiAdmin, 400, null],
+            'PUT TI sin cuerpo no elude permiso administrativo' => ['PUT', [], $tiAdmin, 403, null],
             'actualización de PUNTOS_Y_DESTINOS conserva acceso administrativo' => ['PUT', [], $pointsWriter, 400, null],
             'registro público alcanza validación sin sesión' => ['POST', [], [], 400, null],
             'consulta no habilita actualización' => ['PUT', [], $reader, 403, null],

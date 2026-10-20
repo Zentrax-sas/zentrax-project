@@ -365,6 +365,7 @@ class IncidenciaPublicTrackingTest extends TestCase
             public $id_incidencia = 77;
             public $tracking_number, $descripcion, $fecha_reporte, $estado, $prioridad, $tipo_problema;
             public $id_contenedor, $id_ruta, $id_cuadrilla, $id_usuario;
+            public $telefono = null, $consentimiento_whatsapp = false;
             public int $createCalls = 0;
             public array $trackingNumbers = [];
             public function __construct(private array $outcomes) {}

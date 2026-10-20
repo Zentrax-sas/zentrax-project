@@ -55,6 +55,7 @@ final class IncidenciasPropiasTest extends TestCase
                 (5,'INC-2026-00005','Pendiente','Alta','Contenedor Desbordado','Sin asignar','2026-08-01 08:00:00',NULL,1,NULL,NULL,NULL,NULL,NULL);");
         createAttentionFixture($this->db);
         createUploadTokenFixture($this->db);
+        $this->db->exec('ALTER TABLE incidencia ADD COLUMN telefono TEXT; ALTER TABLE incidencia ADD COLUMN consentimiento_whatsapp INTEGER NOT NULL DEFAULT 0');
         $this->user();
     }
 

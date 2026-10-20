@@ -1,0 +1,5 @@
+# Evidencia temporal y datos privados locales: conservarlos fuera de Git.
+/backend/tmp/
+/database/backups/
+/backend/uploads/solicitudes/*
+!/backend/uploads/solicitudes/.htaccess

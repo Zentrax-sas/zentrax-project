@@ -19,6 +19,8 @@ class Incidencia {
     public $id_usuario;
     public $latitud;
     public $longitud;
+    public $telefono = null;
+    public $consentimiento_whatsapp = false;
 
     public function __construct($db) {
         $this->conn = $db;
@@ -318,9 +320,9 @@ class Incidencia {
 
         $query = "INSERT INTO " . $this->table_name . "
                    (tracking_number, descripcion, fecha_reporte, estado, prioridad, tipo_problema,
-                   id_contenedor, id_ruta, id_cuadrilla, id_usuario, latitud, longitud)
+                   id_contenedor, id_ruta, id_cuadrilla, id_usuario, latitud, longitud, telefono, consentimiento_whatsapp)
                   VALUES (:tracking_number, :descripcion, :fecha_reporte, :estado, :prioridad, :tipo_problema,
-                          :id_contenedor, :id_ruta, :id_cuadrilla, :id_usuario, :latitud, :longitud)";
+                          :id_contenedor, :id_ruta, :id_cuadrilla, :id_usuario, :latitud, :longitud, :telefono, :consentimiento_whatsapp)";
 
         $stmt = $this->conn->prepare($query);
 
@@ -336,6 +338,8 @@ class Incidencia {
         $stmt->bindParam(':id_usuario', $this->id_usuario);
         $stmt->bindParam(':latitud', $this->latitud);
         $stmt->bindParam(':longitud', $this->longitud);
+        $stmt->bindValue(':telefono', $this->telefono, $this->telefono === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->bindValue(':consentimiento_whatsapp', $this->consentimiento_whatsapp ? 1 : 0, PDO::PARAM_INT);
 
         if ($stmt->execute()) {
             $this->id_incidencia = (int)$this->conn->lastInsertId();

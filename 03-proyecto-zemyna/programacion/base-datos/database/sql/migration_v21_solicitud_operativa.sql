@@ -1,3 +1,4 @@
+-- V21 adaptada: admite fecha_cancelacion local; aplicar V22 inmediatamente despues, sin escritores.
 -- V21 / F6.1, MariaDB 10.4.32. Aplicación única con respaldo y escritores detenidos.
 -- Sin UPDATE/DELETE de solicitudes, sin backfill de intentos. DDL no es transaccional.
 -- No usar --force: el precheck debe detener al cliente ante instalación parcial/repetida.
@@ -5,8 +6,9 @@ CREATE TEMPORARY TABLE zemyna_v21_guard (ok TINYINT NOT NULL CHECK (ok=1));
 INSERT INTO zemyna_v21_guard
 SELECT DATABASE() IS NOT NULL
  AND (SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('solicitud','cuadrilla','usuario','asignacion_vehiculo_operativa','rol','permiso','rol_permiso'))=7
+ AND NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='solicitud' AND COLUMN_NAME='fecha_cancelacion' AND (DATA_TYPE<>'datetime' OR IS_NULLABLE<>'YES'))
  AND NOT EXISTS (SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='atencion_solicitud')
- AND NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='solicitud' AND COLUMN_NAME IN ('id_cuadrilla','fecha_finalizacion','fecha_cancelacion','id_usuario_cancela','motivo_cancelacion','fecha_confirmacion_residuo','id_usuario_confirma_residuo'));
+ AND NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='solicitud' AND COLUMN_NAME IN ('id_cuadrilla','fecha_finalizacion','id_usuario_cancela','motivo_cancelacion','fecha_confirmacion_residuo','id_usuario_confirma_residuo'));
 DROP TEMPORARY TABLE zemyna_v21_guard;
 
 -- BEGIN V21 STRUCTURE
@@ -14,7 +16,7 @@ ALTER TABLE solicitud
  MODIFY estado ENUM('Pendiente','Programada','En atención','Finalizada','Cancelada') NOT NULL,
  ADD id_cuadrilla INT NULL,
  ADD fecha_finalizacion DATETIME NULL,
- ADD fecha_cancelacion DATETIME NULL,
+ ADD COLUMN IF NOT EXISTS fecha_cancelacion DATETIME(6) NULL,
  ADD id_usuario_cancela INT NULL,
  ADD motivo_cancelacion VARCHAR(500) NULL,
  ADD fecha_confirmacion_residuo DATETIME NULL,
@@ -27,7 +29,7 @@ ALTER TABLE solicitud
  ADD CONSTRAINT chk_solicitud_finalizacion CHECK (fecha_finalizacion IS NULL OR (estado='Finalizada' AND fecha_finalizacion>=fecha)),
  ADD CONSTRAINT chk_solicitud_cancelacion CHECK (
    (fecha_cancelacion IS NULL AND id_usuario_cancela IS NULL AND motivo_cancelacion IS NULL) OR
-   (estado='Cancelada' AND fecha_cancelacion IS NOT NULL AND id_usuario_cancela IS NOT NULL AND motivo_cancelacion IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_cancelacion)) BETWEEN 1 AND 500 AND fecha_cancelacion>=fecha)),
+   (estado='Cancelada' AND fecha_cancelacion IS NOT NULL AND fecha_cancelacion>=fecha AND ((id_usuario_cancela IS NULL AND motivo_cancelacion IS NULL) OR (id_usuario_cancela IS NOT NULL AND motivo_cancelacion IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_cancelacion)) BETWEEN 1 AND 500)))),
  ADD CONSTRAINT chk_solicitud_confirmacion CHECK (
    (fecha_confirmacion_residuo IS NULL AND id_usuario_confirma_residuo IS NULL) OR
    (fecha_confirmacion_residuo IS NOT NULL AND fecha_confirmacion_residuo>=fecha));

@@ -16,6 +16,10 @@ class CrudValidationTest extends TestCase
         $incidenciaProperty->setValue($this->incidenciaController, new class {
             public $id_incidencia = 55;
             public function createWithUploadGrant() { return ['upload_token'=>str_repeat('a',64),'upload_expires_at'=>'2026-10-04 12:00:00']; }
+            public $descripcion, $fecha_reporte, $estado, $prioridad, $tipo_problema, $tracking_number;
+            public $id_contenedor, $id_ruta, $id_cuadrilla, $id_usuario;
+            public $telefono = null, $consentimiento_whatsapp = false;
+            public $latitud = null, $longitud = null;
             public function create() { return true; }
             public function update() { return true; }
         });

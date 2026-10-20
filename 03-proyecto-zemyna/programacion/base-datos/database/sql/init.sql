@@ -19,7 +19,8 @@ INSERT INTO tipo_residuo (nombre, descripcion) VALUES
 ('Electrónicos', 'Equipos y componentes electrónicos.'),
 ('Pilas y baterías', 'Pilas y baterías usadas.'),
 ('Escombros', 'Restos de obras y construcción.'),
-('Residuos voluminosos', 'Muebles y objetos de gran tamaño.');
+('Residuos voluminosos', 'Muebles y objetos de gran tamaño.'),
+('Otros', 'Otros residuos informados por la ciudadanía.');
 
 
 -- =====================================

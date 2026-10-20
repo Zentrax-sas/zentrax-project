@@ -120,6 +120,112 @@ class Contenedor {
         return $count === false ? null : (int) $count;
     }
 
+    // Conserva los nombres almacenados; normaliza solo los términos de búsqueda.
+    private function streetTokens(string $text): array {
+        $original = mb_strtolower(trim($text), 'UTF-8');
+        $text = $original;
+        $text = preg_replace('/\b(?:av|avda|avenida|bvar|bv|bulevar|boulevard|gral|general|dr|doctor|dra|doctora|pte|presidente|calle)\b\.?/u', ' ', $text);
+        $tokens = preg_split('/[\s.,]+/u', trim($text), -1, PREG_SPLIT_NO_EMPTY);
+        return $tokens ?: [$original];
+    }
+
+    private function streetMatch(string $column, string $text, string $prefix, array &$params): string {
+        $conditions = [];
+        foreach ($this->streetTokens($text) as $index => $token) {
+            $key = ':' . $prefix . $index;
+            $params[$key] = '%' . str_replace(['=', '%', '_'], ['==', '=%', '=_'], $token) . '%';
+            $conditions[] = "$column COLLATE utf8mb4_unicode_ci LIKE $key ESCAPE '='";
+        }
+        return '(' . implode(' AND ', $conditions) . ')';
+    }
+
+    /** Extrae la via en SQL antes de DISTINCT/LIMIT, sin cargar direcciones en PHP.
+     * Solo admite columnas internas; no recibe fragmentos SQL del cliente.
+     */
+    public static function expresionNombreVia(string $columna): string {
+        if (!in_array($columna, ['primera', 'segunda', 'direccion'], true)) {
+            throw new InvalidArgumentException('Columna de direccion invalida');
+        }
+        $texto = "TRIM(REGEXP_REPLACE($columna, '[[:space:]]+', ' '))";
+        // Un nombre numerado sin puerta (Oficial 3, Ruta 8, Calle 123) se conserva.
+        // Con puerta, solo se elimina el ultimo bloque: Oficial 3 6057 -> Oficial 3.
+        $nombreNumerado = '^(oficial|calle|ruta|camino|pasaje|avenida) [0-9]+$';
+        $puertas = '[[:space:]]+[0-9]{1,6}([[:space:]]+[Bb][Ii][Ss])?'
+            . '([[:space:]]*,[[:space:]]*[0-9]{1,6}([[:space:]]+[Bb][Ii][Ss])?)*$';
+        return "CASE WHEN LOWER($texto) REGEXP '$nombreNumerado' THEN $texto "
+            . "ELSE TRIM(REGEXP_REPLACE($texto, '$puertas', '')) END";
+    }
+
+    public function streetSuggestions(string $q, string $calle = ''): array {
+        if (!$this->conn) throw new PDOException('Sin conexión');
+        $params = [];
+        $match = $this->streetMatch('nombre', $q, 'nombre', $params);
+        $context = '';
+        if ($calle !== '') {
+            $context = ' AND ' . $this->streetMatch('otra', $calle, 'calle', $params);
+        }
+        $primeraVia = self::expresionNombreVia('primera');
+        $segundaVia = self::expresionNombreVia('segunda');
+        // Se procesa en SQL, sin traer el inventario a PHP. UNION deduplica ambas
+        // partes de una esquina; el número de puerta se quita solo al final.
+        $query = "WITH direcciones AS (
+            SELECT REGEXP_REPLACE(TRIM(direccion), '(?i)[[:space:]]+(y|esquina|esq[.]?)[[:space:]]+|[[:space:]]*[/&][[:space:]]*', '|') AS texto
+            FROM contenedor WHERE activo = 1
+              AND direccion NOT LIKE '%catastral%'
+              AND direccion NOT LIKE '%X:%'
+        ), partes AS (
+            SELECT TRIM(SUBSTRING_INDEX(texto, '|', 1)) AS primera,
+                   IF(INSTR(texto, '|') > 0, TRIM(SUBSTRING_INDEX(texto, '|', -1)), '') AS segunda
+            FROM direcciones
+        ), calles AS (
+            SELECT ($primeraVia) COLLATE utf8mb4_unicode_ci AS nombre, segunda AS otra FROM partes
+            UNION
+            SELECT ($segundaVia) COLLATE utf8mb4_unicode_ci AS nombre, primera AS otra FROM partes
+        )
+        SELECT DISTINCT nombre FROM calles
+        WHERE CHAR_LENGTH(nombre) BETWEEN 2 AND 80
+          AND nombre NOT REGEXP '[[:cntrl:]<>]'
+          AND $match $context
+        ORDER BY nombre ASC LIMIT 10";
+        $stmt = $this->conn->prepare($query);
+        foreach ($params as $key => $value) $stmt->bindValue($key, $value, PDO::PARAM_STR);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    public function searchByStreets(string $calle, string $esquina = '') {
+        if (!$this->conn) return null;
+        $params = [];
+        $where = $this->streetMatch('direccion', $calle, 'calle', $params);
+        if ($esquina !== '') $where .= ' AND ' . $this->streetMatch('direccion', $esquina, 'esquina', $params);
+        $stmt = $this->conn->prepare("SELECT id_contenedor, codigo, direccion, latitud, longitud, estado
+            FROM contenedor WHERE activo = 1 AND $where ORDER BY direccion ASC, id_contenedor ASC LIMIT 20");
+        foreach ($params as $key => $value) $stmt->bindValue($key, $value, PDO::PARAM_STR);
+        $stmt->execute();
+        return $stmt;
+    }
+
+
+    public function searchPublic(string $q, int $limit = 20) {
+        if (!$this->conn) return null;
+
+        $escaped = str_replace(['=', '%', '_'], ['==', '=%', '=_'], $q);
+        // Parámetros distintos para funcionar también con prepares nativos de PDO.
+        $query = "SELECT id_contenedor, codigo, direccion, latitud, longitud, estado
+                  FROM contenedor
+                  WHERE activo = 1
+                    AND (direccion LIKE :search_direccion ESCAPE '='
+                         OR codigo LIKE :search_codigo ESCAPE '=')
+                  ORDER BY direccion ASC, id_contenedor ASC
+                  LIMIT :limit";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':search_direccion', '%' . $escaped . '%', PDO::PARAM_STR);
+        $stmt->bindValue(':search_codigo', '%' . $escaped . '%', PDO::PARAM_STR);
+        $stmt->bindValue(':limit', max(1, min(20, $limit)), PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt;
+    }
+
     public function readForMap(float $south, float $north, float $west, float $east, int $limit) {
         if (!$this->conn) return null;
 

@@ -27,7 +27,9 @@ switch ($method) {
         ];
 
         if (!in_array($_GET['view'] ?? null, ['map', 'report', 'location', 'crew'], true) && array_key_exists('tracking_number', $_GET) && !array_key_exists('admin', $_GET)) {
-            $response = $controller->getPublicByTracking($filters['tracking_number']);
+            $response = ($_GET['detalle'] ?? null) === '1'
+                ? $controller->getPublicDetailByTracking($filters['tracking_number'])
+                : $controller->getPublicByTracking($filters['tracking_number']);
         } elseif (($_GET['opciones'] ?? null) === 'asignacion') {
             requireAuth();
             $response = $controller->getAssignmentOptions();
@@ -73,6 +75,10 @@ switch ($method) {
         }
 
         $response = $crew ? $controller->createCrew($data, $_SESSION['usuario']['id_usuario'] ?? null) : $controller->create($data);
+        if (!$crew) {
+            require_once __DIR__ . '/../helpers/ClaveEdicion.php';
+            $response = agregarClaveEdicion($response, $db);
+        }
         http_response_code($response['statusCode'] ?? ($response['success'] ? 201 : 400));
         echo json_encode($response);
         break;

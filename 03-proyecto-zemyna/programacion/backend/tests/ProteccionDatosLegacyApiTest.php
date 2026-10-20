@@ -64,11 +64,15 @@ final class ProteccionDatosLegacyApiTest extends TestCase
             // CLI no emite encabezados: verificar igualdad con los CORS del bootstrap.
             $source = file_get_contents(__DIR__ . '/../api/' . $endpoint . '.php');
             $bootstrap = file_get_contents(__DIR__ . '/../config/bootstrap.php');
+            $this->assertStringContainsString('zemynaApplyCors();', $bootstrap);
+            $http = file_get_contents(__DIR__ . '/../config/http.php');
+            $this->assertStringNotContainsString('Access-Control-Allow-Origin: *', $http);
+            $this->assertStringContainsString('Access-Control-Allow-Credentials: true', $http);
             foreach (['Content-Type: application/json; charset=UTF-8', 'Access-Control-Allow-Origin: *',
                 'Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS',
                 'Access-Control-Allow-Headers: Content-Type, Authorization'] as $header) {
                 $this->assertStringContainsString("header('" . $header . "');", $source);
-                $this->assertStringContainsString("header('" . $header . "');", $bootstrap);
+
             }
             $this->assertStringContainsString("header('Cache-Control: no-store');", $source);
         }

@@ -64,6 +64,7 @@ final class IncidenciaAdminTest extends TestCase
         $this->db->exec("INSERT INTO asignacion_vehiculo_operativa(id_asignacion_vehiculo,id_cuadrilla,id_vehiculo,fecha_inicio,id_usuario_asigna) VALUES(1,1,1,'2020-01-01',10)");
         createAttentionFixture($this->db);
         createUploadTokenFixture($this->db);
+        $this->db->exec('ALTER TABLE incidencia ADD COLUMN telefono TEXT; ALTER TABLE incidencia ADD COLUMN consentimiento_whatsapp INTEGER NOT NULL DEFAULT 0');
         $this->controller = new IncidenciaController($this->db);
     }
 

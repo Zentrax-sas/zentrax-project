@@ -34,9 +34,9 @@ final class DockerInstallationSecurityTest extends TestCase
         $this->assertStringNotContainsString('DELIMITER', $sql);
         $this->assertStringNotContainsString('END$$', $sql);
         $this->assertSame(2, substr_count($sql, 'CREATE TRIGGER IF NOT EXISTS trg_iut_foto_'));
-        $this->assertSame(2, substr_count($sql, "SIGNAL SQLSTATE '45000'"));
+        $this->assertSame(6, substr_count($sql, "SIGNAL SQLSTATE '45000'"));
         $this->assertStringContainsString('ALTER TABLE solicitud', $sql);
-        $this->assertSame(2, substr_count(str_replace("\r\n", "\n", $sql), "END IF;\nEND;"));
+        $this->assertSame(6, substr_count(str_replace("\r\n", "\n", $sql), "END IF;\nEND;"));
         $this->expectException(InvalidArgumentException::class);
         mariaDbSqlForPdo("DELIMITER //\nSELECT 1//");
     }

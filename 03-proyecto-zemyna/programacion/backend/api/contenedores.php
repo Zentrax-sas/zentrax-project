@@ -17,6 +17,22 @@ switch ($method) {
                 'west' => $_GET['west'] ?? null,
                 'zoom' => $_GET['zoom'] ?? null,
             ]);
+        } elseif (($_GET['view'] ?? null) === 'streets') {
+            $q = $_GET['q'] ?? ''; $calle = $_GET['calle'] ?? '';
+            $response = is_string($q) && is_string($calle)
+                ? $controller->streetSuggestions($q, $calle)
+                : ['success' => false, 'data' => [], 'message' => 'La búsqueda debe ser texto.', 'statusCode' => 400];
+        } elseif (($_GET['view'] ?? null) === 'search' && array_key_exists('calle', $_GET)) {
+            $calle = $_GET['calle']; $esquina = $_GET['esquina'] ?? '';
+            $response = is_string($calle) && is_string($esquina)
+                ? $controller->searchByStreets($calle, $esquina)
+                : ['success' => false, 'data' => [], 'message' => 'La búsqueda debe ser texto.', 'statusCode' => 400];
+        } elseif (($_GET['view'] ?? null) === 'search') {
+            // Búsqueda pública para identificar un contenedor al reportar una incidencia.
+            $q = $_GET['q'] ?? '';
+            $response = is_string($q)
+                ? $controller->searchPublic($q)
+                : ['success' => false, 'data' => [], 'message' => 'La búsqueda debe ser texto.', 'statusCode' => 400];
         } else {
             requirePermission('contenedor.consultar');
             $response = $controller->getAll([

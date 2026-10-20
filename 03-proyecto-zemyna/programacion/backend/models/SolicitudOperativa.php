@@ -111,6 +111,7 @@ final class SolicitudOperativa
                 if ($a['fecha_inicio'] === null || $now < $a['fecha_inicio']) $this->fail('Cronología incompatible con el reloj del servidor.');
                 $this->write("UPDATE atencion_solicitud SET estado='Interrumpida',fecha_cierre=?,id_usuario_cierra=?,motivo_cierre=? WHERE id_atencion_solicitud=?", [$now,$actor,$b['motivo'],$a['id_atencion_solicitud']]);
                 $this->write("UPDATE solicitud SET estado='Pendiente',id_cuadrilla=NULL WHERE id_solicitud=?", [(int)$s['id_solicitud']]);
+                $this->write('UPDATE solicitud SET revision=revision+1,updated_at=? WHERE id_solicitud=?', [self::now(), (int)$s['id_solicitud']]);
                 $result = $this->detail($actor,(int)$s['id_solicitud']);$this->db->commit();return $result;
             }
             if (!in_array($s['estado'], ['Pendiente','Programada'], true) || !$this->coherent($s, $a, $attempts)) $this->fail('La solicitud no admite esta operación.');
@@ -132,9 +133,10 @@ final class SolicitudOperativa
                     $this->write("INSERT INTO atencion_solicitud(id_solicitud,id_cuadrilla,id_asignacion_vehiculo,estado,fecha_asignacion,id_usuario_asigna) VALUES(?,?,?,'Asignada',?,?)", [$id,$b['id_cuadrilla'],$b['id_asignacion_vehiculo'],$now,$actor]);
                     $this->write("UPDATE solicitud SET estado='Programada',id_cuadrilla=? WHERE id_solicitud=?", [$b['id_cuadrilla'],$id]);
                 } elseif ($action === 'desasignar') $this->write("UPDATE solicitud SET estado='Pendiente',id_cuadrilla=NULL WHERE id_solicitud=?", [$id]);
-                else $this->write("UPDATE solicitud SET estado='Cancelada',id_cuadrilla=NULL,fecha_cancelacion=?,id_usuario_cancela=?,motivo_cancelacion=? WHERE id_solicitud=?", [$now,$actor,$b['motivo'],$id]);
+                else $this->write("UPDATE solicitud SET estado='Cancelada',id_cuadrilla=NULL,fecha_cancelacion=?,origen_cancelacion='OPERATIVA',id_usuario_cancela=?,motivo_cancelacion=? WHERE id_solicitud=?", [$now,$actor,$b['motivo'],$id]);
             }
             // Construir respuesta dentro de la misma transacción; nunca fallar después del commit.
+            $this->write('UPDATE solicitud SET revision=revision+1,updated_at=? WHERE id_solicitud=?', [self::now(), $id]);
             $result = $this->detail($actor, $id); $this->db->commit(); return $result;
         } catch (Throwable $e) { if ($this->db->inTransaction()) $this->db->rollBack(); throw $e; }
     }

@@ -11,7 +11,7 @@ final class DeployScriptContractTest extends TestCase
     protected function setUp(): void
     {
         $root = dirname(__DIR__, 2) . '/../sistemas-operativos';
-        $this->script = (string) file_get_contents($root . '/scripts/deploy_zemyna.sh');
+        $this->script = str_replace("\r\n", "\n", (string) file_get_contents($root . '/scripts/deploy_zemyna.sh'));
         $this->config = (string) file_get_contents($root . '/config/deploy.conf.example');
         $this->documentation = (string) file_get_contents($root . '/README.md');
     }

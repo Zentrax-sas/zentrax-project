@@ -1,0 +1,33 @@
+{
+  "place_id": 18107581,
+  "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+  "osm_type": "node",
+  "osm_id": 945526334,
+  "lat": "-34.8479121",
+  "lon": "-56.2792078",
+  "category": "place",
+  "type": "house",
+  "place_rank": 30,
+  "importance": 7.612039368271942e-05,
+  "addresstype": "place",
+  "name": "",
+  "display_name": "2652,2655,2656,2660,2664,2667,2668,2672,2675,2676,2680,2683,2684,2687,2688,2691,2692,2695,2696,2699,2702,2703,2706,2707,2710,2711,2713,2714,2717,2718,2722,2726,2729,2730,2734,2737,2738,2741,2742,2746,2750,2753,2754,2757,2758, Los Lirios, Nuevo Las Torres, La Paloma Tomkinson, Montevideo, 12600, Uruguay",
+  "address": {
+    "house_number": "2652,2655,2656,2660,2664,2667,2668,2672,2675,2676,2680,2683,2684,2687,2688,2691,2692,2695,2696,2699,2702,2703,2706,2707,2710,2711,2713,2714,2717,2718,2722,2726,2729,2730,2734,2737,2738,2741,2742,2746,2750,2753,2754,2757,2758",
+    "road": "Los Lirios",
+    "neighbourhood": "Nuevo Las Torres",
+    "suburb": "La Paloma Tomkinson",
+    "city": "Montevideo",
+    "state": "Montevideo",
+    "ISO3166-2-lvl4": "UY-MO",
+    "postcode": "12600",
+    "country": "Uruguay",
+    "country_code": "uy"
+  },
+  "boundingbox": [
+    "-34.8479621",
+    "-34.8478621",
+    "-56.2792578",
+    "-56.2791578"
+  ]
+}

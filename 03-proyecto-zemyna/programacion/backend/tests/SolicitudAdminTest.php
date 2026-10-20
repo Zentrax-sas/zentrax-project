@@ -10,7 +10,7 @@ class SolicitudAdminTest extends TestCase {
     protected function connect(): PDO {return new PDO('sqlite::memory:',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);}
     protected function install(): void {
         $this->schema();$this->seed();
-        $this->db->exec("CREATE TABLE solicitud(id_solicitud INTEGER PRIMARY KEY,tracking_number TEXT,fecha TEXT,descripcion TEXT,direccion TEXT,estado TEXT,id_tipo_residuo INTEGER,email TEXT,telefono TEXT,tipo_solicitud TEXT,id_cuadrilla INTEGER,fecha_finalizacion TEXT,fecha_cancelacion TEXT,id_usuario_cancela INTEGER,motivo_cancelacion TEXT,fecha_confirmacion_residuo TEXT,id_usuario_confirma_residuo INTEGER);
+        $this->db->exec("CREATE TABLE solicitud(id_solicitud INTEGER PRIMARY KEY,tracking_number TEXT,fecha TEXT,descripcion TEXT,direccion TEXT,estado TEXT,id_tipo_residuo INTEGER,email TEXT,telefono TEXT,tipo_solicitud TEXT,id_cuadrilla INTEGER,fecha_finalizacion TEXT,fecha_cancelacion TEXT,origen_cancelacion TEXT,updated_at TEXT,revision INTEGER NOT NULL DEFAULT 0,id_usuario_cancela INTEGER,motivo_cancelacion TEXT,fecha_confirmacion_residuo TEXT,id_usuario_confirma_residuo INTEGER);
         CREATE TABLE atencion_solicitud(id_atencion_solicitud INTEGER PRIMARY KEY AUTOINCREMENT,id_solicitud INTEGER,id_cuadrilla INTEGER,id_asignacion_vehiculo INTEGER,estado TEXT,fecha_asignacion TEXT,id_usuario_asigna INTEGER,fecha_aceptacion TEXT,id_usuario_acepta INTEGER,fecha_inicio TEXT,id_usuario_inicia INTEGER,fecha_cierre TEXT,id_usuario_cierra INTEGER,motivo_cierre TEXT);
         CREATE UNIQUE INDEX uq_as_open ON atencion_solicitud(id_solicitud) WHERE fecha_cierre IS NULL;");
     }

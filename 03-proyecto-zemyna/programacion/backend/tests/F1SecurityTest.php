@@ -31,6 +31,7 @@ class F1SecurityTest extends TestCase {
                 descripcion TEXT,direccion TEXT,estado TEXT,id_tipo_residuo INTEGER REFERENCES tipo_residuo(id_tipo_residuo),email TEXT,telefono TEXT,tipo_solicitud TEXT,
                 fecha_confirmacion_residuo TEXT,id_usuario_confirma_residuo INTEGER);");
         createUploadTokenFixture($this->db);
+        $this->db->exec('ALTER TABLE incidencia ADD COLUMN telefono TEXT; ALTER TABLE incidencia ADD COLUMN consentimiento_whatsapp INTEGER NOT NULL DEFAULT 0');
     }
     protected function seed(): void {
         $this->db->exec("INSERT INTO centro(id_centro,nombre,direccion) VALUES(1,'Test','Test');

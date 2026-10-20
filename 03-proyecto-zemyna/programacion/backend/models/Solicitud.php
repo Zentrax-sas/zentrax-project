@@ -14,9 +14,16 @@ class Solicitud {
     public $id_tipo_residuo;
     public $email;
     public $telefono;
+    public $consentimiento_whatsapp = false;
     public $tipo_solicitud;
     public $fecha_confirmacion_residuo;
     public $id_usuario_confirma_residuo;
+    public $tipo_residuo_solicitado;
+    public $foto_url;
+    public $calle = null;
+    public $numero_referencia = null;
+    public $latitud = null;
+    public $longitud = null;
 
     public function __construct($db) {
         $this->conn = $db;
@@ -27,6 +34,16 @@ class Solicitud {
         $stmt = $this->conn->prepare("SELECT * FROM " . $this->table_name);
         $stmt->execute();
         return $stmt;
+    }
+    public function findOperativaPorTracking(string $tracking): ?array {
+        if (!$this->conn) throw new PersistenceException('No hay conexión disponible.');
+        $stmt = $this->conn->prepare('SELECT tracking_number, tipo_residuo_solicitado AS tipo_residuo, direccion, calle, numero_referencia, latitud, longitud, estado FROM solicitud WHERE tracking_number = :tracking LIMIT 1');
+        $stmt->execute(['tracking' => $tracking]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return null;
+        $row['latitud'] = $row['latitud'] === null ? null : (float)$row['latitud'];
+        $row['longitud'] = $row['longitud'] === null ? null : (float)$row['longitud'];
+        return $row;
     }
 
     public function findPublicByTracking(string $trackingNumber): ?array {
@@ -74,6 +91,60 @@ class Solicitud {
         $stmt->bindParam(":tipo_solicitud",  $this->tipo_solicitud);
         $stmt->bindParam(":fecha_confirmacion_residuo", $this->fecha_confirmacion_residuo);
         return $stmt->execute();
+    }
+
+    public function tipoResiduoIdPorNombre(string $nombre): ?int {
+        if (!$this->conn) throw new PersistenceException('No hay conexión disponible.');
+        $stmt = $this->conn->prepare(
+            "SELECT id_tipo_residuo FROM tipo_residuo WHERE nombre = :nombre LIMIT 1"
+        );
+        $stmt->bindValue(':nombre', $nombre);
+        $stmt->execute();
+        $id = $stmt->fetchColumn();
+        return $id === false ? null : (int)$id;
+    }
+
+    public function tipoResiduoPorId(int $id): ?array {
+        if (!$this->conn) throw new PersistenceException('No hay conexión disponible.');
+        $stmt = $this->conn->prepare('SELECT id_tipo_residuo, nombre FROM tipo_residuo WHERE id_tipo_residuo = :id LIMIT 1');
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    public function createRetiroMovil(): bool {
+        if (!$this->conn) return false;
+        if (empty($this->descripcion) || empty($this->direccion) || empty($this->estado) ||
+            empty($this->tracking_number) || empty($this->id_tipo_residuo) ||
+            empty($this->tipo_residuo_solicitado) || empty($this->tipo_solicitud)) {
+            return false;
+        }
+
+        $query = "INSERT INTO " . $this->table_name . "
+                  (tracking_number, fecha, descripcion, direccion, estado, id_tipo_residuo,
+                   email, telefono, tipo_solicitud, tipo_residuo_solicitado, foto_url, consentimiento_whatsapp, calle, numero_referencia, latitud, longitud, fecha_confirmacion_residuo)
+                  VALUES (:tracking_number, :fecha, :descripcion, :direccion, :estado, :id_tipo_residuo,
+                          NULL, :telefono, :tipo_solicitud, :tipo_residuo_solicitado, :foto_url, :consentimiento_whatsapp, :calle, :numero_referencia, :latitud, :longitud, :fecha_confirmacion_residuo)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':tracking_number', $this->tracking_number);
+        $stmt->bindValue(':fecha', $this->fecha);
+        $stmt->bindValue(':descripcion', $this->descripcion);
+        $stmt->bindValue(':direccion', $this->direccion);
+        $stmt->bindValue(':estado', $this->estado);
+        $stmt->bindValue(':id_tipo_residuo', (int)$this->id_tipo_residuo, PDO::PARAM_INT);
+        $stmt->bindValue(':telefono', $this->telefono, $this->telefono === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->bindValue(':consentimiento_whatsapp', $this->consentimiento_whatsapp ? 1 : 0, PDO::PARAM_INT);
+        $stmt->bindValue(':calle', $this->calle);
+        $stmt->bindValue(':numero_referencia', $this->numero_referencia);
+        $stmt->bindValue(':latitud', $this->latitud);
+        $stmt->bindValue(':longitud', $this->longitud);
+        $stmt->bindValue(':fecha_confirmacion_residuo', $this->fecha_confirmacion_residuo);
+        $stmt->bindValue(':tipo_solicitud', $this->tipo_solicitud);
+        $stmt->bindValue(':tipo_residuo_solicitado', $this->tipo_residuo_solicitado);
+        $stmt->bindValue(':foto_url', $this->foto_url, $this->foto_url === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $created = $stmt->execute();
+        if ($created) $this->id_solicitud = (int)$this->conn->lastInsertId();
+        return $created;
     }
 
     public function update() {

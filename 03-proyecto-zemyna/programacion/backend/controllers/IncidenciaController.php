@@ -1,6 +1,8 @@
 <?php
+require_once __DIR__ . '/../helpers/ConsentimientoWhatsApp.php';
 require_once __DIR__ . '/../models/Incidencia.php';
 require_once __DIR__ . '/../models/Solicitud.php';
+require_once __DIR__ . '/../models/Seguimiento.php';
 
 class IncidenciaController {
     private const PROBLEM_TYPES = ['Contenedor Desbordado', 'Contenedor Roto/Dañado', 'Obstruido por Vehículo', 'Incendio/Vandalismo'];
@@ -11,10 +13,12 @@ class IncidenciaController {
     private const MAP_MAX_LONGITUDE_SPAN = 0.5;
     private $incidencia;
     private $solicitud;
+    private $seguimiento;
 
     public function __construct($db) {
         $this->incidencia = new Incidencia($db);
         $this->solicitud = new Solicitud($db);
+        $this->seguimiento = new Seguimiento($db);
     }
 
     private function normalizeString($value) {
@@ -545,6 +549,21 @@ class IncidenciaController {
         ];
     }
 
+    public function getPublicDetailByTracking($trackingNumber): array {
+        $tracking = is_string($trackingNumber) ? strtoupper(trim($trackingNumber)) : '';
+        if (!preg_match('/^(INC|RET|REF)-\d{4}-[A-F0-9]{5}$/', $tracking)) {
+            return ['success' => false, 'data' => null, 'message' => 'Código de seguimiento inválido.', 'statusCode' => 400];
+        }
+        try {
+            $data = $this->seguimiento->findByTracking($tracking);
+        } catch (PDOException | PersistenceException $exception) {
+            return ['success' => false, 'data' => null, 'message' => 'No se pudo consultar el seguimiento.', 'statusCode' => 500];
+        }
+        return ['success' => $data !== null, 'data' => $data,
+            'message' => $data !== null ? 'Estado consultado correctamente.' : 'No se encontró un trámite con ese código.',
+            'statusCode' => $data !== null ? 200 : 404];
+    }
+
     public function getPublicByTracking($trackingNumber) {
         $trackingNumber = is_string($trackingNumber) ? strtoupper(trim($trackingNumber)) : '';
 
@@ -638,7 +657,7 @@ class IncidenciaController {
     }
 
     public function create($data, ?int $trustedUserId = null) {
-        $allowed = ['descripcion', 'tipo_problema', 'id_contenedor', 'id_ruta', 'direccion'];
+        $allowed = ['descripcion', 'tipo_problema', 'id_contenedor', 'id_ruta', 'direccion', 'celular', 'consentimiento_whatsapp'];
         if ($trustedUserId !== null) $allowed = array_merge($allowed, ['latitud', 'longitud']);
         $data = array_intersect_key(is_array($data) ? $data : [], array_flip($allowed));
         $data['fecha_reporte'] = (new DateTimeImmutable('now', new DateTimeZone('America/Montevideo')))->format('Y-m-d H:i:s');
@@ -646,6 +665,16 @@ class IncidenciaController {
         $data['prioridad'] = 'Media';
 
         $errors = $this->validateIncidenciaPayload($data, false, $trustedUserId !== null);
+        $celular = $data['celular'] ?? '';
+        $consentimiento = ConsentimientoWhatsApp::leer($data['consentimiento_whatsapp'] ?? false);
+        if (!is_string($celular) || (trim($celular) !== '' &&
+            (mb_strlen($celular) > 20 || strlen(preg_replace('/\D+/', '', $celular)) < 8))) {
+            $errors[] = 'Ingresá un celular válido o dejalo vacío.';
+        }
+        if ($consentimiento === null) $errors[] = 'El consentimiento WhatsApp debe ser booleano o 0/1.';
+        if ($consentimiento === true && (!is_string($celular) || trim($celular) === '')) {
+            $errors[] = 'Ingresá un celular para recibir actualizaciones por WhatsApp.';
+        }
 
         if ($errors) {
             return [
@@ -677,6 +706,8 @@ class IncidenciaController {
         $this->incidencia->id_usuario = $trustedUserId;
         $this->incidencia->latitud = $data['latitud'] ?? null;
         $this->incidencia->longitud = $data['longitud'] ?? null;
+        $this->incidencia->telefono = trim($celular) === '' ? null : trim($celular);
+        $this->incidencia->consentimiento_whatsapp = $consentimiento;
 
         $attemptedTrackingNumbers = [];
         for ($attempt = 1; $attempt <= 3; $attempt++) {
