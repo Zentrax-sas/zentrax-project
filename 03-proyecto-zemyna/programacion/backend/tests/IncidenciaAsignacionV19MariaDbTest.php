@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/fixtures/mariadb_sql.php';
 require_once __DIR__.'/IncidenciaAsignacionV19Test.php';
 require_once __DIR__.'/../config/database.php';
 
@@ -20,7 +21,7 @@ final class IncidenciaAsignacionV19MariaDbTest extends IncidenciaAsignacionV19Te
     }
     protected function schema(): void {
         if($this->db->query('SELECT DATABASE()')->fetchColumn()!==self::$name || !preg_match('/^zemyna_f3_v19_test_[a-f0-9]{12}$/D',self::$name))throw new RuntimeException('Base aislada incorrecta.');
-        if(!self::$installed){$this->db->exec(file_get_contents(__DIR__.'/../../base-datos/database/sql/schema.sql'));self::$installed=true;return;}
+        if(!self::$installed){$this->db->exec(mariaDbSqlForPdo(file_get_contents(__DIR__.'/../../base-datos/database/sql/schema.sql')));self::$installed=true;return;}
         $this->db->exec('DROP TRIGGER IF EXISTS fallo_f3_v19');$this->db->exec('SET FOREIGN_KEY_CHECKS=0');
         try{foreach($this->db->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN)as$t){if(!preg_match('/^[a-z_]+$/D',$t))throw new RuntimeException('Tabla inesperada');$this->db->exec('DELETE FROM `'.$t.'`');}}
         finally{$this->db->exec('SET FOREIGN_KEY_CHECKS=1');}

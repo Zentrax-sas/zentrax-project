@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/fixtures/mariadb_sql.php';
 require_once __DIR__.'/AsignacionVehiculoTest.php';
 require_once __DIR__.'/../config/database.php';
 
@@ -22,7 +23,7 @@ final class AsignacionVehiculoMariaDbTest extends AsignacionVehiculoTest
         return $db;
     }
     protected function schema(): void {
-        if (!self::$installed) { $this->db->exec(file_get_contents($this->sqlRoot.'schema.sql')); self::$installed=true; return; }
+        if (!self::$installed) { $this->db->exec(mariaDbSqlForPdo(file_get_contents($this->sqlRoot.'schema.sql'))); self::$installed=true; return; }
         // Solo la base aleatoria creada por esta clase. Nunca admite nombre externo.
         if ($this->db->query('SELECT DATABASE()')->fetchColumn()!==self::$sharedName) throw new RuntimeException('Base aislada incorrecta.');
         $this->db->exec('DROP TRIGGER IF EXISTS fallo_v19');

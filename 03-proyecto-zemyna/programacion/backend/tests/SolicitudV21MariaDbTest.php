@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/fixtures/mariadb_sql.php';
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/../controllers/SolicitudController.php';
 require_once __DIR__ . '/../controllers/IncidenciaController.php';
@@ -26,7 +27,7 @@ final class SolicitudV21MariaDbTest extends TestCase
         $db->exec('CREATE DATABASE ' . $this->database . ' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
         $db->exec('USE ' . $this->database);
         // La sección anterior a V21 conserva el schema V20. No reconstruir filas habituales.
-        $schema = explode('-- V21 STRUCTURE', file_get_contents($this->root . 'schema.sql'))[0];
+        $schema = explode('-- V21 STRUCTURE', mariaDbSqlForPdo(file_get_contents($this->root . 'schema.sql')))[0];
         $db->exec($schema);
         $db->exec("INSERT INTO centro(id_centro,nombre,direccion) VALUES(1,'Test','Test');
             INSERT INTO usuario(id_usuario,nombre,apellido,email,contrasena,fecha_registro,id_centro) VALUES(1,'Test','Test','test@test.invalid','x','2020-01-01',1);
@@ -67,7 +68,7 @@ final class SolicitudV21MariaDbTest extends TestCase
         $this->assertSame(['ADMINISTRATIVO_OPERATIVO:solicitud.consultar','ADMINISTRATIVO_OPERATIVO:solicitud.modificar','OPERARIO:solicitud.operar','RESPONSABLE_SECTORIAL:solicitud.consultar','RESPONSABLE_SECTORIAL:solicitud.modificar'], $actual);
         $definitions = [];
         foreach (['solicitud','atencion_solicitud'] as $table) $definitions[$table] = preg_replace('/AUTO_INCREMENT=\d+ /', '', $this->db->query('SHOW CREATE TABLE ' . $table)->fetch(PDO::FETCH_NUM)[1]);
-        $this->db->exec(file_get_contents($this->root . 'schema.sql'));
+        $this->db->exec(mariaDbSqlForPdo(file_get_contents($this->root . 'schema.sql')));
         foreach ($definitions as $table => $expected) $this->assertSame($expected, preg_replace('/AUTO_INCREMENT=\d+ /', '', $this->db->query('SHOW CREATE TABLE ' . $table)->fetch(PDO::FETCH_NUM)[1]));
     }
     public function testConstraintsEsencialesYReaplicacionRechazada(): void

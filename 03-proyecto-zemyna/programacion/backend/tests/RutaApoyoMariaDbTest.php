@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/fixtures/mariadb_sql.php';
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/../controllers/RutaApoyoController.php';
 require_once __DIR__ . '/fixtures/solicitud_admin_base.php';
@@ -29,7 +30,7 @@ final class RutaApoyoMariaDbTest extends TestCase
         $this->server->exec('CREATE DATABASE ' . $this->name . ' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
         $this->db = new PDO($dsn . ';dbname=' . $this->name, 'root', '', $options);
         $this->writer = new PDO($dsn . ';dbname=' . $this->name, 'root', '', $options);
-        $this->db->exec(file_get_contents(__DIR__ . '/../../base-datos/database/sql/schema.sql'));
+        $this->db->exec(mariaDbSqlForPdo(file_get_contents(__DIR__ . '/../../base-datos/database/sql/schema.sql')));
         $this->seed();
         $this->db->exec("DELETE FROM participa; DELETE FROM recorrido;
             DELETE FROM asignacion_vehiculo_operativa WHERE id_asignacion_vehiculo=2;

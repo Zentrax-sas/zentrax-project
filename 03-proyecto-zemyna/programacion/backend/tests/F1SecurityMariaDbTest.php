@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/fixtures/mariadb_sql.php';
 require_once __DIR__.'/F1SecurityTest.php';
 require_once __DIR__.'/../config/database.php';
 require_once __DIR__.'/fixtures/F1HttpSandbox.php';
@@ -21,7 +22,7 @@ final class F1SecurityMariaDbTest extends F1SecurityTest {
     }
     protected function schema(): void {
         if(!self::$name || !preg_match('/^zemyna_f1_test_[a-f0-9]{12}$/D',self::$name) || $this->db->query('SELECT DATABASE()')->fetchColumn()!==self::$name)throw new RuntimeException('Destino aislado incorrecto.');
-        if(!self::$installed){$this->db->exec(file_get_contents(__DIR__.'/../../base-datos/database/sql/schema.sql'));self::$installed=true;return;}
+        if(!self::$installed){$this->db->exec(mariaDbSqlForPdo(file_get_contents(__DIR__.'/../../base-datos/database/sql/schema.sql')));self::$installed=true;return;}
         foreach(['fail_photo','fail_grant','fail_consume']as$trigger)$this->db->exec('DROP TRIGGER IF EXISTS '.$trigger);
         $this->db->exec('SET FOREIGN_KEY_CHECKS=0');
         $this->db->beginTransaction();
@@ -67,7 +68,7 @@ final class F1SecurityMariaDbTest extends F1SecurityTest {
         $this->incident();$before=$this->grantRow();
         $this->db->exec("INSERT INTO incidencia(tracking_number,descripcion,fecha_reporte,estado,prioridad,tipo_problema,id_contenedor)
             VALUES('INC-HISTORICA','Test','2020-01-01','Pendiente','Media','Contenedor Desbordado',1)");
-        $migration=file_get_contents(__DIR__.'/../../base-datos/database/sql/migration_v20_incidencia_upload_token.sql');
+        $migration=mariaDbSqlForPdo(file_get_contents(__DIR__.'/../../base-datos/database/sql/migration_v20_incidencia_upload_token.sql'));
         $this->db->exec($migration);$this->db->exec($migration);$this->assertSame($before,$this->grantRow());
         $this->assertSame(1,(int)$this->db->query('SELECT COUNT(*) FROM incidencia_upload_token')->fetchColumn());
     }

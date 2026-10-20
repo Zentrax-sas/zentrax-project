@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/fixtures/mariadb_sql.php';
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/../models/AtencionIncidencia.php';
 require_once __DIR__ . '/../controllers/RecoleccionController.php';
@@ -22,7 +23,7 @@ final class AtencionIncidenciaMariaDbTest extends TestCase
         $this->database='f42_test_'.bin2hex(random_bytes(6));
         $this->db->exec('CREATE DATABASE '.$this->database.' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
         $this->db->exec('USE '.$this->database);
-        $this->db->exec(file_get_contents($this->sqlRoot.'schema.sql'));
+        $this->db->exec(mariaDbSqlForPdo(file_get_contents($this->sqlRoot.'schema.sql')));
         $this->db->exec("INSERT INTO centro(id_centro,nombre,direccion) VALUES(1,'Prueba','Temporal');
             INSERT INTO usuario(id_usuario,nombre,apellido,email,contrasena,fecha_registro,id_centro) VALUES
             (1,'Uno','Test','uno@test.invalid','x','2020-01-01',1),(2,'Dos','Test','dos@test.invalid','x','2020-01-01',1),(3,'Tres','Test','tres@test.invalid','x','2020-01-01',1);

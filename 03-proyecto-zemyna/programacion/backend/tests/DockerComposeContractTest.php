@@ -72,7 +72,8 @@ final class DockerComposeContractTest extends TestCase
     public function testImagenPreparaPdoPermisosYProteccionApache(): void
     {
         $this->assertStringContainsString('docker-php-ext-install pdo_mysql', $this->dockerfile);
-        $this->assertStringContainsString('AllowOverride All', $this->dockerfile);
+        $this->assertStringContainsString('COPY docker/apache-zemyna.conf /etc/apache2/sites-available/000-default.conf', $this->dockerfile);
+        $this->assertStringNotContainsString('AllowOverride All', $this->dockerfile);
         $this->assertStringContainsString(
             '/var/www/html/backend/uploads/incidencias',
             $this->dockerfile

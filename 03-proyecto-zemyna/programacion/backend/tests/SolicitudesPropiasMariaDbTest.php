@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/fixtures/mariadb_sql.php';
 require_once __DIR__.'/SolicitudesPropiasTest.php';
 /** Servidor TEMP descartable obligatorio; jamás usa configuración de la BD habitual. */
 final class SolicitudesPropiasMariaDbTest extends SolicitudesPropiasTest {
@@ -18,7 +19,7 @@ final class SolicitudesPropiasMariaDbTest extends SolicitudesPropiasTest {
     }
     protected function install(): void {
         if($this->db->query('SELECT DATABASE()')->fetchColumn()!==self::$sharedName || !preg_match('/^f63_test_[a-f0-9]{12}$/D',$this->database))throw new RuntimeException('Base descartable incorrecta.');
-        if(!self::$installed){$this->db->exec(file_get_contents(__DIR__.'/../../base-datos/database/sql/schema.sql'));self::$installed=true;}
+        if(!self::$installed){$this->db->exec(mariaDbSqlForPdo(file_get_contents(__DIR__.'/../../base-datos/database/sql/schema.sql')));self::$installed=true;}
         else {
             $this->db->exec('DROP TRIGGER IF EXISTS fail_f63');$this->db->exec('SET FOREIGN_KEY_CHECKS=0');
             try{foreach($this->db->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN) as $t){if(!preg_match('/^[a-z_]+$/D',$t))throw new RuntimeException('Tabla inesperada');$this->db->exec('DELETE FROM `'.$t.'`');}}

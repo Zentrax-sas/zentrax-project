@@ -820,9 +820,28 @@ CREATE TABLE IF NOT EXISTS incidencia_upload_token (
     -- Borrar una foto no vuelve utilizable su concesión consumida.
     CONSTRAINT fk_iut_foto FOREIGN KEY (id_foto) REFERENCES foto(id_foto) ON DELETE SET NULL,
     CONSTRAINT chk_iut_expiracion CHECK (fecha_expiracion > fecha_creacion),
-    CONSTRAINT chk_iut_consumo CHECK ((fecha_consumo IS NULL AND id_foto IS NULL)
+    -- MariaDB 10.11 rejects CHECK on a FK column with ON DELETE SET NULL.
+    -- Temporal validity stays declarative; triggers enforce the photo condition.
+    CONSTRAINT chk_iut_consumo CHECK ((fecha_consumo IS NULL)
         OR (fecha_consumo IS NOT NULL AND fecha_consumo >= fecha_creacion AND fecha_consumo < fecha_expiracion))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DELIMITER $$
+CREATE TRIGGER IF NOT EXISTS trg_iut_foto_insert
+BEFORE INSERT ON incidencia_upload_token FOR EACH ROW
+BEGIN
+    IF NEW.fecha_consumo IS NULL AND NEW.id_foto IS NOT NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Una foto requiere una concesion consumida.';
+    END IF;
+END$$
+CREATE TRIGGER IF NOT EXISTS trg_iut_foto_update
+BEFORE UPDATE ON incidencia_upload_token FOR EACH ROW
+BEGIN
+    IF NEW.fecha_consumo IS NULL AND NEW.id_foto IS NOT NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Una foto requiere una concesion consumida.';
+    END IF;
+END$$
+DELIMITER ;
 
 -- V21 STRUCTURE (idéntica a migration_v21_solicitud_operativa.sql)
 ALTER TABLE solicitud

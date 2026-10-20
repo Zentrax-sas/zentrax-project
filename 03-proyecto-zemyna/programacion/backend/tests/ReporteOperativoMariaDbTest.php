@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/fixtures/mariadb_sql.php';
 use PHPUnit\Framework\TestCase;
 require_once __DIR__.'/../controllers/ReporteOperativoController.php';
 require_once __DIR__.'/../models/Dashboard.php';
@@ -33,7 +34,7 @@ final class ReporteOperativoMariaDbTest extends TestCase
         $this->name = 'f7_test_'.bin2hex(random_bytes(6));
         $this->server->exec('CREATE DATABASE '.$this->name.' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
         $this->db = new PDO($dsn.';dbname='.$this->name,'root','',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
-        $this->db->exec(file_get_contents(__DIR__.'/../../base-datos/database/sql/schema.sql'));
+        $this->db->exec(mariaDbSqlForPdo(file_get_contents(__DIR__.'/../../base-datos/database/sql/schema.sql')));
         self::$shared=$this->db;self::$admin=$this->server;self::$database=$this->name;
         }
         $this->seed();

@@ -579,6 +579,21 @@ SELECT r.id_rol, p.id_permiso FROM rol r CROSS JOIN permiso p
 WHERE r.nombre IN ('OPERARIO', 'ADMINISTRADOR_TI', 'RESPONSABLE_SECTORIAL', 'ADMINISTRATIVO_OPERATIVO') AND p.nombre = 'recorrido.operar';
 -- El endpoint exige sector OPERACIONES y pertenencia vigente incluso para administradores.
 
+-- V19 permisos para instalación limpia. Mismas concesiones que la migración histórica.
+START TRANSACTION;
+INSERT INTO permiso (nombre,descripcion)
+SELECT 'asignacion_vehiculo.consultar','Consultar utilizacion operativa de vehiculos'
+WHERE NOT EXISTS (SELECT 1 FROM permiso WHERE nombre='asignacion_vehiculo.consultar');
+INSERT INTO permiso (nombre,descripcion)
+SELECT 'asignacion_vehiculo.modificar','Abrir, cambiar y cerrar utilizacion de vehiculos'
+WHERE NOT EXISTS (SELECT 1 FROM permiso WHERE nombre='asignacion_vehiculo.modificar');
+INSERT IGNORE INTO rol_permiso (id_rol,id_permiso)
+SELECT r.id_rol,p.id_permiso FROM rol r CROSS JOIN permiso p
+WHERE r.nombre IN ('RESPONSABLE_SECTORIAL','ADMINISTRATIVO_OPERATIVO')
+AND p.nombre IN ('asignacion_vehiculo.consultar','asignacion_vehiculo.modificar');
+COMMIT;
+-- Fin V19 permisos para instalación limpia.
+
 -- V21 permisos F6 para instalación limpia con roles cargados.
 START TRANSACTION;
 INSERT INTO permiso (nombre,descripcion) VALUES

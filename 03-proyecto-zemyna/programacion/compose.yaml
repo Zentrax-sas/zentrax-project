@@ -1,3 +1,6 @@
+# Compose oficial de Programacion: este archivo, no el docker-compose.yml de la raiz.
+# Instalacion limpia aislada, configuracion de vehiculos y limites: README-Docker.md.
+# No reutilizar proyectos/volumenes existentes para una prueba limpia.
 # Configuracion (completar primero las contrasenas de .env.docker):
 # cp .env.docker.example .env.docker
 # docker compose --env-file .env.docker -f compose.yaml config
@@ -57,7 +60,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 30s
+      start_period: 4m
     networks:
       - data
 
