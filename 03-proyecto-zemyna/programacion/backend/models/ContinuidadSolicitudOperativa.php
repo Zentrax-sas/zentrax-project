@@ -1,7 +1,8 @@
 <?php
 require_once __DIR__.'/SolicitudPropiaOperativa.php';
+require_once __DIR__.'/ContinuidadRecorridoRegular.php';
 
-/** Continuidad F6: exclusivamente dentro de la transacción de escritura. */
+/** Continuidad F6 y C3: exclusivamente dentro de la transacción de escritura. */
 final class ContinuidadSolicitudOperativa
 {
     public function __construct(private PDO $db) {}
@@ -38,9 +39,12 @@ final class ContinuidadSolicitudOperativa
         foreach ($this->rows('SELECT id_cuadrilla FROM usuario_cuadrilla WHERE id_usuario=? AND fecha_fin IS NULL',[$user]) as $m) {
             $id=(int)$m['id_cuadrilla'];if($this->protectedWork($id))$result[$id]=$this->eligible($id);
         }
+        $result['regular']=(new ContinuidadRecorridoRegular($this->db))->before($user);
         return $result;
     }
     public function after(array $before): void {
+        $regular=$before['regular']??[];unset($before['regular']);
+        (new ContinuidadRecorridoRegular($this->db))->after($regular);
         foreach ($before as $id=>$count) if($count>0 && $this->eligible((int)$id)===0)
             throw new DomainException('La cuadrilla tiene una solicitud especial en atención. Debe permanecer un integrante habilitado.',409);
     }

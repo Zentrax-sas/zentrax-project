@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/IntegridadRelacionesOperativas.php';
+require_once __DIR__ . '/AsignacionVehiculo.php';
 
 class Participa {
     private $conn;
@@ -59,7 +61,7 @@ class Participa {
         return $stmt;
     }
 
-    public function create() {
+    private function createRow() {
         if (!$this->conn) return false;
 
         if (empty($this->id_usa) || empty($this->id_recorrido) || empty($this->hora_inicio)) {
@@ -85,7 +87,7 @@ class Participa {
         return false;
     }
 
-    public function update() {
+    private function updateRow() {
         if (!$this->conn) return false;
 
         $query = "UPDATE " . $this->table_name . "
@@ -107,7 +109,7 @@ class Participa {
         return $stmt->execute();
     }
 
-    public function delete() {
+    private function deleteRow() {
         if (!$this->conn) return false;
 
         $query = "DELETE FROM " . $this->table_name . "
@@ -117,6 +119,35 @@ class Participa {
         $stmt->bindParam(':id_participa', $this->id_participa);
 
         return $stmt->execute();
+    }
+
+    public function create() { return $this->protectedWrite('create'); }
+    public function update() { return $this->protectedWrite('update'); }
+    public function delete() { return $this->protectedWrite('delete'); }
+    private function protectedWrite(string $action) {
+        if (!$this->conn) throw new DomainException('Persistencia no disponible.',503);
+        $this->conn->beginTransaction();
+        try {
+            if ($action !== 'delete' && (!empty($this->hora_fin) || !empty($this->motivo_fin))) {
+                throw new DomainException('El cierre de una participación debe conservar el flujo operativo.',409);
+            }
+            $read = function(string $sql, array $args) { $s=$this->conn->prepare($sql); $s->execute($args); return $s->fetch(PDO::FETCH_ASSOC) ?: null; };
+            $old = $action === 'create' ? null : $read('SELECT * FROM participa WHERE id_participa=?',[$this->id_participa]);
+            if ($action !== 'create' && !$old) throw new DomainException('Participación no encontrada.',404);
+            $ids = array_unique(array_filter([$old['id_usa'] ?? null,$action !== 'delete' ? $this->id_usa : null]));
+            $pairs=[]; foreach ($ids as $id) { $p=$read('SELECT * FROM usa WHERE id_usa=?',[$id]); if (!$p) throw new DomainException('Autorización no encontrada.',404); $pairs[(int)$id]=$p; }
+            $guard=new IntegridadRelacionesOperativas($this->conn);
+            $guard->lock(array_values($pairs),array_filter([$old['id_recorrido'] ?? null,$action !== 'delete' ? $this->id_recorrido : null]));
+            foreach ($pairs as $id=>$pair) if (($guard->rows('SELECT * FROM usa WHERE id_usa=?',[$id])[0] ?? null) != $pair) throw new DomainException('La autorización cambió. Volvé a consultar.',409);
+            if ($old) {
+                if (($guard->rows('SELECT * FROM participa WHERE id_participa=?',[$this->id_participa])[0] ?? null) != $old) throw new DomainException('La participación cambió. Volvé a consultar.',409);
+                $guard->pending((int)$old['id_recorrido']);
+            }
+            if ($action !== 'delete') $guard->participation((int)$this->id_recorrido,$pairs[(int)$this->id_usa],$old ? (int)$this->id_participa : null);
+            $ok=match($action) { 'create'=>$this->createRow(),'update'=>$this->updateRow(),'delete'=>$this->deleteRow() };
+            if (!$ok) throw new RuntimeException('No se pudo guardar la relación.');
+            $this->conn->commit(); return true;
+        } catch(Throwable $e) { if ($this->conn->inTransaction()) $this->conn->rollBack(); throw $e; }
     }
 
     public function participacionActiva($idRecorrido) {

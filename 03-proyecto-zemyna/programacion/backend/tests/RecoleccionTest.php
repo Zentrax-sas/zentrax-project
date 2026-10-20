@@ -50,6 +50,7 @@ final class RecoleccionTest extends TestCase
         // Lecturas del guard F6.3C.2; este fixture no contiene trabajos protegidos.
         $this->db->exec("CREATE TABLE solicitud(id_solicitud INTEGER PRIMARY KEY,estado TEXT,id_cuadrilla INTEGER);
             CREATE TABLE atencion_solicitud(id_atencion_solicitud INTEGER PRIMARY KEY,id_solicitud INTEGER,id_cuadrilla INTEGER,estado TEXT,fecha_cierre TEXT);");
+        $this->db->exec("ALTER TABLE vehiculo ADD funcion_operativa TEXT DEFAULT 'REGULAR'");
     }
     protected function tearDown(): void {
         AuthRequestContext::$resolver = null;
@@ -134,12 +135,16 @@ final class RecoleccionTest extends TestCase
     private function assigned(): void {
         $this->assertSame(200, $this->write(['accion' => 'asignar', 'integrante' => 3, 'destino' => 3])['statusCode']);
         $this->db->exec("INSERT INTO usa VALUES (4,3,1); INSERT INTO recorrido VALUES (3,1,'2026-01-01 08:00:00',NULL,'Pendiente',NULL,NULL); INSERT INTO participa VALUES (4,4,3)");
+        $this->db->exec("INSERT INTO asignacion_vehiculo_operativa(id_cuadrilla,id_vehiculo,fecha_inicio,id_usuario_asigna) VALUES(3,1,'2020-01-01 00:00:00',1)");
         $this->operator();
     }
     public function testAsignacionTrasladoCierreEHistorialPersisten(): void {
         $a = $this->write(['accion' => 'asignar', 'integrante' => 3, 'destino' => 1]);
         $this->assertSame(200, $a['statusCode']); $id = $a['data']['pertenencia']['id_usuario_cuadrilla'];
         $this->assertSame(409, $this->write(['accion' => 'asignar', 'integrante' => 3, 'destino' => 2])['statusCode']);
+        $this->assertSame(409, $this->write(['accion' => 'trasladar', 'integrante' => 3, 'destino' => 2, 'pertenencia' => $id])['statusCode']);
+        // C3: la continuación del historial de pertenencias se prueba sin recorrido activo.
+        $this->db->exec("UPDATE recorrido SET estado='Finalizado' WHERE id_recorrido=1");
         $b = $this->write(['accion' => 'trasladar', 'integrante' => 3, 'destino' => 2, 'pertenencia' => $id]);
         $this->assertSame(200, $b['statusCode']);
         $this->assertSame(409, $this->write(['accion' => 'trasladar', 'integrante' => 3, 'destino' => 3, 'pertenencia' => $id])['statusCode']);
@@ -261,8 +266,9 @@ final class RecoleccionTest extends TestCase
     }
     private function assignmentFixture(): array {
         $this->user(true); $_SESSION['usuario']['autorizaciones'][]=['permiso'=>'recorrido.modificar','sector'=>'OPERACIONES'];
-        $this->db->exec("ALTER TABLE participa ADD hora_inicio TEXT; INSERT INTO vehiculo VALUES (3,'LIBRE','Disponible',1);
+        $this->db->exec("ALTER TABLE participa ADD hora_fin TEXT; ALTER TABLE participa ADD hora_inicio TEXT; INSERT INTO vehiculo(id_vehiculo,matricula,estado,activo) VALUES (3,'LIBRE','Disponible',1);
             INSERT INTO usa VALUES (4,3,3); INSERT INTO recorrido VALUES (3,1,'2026-09-22 09:30:00',NULL,'Pendiente',NULL,NULL)");
+        $this->db->exec("INSERT INTO asignacion_vehiculo_operativa(id_cuadrilla,id_vehiculo,fecha_inicio,id_usuario_asigna) VALUES(3,3,'2020-01-01 00:00:00',1)");
         return ['accion'=>'asignar_recorrido','destino'=>3,'id_recorrido'=>3,'id_usa'=>4];
     }
     public function testAsignacionDeRecorridoConservaHistorialYSeVeDesdeSesionPropia(): void {
@@ -324,6 +330,44 @@ final class RecoleccionTest extends TestCase
         $this->assertSame(3,(int)$this->db->query('SELECT COUNT(*) FROM participa')->fetchColumn());
     }
 
+    public static function contextosInvalidosC2(): array {
+        return [
+            'sin V19'=>['DELETE FROM asignacion_vehiculo_operativa'],
+            'cerrada'=>["UPDATE asignacion_vehiculo_operativa SET fecha_fin='2021-01-01',id_usuario_finaliza=1,motivo_cierre='Prueba'"],
+            'otra cuadrilla'=>['UPDATE asignacion_vehiculo_operativa SET id_cuadrilla=2'],
+            'otro vehículo'=>['UPDATE asignacion_vehiculo_operativa SET id_vehiculo=2'],
+            'inicio futuro'=>["UPDATE asignacion_vehiculo_operativa SET fecha_inicio='2999-01-01 00:00:00'"],
+            'APOYO'=>["UPDATE vehiculo SET funcion_operativa='APOYO'"],
+            'sin clasificación'=>['UPDATE vehiculo SET funcion_operativa=NULL'],
+        ];
+    }
+    /** @dataProvider contextosInvalidosC2 */
+    public function testC2AsignacionRechazaContextoSinInsertarParticipacion(string $sql): void {
+        $body=$this->assignmentFixture();$this->db->exec($sql);
+        $r=$this->write($body);$this->assertSame(409,$r['statusCode']);
+        $this->assertFalse($this->db->inTransaction());
+        $this->assertSame(0,(int)$this->db->query('SELECT COUNT(*) FROM participa WHERE id_recorrido=3')->fetchColumn());
+        $this->assertSame('Pendiente',$this->db->query('SELECT estado FROM recorrido WHERE id_recorrido=3')->fetchColumn());
+    }
+    /** @dataProvider contextosInvalidosC2 */
+    public function testC2InicioRevalidaContextoSinCambiarEstado(string $sql): void {
+        $this->assigned();$this->db->exec($sql);
+        $r=$this->write(['accion'=>'iniciar','id_recorrido'=>3]);$this->assertSame(409,$r['statusCode']);
+        $row=$this->db->query('SELECT estado,id_usuario_inicio,fecha_inicio FROM recorrido WHERE id_recorrido=3')->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame(['estado'=>'Pendiente','id_usuario_inicio'=>null,'fecha_inicio'=>'2026-01-01 08:00:00'],$row);
+        $this->assertFalse($this->db->inTransaction());
+    }
+    public function testC2RutaMixtaAsignaEIniciaSinCompararResiduos(): void {
+        $body=$this->assignmentFixture();
+        $this->db->exec("ALTER TABLE vehiculo ADD id_tipo_residuo INTEGER DEFAULT 3;
+            ALTER TABLE contenedor ADD id_tipo_residuo INTEGER DEFAULT 1;
+            INSERT INTO contenedor(id_contenedor,id_ruta,codigo,activo,id_tipo_residuo) VALUES(3,1,'MIXTO',1,2)");
+        $this->assertSame(200,$this->write($body)['statusCode']);
+        $this->assertSame(200,$this->write(['accion'=>'asignar','integrante'=>3,'destino'=>3])['statusCode']);
+        $this->operator();$r=$this->write(['accion'=>'iniciar','id_recorrido'=>3]);
+        $this->assertSame(200,$r['statusCode']);$this->assertSame('En Proceso',$r['data']['recorrido']['estado']);
+        $this->assertSame(2,$r['data']['recorrido']['progreso']['total']);
+    }
     public function testCatalogoDeRolesDerivaSugerenciaDesdePermisosReales(): void {
         require_once __DIR__.'/../models/Usuario.php';
         $this->db->exec("CREATE TABLE rol(id_rol INTEGER,nombre TEXT,descripcion TEXT); INSERT INTO rol VALUES(1,'NOMBRE_IRRELEVANTE','Operativo'),(2,'OPERARIO','Sin permisos')");

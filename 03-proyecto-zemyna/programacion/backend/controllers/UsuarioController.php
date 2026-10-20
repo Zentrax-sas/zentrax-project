@@ -437,7 +437,7 @@ class UsuarioController {
 
         try {
             $deleted = $this->usuario->delete();
-        } catch (PDOException | RuntimeException $exception) {
+        } catch (PDOException | RuntimeException | DomainException $exception) {
             $error = ContinuidadSolicitudOperativa::error($exception);
             if ($error['statusCode'] !== 500) return $error;
             $deleted = false;

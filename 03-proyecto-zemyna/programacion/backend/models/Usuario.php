@@ -273,10 +273,12 @@ class Usuario {
     public function delete() {
         if (!$this->conn) return false;
 
-        // Suspensión de seguridad: comparte locks, pero nunca exige relevo.
+        // Conserva la política F6 de suspensión; C3 protege la continuidad REGULAR.
         $this->conn->beginTransaction();
         try {
         (new ContinuidadSolicitudOperativa($this->conn))->gate();
+        $continuity=new ContinuidadRecorridoRegular($this->conn);
+        $before=$continuity->before((int)$this->id_usuario);
 
         $query = "UPDATE " . $this->table_name . "
                   SET activo = 'Inactivo'
@@ -286,6 +288,7 @@ class Usuario {
         $stmt->bindParam(':id_usuario', $this->id_usuario);
 
         $ok = $stmt->execute();
+        $continuity->after($before);
         $this->conn->commit();
         return $ok;
         } catch (Throwable $e) { if ($this->conn->inTransaction()) $this->conn->rollBack(); throw $e; }

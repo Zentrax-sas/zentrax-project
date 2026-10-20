@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/AsignacionVehiculo.php';
+require_once __DIR__ . '/IntegridadRelacionesOperativas.php';
 
 class Recorrido {
     private $conn;
@@ -53,6 +54,7 @@ class Recorrido {
 
     public function create() {
         if (!$this->conn) return false;
+        if ($this->estado === 'En Proceso') throw new DomainException('Creá el recorrido Pendiente y asigná un vehículo REGULAR con utilización V19 antes de iniciarlo.', 409);
 
         if (empty($this->fecha_inicio) || empty($this->estado) || empty($this->id_ruta)) {
             return false;
@@ -110,8 +112,14 @@ class Recorrido {
         $this->conn->beginTransaction();
         try {
             $lock=$this->conn->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'?' FOR UPDATE':'';
-            $s=$this->conn->prepare('SELECT id_recorrido FROM recorrido WHERE id_recorrido=?'.$lock);
-            $s->execute([$this->id_recorrido]); $s->fetchAll();
+            // C2: mismo orden de padres que C1; la lectura inicial solo descubre IDs.
+            $sql='SELECT u.id_cuadrilla,u.id_vehiculo FROM participa p JOIN usa u ON u.id_usa=p.id_usa WHERE p.id_recorrido=? ORDER BY u.id_vehiculo,u.id_cuadrilla';
+            $s=$this->conn->prepare($sql);$s->execute([$this->id_recorrido]);$pairs=$s->fetchAll(PDO::FETCH_ASSOC);
+            $guard=new IntegridadRelacionesOperativas($this->conn);
+            $guard->lock($pairs,[(int)$this->id_recorrido]);
+            $s=$this->conn->prepare($sql.$lock);$s->execute([$this->id_recorrido]);
+            if ($s->fetchAll(PDO::FETCH_ASSOC)!=$pairs) throw new DomainException('La asignación cambió. Volvé a consultar.',409);
+            if ($this->estado==='En Proceso' && count($pairs)!==1) throw new DomainException('El inicio requiere una asignación REGULAR inequívoca con utilización V19.',409);
             if (in_array($this->estado,['Pendiente','En Proceso'],true)) {
                 $s=$this->conn->prepare('SELECT u.id_cuadrilla,u.id_vehiculo FROM participa p JOIN usa u ON u.id_usa=p.id_usa WHERE p.id_recorrido=? ORDER BY u.id_vehiculo'.$lock);
                 $s->execute([$this->id_recorrido]);
@@ -119,6 +127,7 @@ class Recorrido {
                     $v=$this->conn->prepare('SELECT id_vehiculo FROM vehiculo WHERE id_vehiculo=?'.$lock);
                     $v->execute([$pair['id_vehiculo']]); $v->fetchAll();
                     (new AsignacionVehiculo($this->conn))->assertPair((int)$pair['id_cuadrilla'],(int)$pair['id_vehiculo']);
+                    if ($this->estado==='En Proceso') $guard->regularPair((int)$pair['id_cuadrilla'],(int)$pair['id_vehiculo']);
                 }
             }
             $result=$this->updateRow(); $this->conn->commit(); return $result;

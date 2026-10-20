@@ -42,7 +42,20 @@ class ParticipaController {
         ];
     }
 
-    public function create($data) {
+    private function mutation(callable $fn): array {
+        try { return $fn(); }
+        catch (DomainException $e) { return ['success'=>false,'data'=>null,'message'=>$e->getMessage(),'errors'=>[],'statusCode'=>in_array($e->getCode(),[400,401,403,404,409,503],true)?$e->getCode():409]; }
+        catch (PDOException $e) {
+            $code=(int)($e->errorInfo[1] ?? 0);
+            return ['success'=>false,'data'=>null,'message'=>'No se pudo modificar la participación. Volvé a consultar.','errors'=>[],'statusCode'=>in_array($code,[1062,1205,1213,1451],true)?409:(in_array($code,[2002,2006,2013],true)?503:500)];
+        }
+        catch (Throwable $e) { return ['success'=>false,'data'=>null,'message'=>'No se pudo modificar la participación.','errors'=>[],'statusCode'=>500]; }
+    }
+    public function create($data) { return $this->mutation(fn()=>$this->createInternal($data)); }
+    public function update($data) { return $this->mutation(fn()=>$this->updateInternal($data)); }
+    public function delete($id) { return $this->mutation(fn()=>$this->deleteInternal($id)); }
+
+    private function createInternal($data) {
         $data = $data ?? [];
 
         $this->participa->id_usa = $data['id_usa'] ?? null;
@@ -99,7 +112,7 @@ class ParticipaController {
         ];
     }
 
-    public function update($data) {
+    private function updateInternal($data) {
         $data = $data ?? [];
 
         $this->participa->id_participa = $data['id_participa'] ?? null;
@@ -161,7 +174,7 @@ class ParticipaController {
         ];
     }
 
-    public function delete($id) {
+    private function deleteInternal($id) {
         $this->participa->id_participa = (int)$id;
 
         if ($this->participa->delete()) {

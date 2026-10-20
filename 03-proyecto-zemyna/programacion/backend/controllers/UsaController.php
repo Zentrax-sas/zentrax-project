@@ -45,11 +45,13 @@ class UsaController {
 
     private function mutation(callable $fn): array {
         try { return $fn(); }
-        catch (DomainException $e) { return ['success'=>false,'data'=>null,'message'=>$e->getMessage(),'errors'=>[],'statusCode'=>409]; }
+        catch (DomainException $e) { return ['success'=>false,'data'=>null,'message'=>$e->getMessage(),'errors'=>[],'statusCode'=>in_array($e->getCode(),[400,401,403,404,409,503],true)?$e->getCode():409]; }
         catch (PDOException $e) {
             $conflict = in_array((int)($e->errorInfo[1] ?? 0),[1062,1205,1213,1451],true);
-            return ['success'=>false,'data'=>null,'message'=>$conflict?'Conflicto con la relación operativa. Volvé a consultar.':'No se pudo modificar la relación.','errors'=>[],'statusCode'=>$conflict?409:500];
+            $unavailable=in_array((int)($e->errorInfo[1] ?? 0),[2002,2006,2013],true);
+            return ['success'=>false,'data'=>null,'message'=>$conflict?'Conflicto con la relación operativa. Volvé a consultar.':'No se pudo modificar la relación.','errors'=>[],'statusCode'=>$conflict?409:($unavailable?503:500)];
         }
+        catch (Throwable $e) { return ['success'=>false,'data'=>null,'message'=>'No se pudo modificar la relación.','errors'=>[],'statusCode'=>500]; }
     }
     public function create($data) { return $this->mutation(fn()=>$this->createInternal($data)); }
     public function update($data) { return $this->mutation(fn()=>$this->updateInternal($data)); }
@@ -78,15 +80,6 @@ class UsaController {
                 "message" => "No se pudo registrar la asignación.",
                 "errors" => $errors,
                 "statusCode" => 400
-            ];
-        }
-
-        if ($this->usa->existeRelacion($this->usa->id_cuadrilla, $this->usa->id_vehiculo)) {
-            return [
-                "success" => false,
-                "data" => null,
-                "message" => "La cuadrilla ya tiene asignado ese vehículo.",
-                "statusCode" => 409
             ];
         }
 

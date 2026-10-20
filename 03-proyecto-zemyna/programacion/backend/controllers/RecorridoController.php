@@ -80,7 +80,9 @@ class RecorridoController {
             ];
         }
 
-        if ($this->recorrido->create()) {
+        try { $created=$this->recorrido->create(); }
+        catch (DomainException $e) { return ['success'=>false,'statusCode'=>409,'message'=>$e->getMessage(),'data'=>null,'errors'=>[]]; }
+        if ($created) {
             return [
                 "success" => true,
                 "data" => ["id_recorrido" => $this->recorrido->id_recorrido],

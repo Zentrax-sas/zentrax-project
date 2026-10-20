@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/ProteccionSolicitudOperativa.php';
+require_once __DIR__ . '/IntegridadRelacionesOperativas.php';
 
 class Usa {
     private $conn;
@@ -113,7 +114,7 @@ class Usa {
     }
 
     private function protectedWrite(string $action) {
-        if (!$this->conn) return false;
+        if (!$this->conn) throw new DomainException('Persistencia no disponible.',503);
         if ($action === 'create' && (empty($this->id_cuadrilla) || empty($this->id_vehiculo))) return false;
         $this->conn->beginTransaction();
         try {
@@ -123,6 +124,9 @@ class Usa {
                 $stmt->execute([$this->id_usa]); $old = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
             }
             $new = $action === 'delete' ? null : ['id_cuadrilla'=>$this->id_cuadrilla,'id_vehiculo'=>$this->id_vehiculo];
+            if ($action !== 'create' && !$old) throw new DomainException('Autorización no encontrada.',404);
+            $integrity = new IntegridadRelacionesOperativas($this->conn);
+            $integrity->lock(array_values(array_filter([$old,$new])));
             $guard = new ProteccionSolicitudOperativa($this->conn);
             $guard->lockVehicles(array_column(array_filter([$old,$new]), 'id_vehiculo'));
             if ($action !== 'create') {
@@ -132,7 +136,9 @@ class Usa {
                 if ($old != $current) throw new DomainException('La relación cambió. Volvé a consultar.',409);
             }
             $guard->assertUseChange($old,$new);
+            $integrity->useChange($old,$new,$action === 'create' ? null : (int)$this->id_usa);
             $ok = match($action) { 'create'=>$this->createRow(), 'update'=>$this->updateRow(), 'delete'=>$this->deleteRow() };
+            if (!$ok) throw new RuntimeException('No se pudo guardar la relación.');
             $this->conn->commit(); return $ok;
         } catch(Throwable $e) { if ($this->conn->inTransaction()) $this->conn->rollBack(); throw $e; }
     }

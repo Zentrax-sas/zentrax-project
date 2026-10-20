@@ -2,6 +2,7 @@
 require_once __DIR__ . '/Recoleccion.php';
 require_once __DIR__ . '/AsignacionVehiculo.php';
 require_once __DIR__ . '/ContinuidadSolicitudOperativa.php';
+require_once __DIR__ . '/IntegridadRelacionesOperativas.php';
 
 /** Cambios atómicos: usuario -> cuadrilla -> recorrido. Nunca usa identidad del cuerpo. */
 class RecoleccionOperativa extends Recoleccion
@@ -295,6 +296,7 @@ class RecoleccionOperativa extends Recoleccion
             if ($this->rows("SELECT re.id_recorrido FROM recorrido re JOIN participa p ON p.id_recorrido = re.id_recorrido
                 JOIN usa u ON u.id_usa = p.id_usa WHERE u.id_vehiculo = ? AND re.estado IN ('Pendiente','En Proceso')" . $this->lock(), [$vehicle['id_vehiculo']])) $this->fail(409, 'El vehículo ya participa en un recorrido operativo.');
             // En una ejecución Pendiente, hora_inicio es la hora prevista de fecha_inicio.
+            (new IntegridadRelacionesOperativas($this->db))->participation($trip, ['id_cuadrilla'=>$squad,'id_vehiculo'=>$vehicle['id_vehiculo']]);
             // La hora real de operación se registra en recorrido al iniciar, sin reescribir participa.
             $this->execute('INSERT INTO participa (id_usa, id_recorrido, hora_inicio) VALUES (?, ?, ?)', [$use, $trip, substr($row['fecha_inicio'], 11, 8)]);
             return ['recorrido' => $this->detalle($squad, $trip)];
@@ -368,9 +370,10 @@ class RecoleccionOperativa extends Recoleccion
                 if ($this->rows("SELECT re.id_recorrido FROM recorrido re JOIN participa p ON p.id_recorrido = re.id_recorrido
                     JOIN usa u ON u.id_usa = p.id_usa WHERE u.id_cuadrilla = ? AND re.estado = 'En Proceso'", [$squad])) $this->fail(409, 'La cuadrilla ya tiene un recorrido En Proceso.');
                 $vehicles = $this->detalle($squad, $trip)['vehiculos'];
+                if (count($vehicles) !== 1) $this->fail(409, 'El recorrido requiere un único vehículo REGULAR con utilización V19 vigente.');
                 foreach ($vehicles as $v) {
                     $this->rows('SELECT id_vehiculo FROM vehiculo WHERE id_vehiculo=?' . $this->lock(), [$v['id_vehiculo']]);
-                    (new AsignacionVehiculo($this->db))->assertPair($squad, (int)$v['id_vehiculo']);
+                    (new IntegridadRelacionesOperativas($this->db))->regularPair($squad, (int)$v['id_vehiculo']);
                 }
                 foreach ($vehicles as $v) if (!(int) $v['activo'] || $v['estado'] === 'En Mantenimiento') $this->fail(409, 'El vehículo relacionado no está disponible para operar.');
                 $this->execute("UPDATE recorrido SET estado = 'En Proceso', fecha_inicio = ?, fecha_fin = NULL, id_usuario_inicio = ? WHERE id_recorrido = ?", [$now, $user, $trip]);
