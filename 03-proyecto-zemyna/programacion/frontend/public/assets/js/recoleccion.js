@@ -54,7 +54,7 @@
     if (!trip) {
       clearMap(); shownTrip = null;
       const card = node('article', ''); card.className = 'collection-empty';
-      card.append(node('h3', 'Sin recorrido asignado'), node('p', 'Tu cuadrilla todavía no tiene un recorrido disponible. Podés actualizar la información más tarde o reportar un problema detectado durante tu jornada.'));
+      card.append(node('h3', 'Sin recorrido regular activo'), node('p', 'No hay un recorrido regular activo para tu cuadrilla. Si trabajás como APOYO, no necesitás un recorrido regular para atender trabajos asignados: consultá las incidencias y solicitudes disponibles según tus permisos.'));
       el('collectionItems').append(card); el('collectionStatus').textContent = ''; return;
     }
     if (shownTrip !== trip.id_recorrido) {

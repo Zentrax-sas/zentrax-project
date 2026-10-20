@@ -96,6 +96,9 @@
 .container-actions { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; grid-column: 1 / -1; min-width: 0; }
 .container-actions button, .container-actions a { margin: 0; font-size: 15px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .collection-shell .container-more { width: 100%; max-width: 100%; margin: 8px 0; box-sizing: border-box; }
+.collection-shell .collection-incident { margin: 8px 0; padding: 12px; }
+.collection-incident h3 { font-size: 18px; margin: 0 0 6px; }
+.collection-incident p { margin: 5px 0; }
 @media (max-width: 600px) {
   .collection-shell .container-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
   .container-actions { grid-column: 1 / -1; justify-content: flex-end; }

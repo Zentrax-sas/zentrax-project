@@ -205,8 +205,10 @@ final class RutaApoyoTest extends TestCase
         $this->db->exec('INSERT INTO contenedor VALUES(1,-34.901,-56.161,1,1); UPDATE incidencia SET id_contenedor=1,latitud=NULL,longitud=NULL');
         $this->assertSame('contenedor', $this->request()['data']['destino']['fuente']);
         $this->db->exec('UPDATE contenedor SET id_tipo_residuo=2');
+        $this->assertSame('residuo_incompatible', $this->request()['code']);
         $this->assertSame(409, $this->request()['statusCode']);
         $this->db->exec('UPDATE contenedor SET id_tipo_residuo=1,activo=0');
+        $this->assertSame('contenedor_no_disponible', $this->request()['code']);
         $this->assertSame(409, $this->request()['statusCode']);
     }
     public function testRevalidationDiscardsChangesDuringHttp(): void

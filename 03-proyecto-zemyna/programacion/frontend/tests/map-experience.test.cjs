@@ -404,11 +404,27 @@ function collectionHarness(admin = false) {
     fetch: (url, options) => new Promise((resolve, reject) => requests.push({ url, options, resolve, reject })) });
   vm.runInContext(fs.readFileSync(path.join(publicDir, 'config.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(publicDir, `assets/js/${admin ? 'cuadrillas' : 'recoleccion'}.js`), 'utf8'), context);
-  const reply = (index, status, body) => requests[index].resolve({ status, ok: status >= 200 && status < 300, json: async () => body });
-  return { elements, requests, redirects, navigations, reply, html, run: code => vm.runInContext(code, context), open: () => context.window.SquadAdmin.open(), confirm: value => { confirmation = value; }, click: id => elements.get(id).listeners.click({ currentTarget: elements.get(id), preventDefault() {} }) };
+  const reply = (target, status, body) => {
+    const request = typeof target === 'number' ? requests[target] : target;
+    assert.ok(request, 'Debe existir la solicitud que se responde');
+    assert.notEqual(request.replied, true, 'No responder dos veces la misma solicitud');
+    request.replied = true;
+    request.resolve({ status, ok: status >= 200 && status < 300, json: async () => body });
+  };
+  const pending = (view, params = {}) => {
+    const matches = requests.filter(r => {
+      const q = new URL(r.url).searchParams;
+      return !r.replied && !r.options?.signal?.aborted && (r.options?.method || 'GET') === 'GET' && q.get('view') === view
+        && Object.entries(params).every(([key, value]) => q.get(key) === String(value));
+    });
+    assert.equal(matches.length, 1, `Una única consulta pendiente para ${view}: ${JSON.stringify(params)}`);
+    return matches[0];
+  };
+  return { elements, requests, redirects, navigations, reply, pending, html, run: code => vm.runInContext(code, context), open: () => context.window.SquadAdmin.open(), confirm: value => { confirmation = value; }, click: id => elements.get(id).listeners.click({ currentTarget: elements.get(id), preventDefault() {} }) };
 }
 const descendants = node => [node, ...(node.children || []).flatMap(descendants)];
-const actionIn = (h, id, label) => descendants(h.elements.get(id)).find(n => n.tag === 'button' && n.textContent === label);
+const visibleDescendants = node => node.hidden ? [] : [node, ...(node.children || []).flatMap(visibleDescendants)];
+const actionIn = (h, id, label) => visibleDescendants(h.elements.get(id)).find(n => n.tag === 'button' && n.textContent === label);
 const ownTrip = (estado = 'Pendiente', attended = false) => ({ success: true, puede_operar: true, data: {
   pertenencia: { nombre: 'Cuadrilla propia', turno: 'Matutino' }, recorrido: {
     id_recorrido: 8, ruta_nombre: 'Ruta propia', estado, fecha_inicio: '2026-09-21 08:00:00', fecha_fin: estado === 'Finalizado' ? '2026-09-21 09:00:00' : null,
@@ -417,7 +433,7 @@ const ownTrip = (estado = 'Pendiente', attended = false) => ({ success: true, pu
     contenedores: [{ id_contenedor: 5, codigo: 'C5', latitud: -34.9, longitud: -56.1, fecha_atencion: attended ? '2026-09-21 08:30:00' : null, autor_nombre: 'Operario', autor_apellido: 'Prueba' }]
   }
 } });
-const findAction = (h, label) => h.elements.get('collectionItems').children.flatMap(c => c.children).find(n => n.tag === 'button' && n.textContent === label);
+const findAction = (h, label) => actionIn(h, 'collectionItems', label);
 
 test('operario no presenta administración ni consulta otras cuadrillas aunque cambie el hash', async () => {
   const h=collectionHarness(); h.run("window.location.hash='#cuadrillas'");
@@ -434,7 +450,7 @@ test('contrato real config.js: consulta propia sin identidad ni timestamp autom�
 test('operario distingue sesión vencida, permisos, falta de recorrido, ambigüedad y servidor', async () => {
   const h=collectionHarness(); h.reply(0,401,{}); await tick(); assert.match(h.redirects[0],/login.html$/);
   h.click('collectionRetry'); h.reply(1,403,{}); await tick(); assert.match(h.elements.get('collectionStatus').textContent,/no está habilitada/);
-  h.click('collectionRetry'); h.reply(2,409,{code:'sin_recorrido',data:{pertenencia:{nombre:'Propia'},recorrido:null}}); await tick(); assert.equal(h.elements.get('collectionStatus').textContent,''); assert.match(text(h.elements.get('collectionItems')),/Sin recorrido asignado/);
+  h.click('collectionRetry'); h.reply(2,409,{code:'sin_recorrido',data:{pertenencia:{nombre:'Propia'},recorrido:null}}); await tick(); assert.equal(h.elements.get('collectionStatus').textContent,''); assert.match(text(h.elements.get('collectionItems')),/Sin recorrido regular activo.*APOYO.*no necesitás un recorrido regular/);
   h.click('collectionRetry'); h.reply(3,409,{code:'recorrido_ambiguo'}); await tick(); assert.match(h.elements.get('collectionStatus').textContent,/compartido o ambiguo/);
   h.click('collectionRetry'); h.reply(4,400,{message:'Inválido'}); await tick(); assert.match(h.elements.get('collectionStatus').textContent,/Solicitud inválida/);
   h.click('collectionRetry'); h.reply(5,503,{}); await tick(); assert.match(h.elements.get('collectionStatus').textContent,/Error del servidor/);
@@ -444,22 +460,26 @@ test('operario cancela consultas y descarta respuestas antiguas', async () => {
   h.reply(1,200,ownTrip()); await tick(); h.reply(0,409,{code:'sin_pertenencia',message:'Obsoleto'}); await tick();
   assert.match(text(h.elements.get('collectionItems')),/Ruta propia/); assert.doesNotMatch(h.elements.get('collectionStatus').textContent,/Obsoleto/);
 });
-test('operario renderiza texto seguro, coordenadas válidas y autoría propia', async () => {
-  const h=collectionHarness(),body=ownTrip(); body.data.recorrido.ruta_nombre='<img onerror=alert(1)>'; h.reply(0,200,body); await tick();
+test('operario renderiza texto seguro y localiza coordenadas en el mapa integrado sin enlaces externos', async () => {
+  const h=collectionHarness();
+  h.run("window.mapFocus=[]; window.CollectionRouteMap={create:()=>({render:()=>true,resize(){},clear(){},focus(id){window.mapFocus.push(id);return true;}})}");
+  const body=ownTrip(); body.data.recorrido.ruta_nombre='<img onerror=alert(1)>'; h.reply(0,200,body); await tick();
   const nodes=descendants(h.elements.get('collectionItems')); assert.ok(nodes.some(n=>n.textContent.includes('<img onerror=alert(1)>'))); assert.ok(nodes.every(n=>n.innerHTML===undefined));
-  assert.ok(nodes.some(n=>n.tag==='a' && n.href.startsWith('https://www.openstreetmap.org/')));
-  assert.match(text(h.elements.get('collectionItems')),/Operario Prueba/);
+  assert.ok(nodes.every(n=>n.tag!=='a'));findAction(h,'Ver en mapa').listeners.click();
+  assert.deepEqual(Array.from(h.run('window.mapFocus')),['5']);assert.equal(h.requests.length,1);
+  assert.match(text(h.elements.get('collectionItems')),/C5/);
 });
 test('recolección propia confirma inicio, bloquea doble envío y muestra resultado real', async () => {
   const h=collectionHarness();h.reply(0,200,ownTrip());await tick();const start=findAction(h,'Iniciar recorrido');
   h.confirm(false);start.listeners.click();assert.equal(h.requests.length,1);h.confirm(true);start.listeners.click();start.listeners.click();assert.equal(h.requests.length,2);assert.equal(start.disabled,true);
   assert.deepEqual(JSON.parse(h.requests[1].options.body),{accion:'iniciar',id_recorrido:8});
-  h.reply(1,200,ownTrip('En Proceso'));await tick();h.reply(2,200,ownTrip('En Proceso'));await tick();assert.equal(findAction(h,'Iniciar recorrido'),undefined);assert.ok(findAction(h,'Marcar como atendido'));
+  h.reply(1,200,ownTrip('En Proceso'));await tick();h.reply(2,200,ownTrip('En Proceso'));await tick();assert.equal(findAction(h,'Iniciar recorrido'),undefined);assert.ok(findAction(h,'Atendido'));
 });
 test('atención conserva identidad de sesión y finalización requiere confirmación', async () => {
-  const h=collectionHarness();h.reply(0,200,ownTrip('En Proceso'));await tick();findAction(h,'Marcar como atendido').listeners.click();
+  const h=collectionHarness();h.reply(0,200,ownTrip('En Proceso'));await tick();findAction(h,'Atendido').listeners.click();
   assert.deepEqual(JSON.parse(h.requests[1].options.body),{accion:'atender',id_recorrido:8,id_contenedor:5});
-  h.reply(1,200,ownTrip('En Proceso',true));await tick();h.reply(2,200,ownTrip('En Proceso',true));await tick();assert.equal(findAction(h,'Marcar como atendido'),undefined);assert.match(text(h.elements.get('collectionItems')),/1 de 1 contenedores atendidos/);
+  h.reply(1,200,ownTrip('En Proceso',true));await tick();h.reply(2,200,ownTrip('En Proceso',true));await tick();assert.equal(findAction(h,'Atendido'),undefined);
+  assert.equal(descendants(h.elements.get('collectionItems')).find(n=>n.tag==='progress')['aria-label'],'1 de 1 contenedores atendidos');
   const finish=findAction(h,'Finalizar recorrido');h.confirm(false);finish.listeners.click();assert.equal(h.requests.length,3);h.confirm(true);finish.listeners.click();h.reply(3,200,ownTrip('Finalizado',true));await tick();h.reply(4,200,ownTrip('Finalizado',true));await tick();assert.equal(findAction(h,'Finalizar recorrido'),undefined);
 });
 test('solo lectura no muestra acciones y un conflicto no inventa éxito', async () => {
@@ -470,7 +490,7 @@ const catalogBody=()=>({success:true,data:{tipo:'cuadrillas',lista:{items:[{id_c
 const detailBody=()=>({success:true,data:{cuadrilla:{id_cuadrilla:2,nombre:'Destino',turno:'Matutino'},integrantes_activos:1,vehiculos:[],recorrido_actual:ownTrip().data.recorrido,lista:{items:[ownTrip().data.recorrido],page:1,page_size:25,total:1}}});
 const membersBody=()=>({success:true,puede_gestionar:true,data:{historial:[{id_usuario:3,id_usuario_cuadrilla:7,nombre:'Operario',apellido:'Prueba',fecha_inicio:'2026-01-01',fecha_fin:null,asignador_nombre:'Ana',asignador_apellido:'Gestión'},{id_usuario:4,nombre:'Anterior',apellido:'Prueba',fecha_inicio:'2025-01-01',fecha_fin:'2025-02-01'}],elegibles:[{id_usuario:3,nombre:'Operario',apellido:'Prueba',pertenencia:{nombre:'Origen',id_cuadrilla:1,id_usuario_cuadrilla:7}},{id_usuario:4,nombre:'Nuevo',apellido:'Prueba',pertenencia:null},{id_usuario:5,nombre:'Actual',apellido:'Prueba',pertenencia:{nombre:'Destino',id_cuadrilla:2,id_usuario_cuadrilla:8}}]}});
 async function adminReady(){const h=collectionHarness(true);await tick();h.reply(0,200,{success:true,data:{administracion:true,integrantes:true,modificar_integrantes:true,usuarios:true,asignar_recorridos:true,crear_recorridos:true}});await tick();h.open();await tick();h.reply(1,200,catalogBody());await tick();return h;}
-async function adminMembers(){const h=await adminReady();actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(2,200,detailBody());await tick();h.click('squadMembersTab');h.reply(3,200,membersBody());await tick();return h;}
+async function adminMembers(body=membersBody()){const h=await adminReady();actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(2,200,detailBody());await tick();h.click('squadMembersTab');h.reply(h.pending('integrantes',{id_cuadrilla:2}),200,body);await tick();return h;}
 test('administración oculta menú y rechaza acceso por hash sin autorización',async()=>{
   const h=collectionHarness(true);await tick();h.reply(0,200,{success:true,data:{administracion:false}});await tick();await h.open();assert.equal(h.elements.get('squadNav').hidden,true);assert.equal(h.requests.length,1);assert.match(h.elements.get('squadStatus').textContent,/No tenés permiso/);
 });
@@ -481,8 +501,8 @@ test('cuadrillas navega listado resumen integrantes e historial con autores legi
 });
 test('Resumen abre Integrantes mediante el acceso y presenta contador singular',async()=>{
   const h=await adminReady();actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(2,200,detailBody());await tick();
-  assert.match(text(h.elements.get('squadSummary')),/1 integrante activo ·/);
-  actionIn(h,'squadSummary','Ver y gestionar integrantes').listeners.click();
+  assert.match(text(h.elements.get('squadSummary')),/1 integrante con pertenencia vigente ·/);
+  actionIn(h,'squadSummary','Gestionar integrantes').listeners.click();
   assert.equal(h.elements.get('squadMembers').hidden,false);
   assert.equal(new URL(h.requests[3].url).searchParams.get('view'),'integrantes');
   h.reply(3,200,membersBody());await tick();assert.match(text(h.elements.get('squadActiveMembers')),/Operario Prueba/);
@@ -490,8 +510,8 @@ test('Resumen abre Integrantes mediante el acceso y presenta contador singular',
 test('Resumen explica falta de permiso sin consultar ni mostrar integrantes',async()=>{
   const h=collectionHarness(true);await tick();h.reply(0,200,{success:true,data:{administracion:true,integrantes:false}});await tick();h.open();await tick();h.reply(1,200,catalogBody());await tick();
   actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(2,200,detailBody());await tick();
-  assert.match(text(h.elements.get('squadSummary')),/No disponés de permisos/);
-  assert.doesNotMatch(text(h.elements.get('squadSummary')),/Ver y gestionar integrantes|Operario Prueba/);
+  assert.match(text(h.elements.get('squadSummary')),/Consulta de integrantes no disponible con tus permisos/);
+  assert.doesNotMatch(text(h.elements.get('squadSummary')),/Gestionar integrantes|Operario Prueba/);
   assert.equal(h.elements.get('squadMembersTab').hidden,true);assert.equal(h.requests.length,3);
 });
 test('operaciones de integrantes refrescan listado y contador desde la respuesta existente',async()=>{
@@ -506,7 +526,7 @@ test('operaciones de integrantes refrescan listado y contador desde la respuesta
     if(operation==='finalizar_pertenencia')updated.data.historial[0].fecha_fin='2026-10-06';
     else updated.data.historial.push({id_usuario:8,nombre:'Segundo',apellido:'Integrante',fecha_fin:null});
     h.reply(5,200,updated);await tick();
-    assert.match(text(h.elements.get('squadSummary')),operation==='finalizar_pertenencia'?/0 integrantes activos/:/2 integrantes activos/);
+    assert.match(text(h.elements.get('squadSummary')),operation==='finalizar_pertenencia'?/0 integrantes con pertenencia vigente/:/2 integrantes con pertenencia vigente/);
     assert.equal(h.requests.length,6);
   }
 });
@@ -523,8 +543,13 @@ test('finalizar pertenencia identifica persona y cuadrilla y conserva historial'
 });
 test('administración filtra y pagina recorridos sin perder cuadrilla; escapa valores',async()=>{
   const h=await adminReady();const malicious=catalogBody();malicious.data.lista.items[0].nombre='<img onerror=alert(1)>';h.click('squadRefresh');h.reply(2,200,malicious);await tick();assert.match(text(h.elements.get('squadList')),/<img onerror=alert/);assert.ok(descendants(h.elements.get('squadList')).every(n=>n.innerHTML===undefined));
-  actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(3,200,detailBody());await tick();h.click('squadTripsTab');h.elements.get('squadState').value='En Proceso';h.elements.get('squadState').change();let params=new URL(h.requests[4].url).searchParams;assert.equal(params.get('id_cuadrilla'),'2');assert.equal(params.get('estado'),'En Proceso');
-  const body=detailBody();body.data.lista.total=30;h.reply(4,200,body);await tick();h.click('squadTripNext');params=new URL(h.requests[5].url).searchParams;assert.equal(params.get('page'),'2');assert.equal(params.get('estado'),'En Proceso');
+  actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(3,200,detailBody());await tick();
+  h.reply(h.pending('integrantes',{id_cuadrilla:2}),200,membersBody());await tick();
+  h.click('squadTripsTab');h.elements.get('squadState').value='En Proceso';h.elements.get('squadState').change();
+  const filtered=h.pending('administracion',{id_cuadrilla:2,estado:'En Proceso',page:1});
+  const body=detailBody();body.data.lista.total=30;h.reply(filtered,200,body);await tick();h.click('squadTripNext');
+  const params=new URL(h.pending('administracion',{id_cuadrilla:2,estado:'En Proceso',page:2}).url).searchParams;
+  assert.equal(params.get('page'),'2');assert.equal(params.get('estado'),'En Proceso');
 });
 test('administración controla error vacío y respuestas obsoletas',async()=>{
   const h=await adminReady();h.click('squadRefresh');h.click('squadRefresh');assert.equal(h.requests[2].options.signal.aborted,true);const empty=catalogBody();empty.data.lista.items=[];empty.data.lista.total=0;h.reply(3,200,empty);await tick();h.reply(2,403,{message:'Obsoleto'});await tick();assert.match(h.elements.get('squadStatus').textContent,/No hay cuadrillas/);
@@ -550,7 +575,7 @@ test('Mi recolección vuelve al panel y presenta tarjeta sin fechas con acciones
   assert.equal(new URL(target,'http://localhost/app/recoleccion.html').href,'http://localhost/app/admin.html');
   h.reply(0,409,{code:'sin_recorrido',data:{pertenencia:{nombre:'Cuadrilla Alpha',turno:'Matutino'},recorrido:null}}); await tick();
   assert.equal(h.elements.get('collectionHeading').textContent,'Cuadrilla Alpha · Matutino');
-  assert.match(text(h.elements.get('collectionItems')),/Sin recorrido asignado.*Tu cuadrilla todavía no tiene un recorrido disponible/);
+  assert.match(text(h.elements.get('collectionItems')),/Sin recorrido regular activo.*APOYO.*no necesitás un recorrido regular/);
   assert.equal(h.elements.get('collectionTimezone').hidden,true);
   assert.equal(findAction(h,'Iniciar recorrido'),undefined);
   h.click('collectionRetry');assert.equal(h.requests.length,2);assert.equal(new URL(h.requests[1].url).search,'');
@@ -594,26 +619,38 @@ test('Usuarios sugiere Operaciones por permisos sin imponer sector ni nombre del
   fields.fecha_hasta.value='';fields.fecha_desde.value='2099-01-01';render();assert.equal(message.hidden,false);
 });
 
-test('Agregar operario explica exclusiones sin HTML y ofrece Gestionar usuarios',async()=>{
-  const h=await adminMembers();h.click('squadMembersTab');const body=membersBody();body.data.elegibles=[];body.data.no_elegibles=[{nombre:'Luis',apellido:'Suárez',motivo:'Sector Puntos y destinos'},{nombre:'<img>',apellido:'X',motivo:'Cuenta inactiva'}];
-  h.reply(4,200,body);await tick();h.click('squadAdd');
+test('Agregar operario sin candidatos respeta datos mínimos, no duplica consultas y ofrece Gestionar usuarios',async()=>{
+  const body=membersBody();body.data.elegibles=[];body.data.no_elegibles=[];
+  const h=await adminMembers(body);const before=h.requests.length;h.click('squadMembersTab');
+  assert.equal(h.requests.length,before,'La pestaña reutiliza los integrantes ya consultados');h.click('squadAdd');
   assert.match(h.html,/Seleccionar operario/);assert.match(h.html,/Se pueden asignar usuarios activos con permisos vigentes/);
-  assert.match(text(h.elements.get('squadExcluded')),/Luis Suárez — Sector Puntos y destinos/);
+  assert.match(text(h.elements.get('squadExcluded')),/Solo se muestran personas con habilitación operativa vigente/);
   assert.ok(descendants(h.elements.get('squadExcluded')).every(n=>n.innerHTML===undefined));
   assert.equal(h.elements.get('squadConfirm').disabled,true);assert.match(h.elements.get('squadUserState').textContent,/No hay operarios disponibles para asignar/);
   h.click('squadDialogUsers');assert.deepEqual(h.navigations,['usuarios']);assert.equal(h.elements.get('squadDialog').open,false);
+  // El contrato no entrega personas excluidas. La prueba de texto malicioso se
+  // conserva sobre un candidato autorizado, donde sí existe contenido visible.
+  const permitted=membersBody();permitted.data.no_elegibles=[];
+  permitted.data.elegibles[0].nombre='<img src=x onerror=alert(1)>';
+  const safe=await adminMembers(permitted);safe.click('squadAdd');
+  assert.match(text(safe.elements.get('squadEligible')),/<img src=x onerror=alert\(1\)>/);
+  assert.match(safe.elements.get('squadConfirmText').textContent,/<img src=x onerror=alert\(1\)>/);
+  for(const id of ['squadEligible','squadConfirmText','squadExcluded']) {
+    assert.ok(descendants(safe.elements.get(id)).every(n=>n.innerHTML===undefined));
+  }
 });
 const availableBody=()=>({success:true,data:{items:[{id_recorrido:21,ruta_nombre:'Ruta disponible',estado:'Pendiente',fecha_inicio:'2026-09-22 09:00:00',fecha_fin:null}],vehiculos:[{id_usa:9,matricula:'TEST1',estado:'Disponible'}],total:1,page:1,page_size:25,conflicto:null}});
-async function tripDialog(){const h=await adminReady();actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(2,200,detailBody());await tick();h.click('squadTripsTab');h.click('squadAssignTrip');return h;}
+async function tripDialog(){const h=await adminReady();actionIn(h,'squadList','Ver detalle').listeners.click();h.reply(2,200,detailBody());await tick();h.reply(h.pending('integrantes',{id_cuadrilla:2}),200,membersBody());await tick();h.click('squadTripsTab');h.click('squadAssignTrip');return h;}
 
 test('Asignar recorrido confirma destino y vehículo, bloquea doble envío y actualiza resumen y tabla',async()=>{
   const h=await tripDialog();assert.equal(h.elements.get('squadTripDialog').open,true);assert.match(h.elements.get('squadTripDialogTitle').textContent,/Asignar recorrido a Destino/);assert.match(h.elements.get('squadTripDialogStatus').textContent,/Cargando/);
-  assert.equal(new URL(h.requests[3].url).searchParams.get('view'),'asignables');
-  h.reply(3,200,availableBody());await tick();assert.equal(h.elements.get('squadTripConfirm').disabled,false);assert.match(h.elements.get('squadTripPreview').textContent,/Sin cuadrilla asignada/);
+  const available=h.pending('asignables',{id_cuadrilla:2,page:1});
+  h.reply(available,200,availableBody());await tick();assert.equal(h.elements.get('squadTripConfirm').disabled,false);assert.match(h.elements.get('squadTripPreview').textContent,/Sin cuadrilla asignada/);
   const submit=()=>h.elements.get('squadTripAssignment').listeners.submit({preventDefault(){}});
-  const saving=submit();submit();assert.equal(h.requests.length,5);assert.deepEqual(JSON.parse(h.requests[4].options.body),{accion:'asignar_recorrido',destino:2,id_recorrido:21,id_usa:9});
+  const before=h.requests.length;const saving=submit();submit();assert.equal(h.requests.length,before+1);
+  const write=h.requests.at(-1);assert.equal(write.options.method,'POST');assert.deepEqual(JSON.parse(write.options.body),{accion:'asignar_recorrido',destino:2,id_recorrido:21,id_usa:9});
   let prevented=false;h.elements.get('squadTripDialog').listeners.cancel({preventDefault(){prevented=true;}});assert.equal(prevented,true);
-  h.reply(4,200,{success:true});await tick();const updated=detailBody();updated.data.recorrido_actual.ruta_nombre='Nueva ruta';updated.data.lista.items[0].ruta_nombre='Nueva ruta';h.reply(5,200,updated);await saving;
+  h.reply(write,200,{success:true});await tick();const updated=detailBody();updated.data.recorrido_actual.ruta_nombre='Nueva ruta';updated.data.lista.items[0].ruta_nombre='Nueva ruta';h.reply(h.pending('administracion',{id_cuadrilla:2}),200,updated);await saving;
   assert.equal(h.elements.get('squadTripDialog').open,false);assert.equal(h.elements.get('squadAssignTrip').focused,true);
   assert.match(text(h.elements.get('squadSummary')),/Nueva ruta/);assert.match(text(h.elements.get('squadTripRows')),/Nueva ruta/);assert.match(h.elements.get('squadStatus').textContent,/Recorrido asignado/);
 });
@@ -622,28 +659,32 @@ test('Asignación de recorridos controla vacío, vehículo ausente, conflicto y 
   for(const kind of ['empty','vehicle','conflict','error']){
     const h=await tripDialog(),body=availableBody();
     if(kind==='empty'){body.data.items=[];body.data.total=0;}if(kind==='vehicle')body.data.vehiculos=[];if(kind==='conflict')body.data.conflicto='La cuadrilla ya tiene recorrido';
-    h.reply(3,kind==='error'?503:200,kind==='error'?{message:'No disponible'}:body);await tick();
+    h.reply(h.pending('asignables',{id_cuadrilla:2}),kind==='error'?503:200,kind==='error'?{message:'No disponible'}:body);await tick();
     assert.equal(h.elements.get('squadTripConfirm').disabled,true);assert.notEqual(h.elements.get('squadTripDialogStatus').textContent,'');
     h.click('squadTripCancel');assert.equal(h.elements.get('squadTripDialog').open,false);
   }
-  const h=await tripDialog();h.reply(3,200,availableBody());await tick();const saving=h.elements.get('squadTripAssignment').listeners.submit({preventDefault(){}});
-  h.reply(4,409,{message:'El recorrido ya tiene una asignación'});await saving;assert.equal(h.elements.get('squadTripDialog').open,true);assert.match(h.elements.get('squadTripDialogStatus').textContent,/ya tiene una asignación/);assert.equal(h.requests.length,5);
+  const h=await tripDialog();h.reply(h.pending('asignables',{id_cuadrilla:2}),200,availableBody());await tick();
+  const before=h.requests.length;const saving=h.elements.get('squadTripAssignment').listeners.submit({preventDefault(){}});
+  h.reply(h.requests.at(-1),409,{message:'El recorrido ya tiene una asignación'});await saving;assert.equal(h.elements.get('squadTripDialog').open,true);assert.match(h.elements.get('squadTripDialogStatus').textContent,/ya tiene una asignación/);assert.equal(h.requests.length,before+1);
 });
 
 test('Cerrar modal cancela consulta y descarta respuestas obsoletas; paginación conserva destino',async()=>{
-  const h=await tripDialog();h.click('squadTripCancel');assert.equal(h.requests[3].options.signal.aborted,true);h.reply(3,200,availableBody());await tick();assert.equal(h.elements.get('squadTripConfirm').disabled,true);
-  h.click('squadAssignTrip');const body=availableBody();body.data.total=30;h.reply(4,200,body);await tick();h.click('squadAvailableNext');
-  const params=new URL(h.requests[5].url).searchParams;assert.equal(params.get('page'),'2');assert.equal(params.get('id_cuadrilla'),'2');
+  const h=await tripDialog();const canceled=h.pending('asignables',{id_cuadrilla:2});h.click('squadTripCancel');assert.equal(canceled.options.signal.aborted,true);h.reply(canceled,200,availableBody());await tick();assert.equal(h.elements.get('squadTripConfirm').disabled,true);
+  assert.equal(h.elements.get('squadAvailableTrip').children.length,0,'La respuesta cancelada no restaura opciones');
+  h.click('squadAssignTrip');const body=availableBody();body.data.total=30;h.reply(h.pending('asignables',{id_cuadrilla:2,page:1}),200,body);await tick();h.click('squadAvailableNext');
+  const params=new URL(h.pending('asignables',{id_cuadrilla:2,page:2}).url).searchParams;assert.equal(params.get('page'),'2');assert.equal(params.get('id_cuadrilla'),'2');
 });
 
 test('Creación de recorrido usa CRUD existente y luego recarga opciones para asignarlo',async()=>{
-  const h=await tripDialog();h.reply(3,200,availableBody());await tick();h.click('squadManageTrips');assert.match(h.requests[4].url,/rutas.php/);
-  h.reply(4,200,{success:true,data:[{id_ruta:6,nombre:'Ruta real',zona:'Centro'}]});await tick();
+  const h=await tripDialog();h.reply(h.pending('asignables',{id_cuadrilla:2}),200,availableBody());await tick();h.click('squadManageTrips');
+  const routes=h.pending(null);assert.match(routes.url,/rutas.php$/);
+  h.reply(routes,200,{success:true,data:[{id_ruta:6,nombre:'Ruta real',zona:'Centro'}]});await tick();
   h.elements.get('squadCreateRoute').value=6;h.elements.get('squadCreateDate').value='2026-09-22T09:30';
   const saving=h.elements.get('squadCreateTripForm').listeners.submit({preventDefault(){}});
-  assert.match(h.requests[5].url,/recorridos.php$/);assert.deepEqual(JSON.parse(h.requests[5].options.body),{id_ruta:6,fecha_inicio:'2026-09-22 09:30:00',estado:'Pendiente'});
-  h.reply(5,201,{success:true,data:{id_recorrido:21}});await tick();h.reply(6,200,availableBody());await saving;
+  const write=h.requests.at(-1);assert.equal(write.options.method,'POST');assert.match(write.url,/recorridos.php$/);assert.deepEqual(JSON.parse(write.options.body),{id_ruta:6,fecha_inicio:'2026-09-22 09:30:00',estado:'Pendiente'});
+  h.reply(write,201,{success:true,data:{id_recorrido:21}});await tick();h.reply(h.pending('asignables',{id_cuadrilla:2,page:1}),200,availableBody());await saving;
   assert.match(h.elements.get('squadCreateStatus').textContent,/Recorrido creado/);assert.equal(h.elements.get('squadTripConfirm').disabled,false);
+  assert.equal(h.elements.get('squadAvailableTrip').value,'21');
 });
 
 

@@ -4,6 +4,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const root = path.join(__dirname, '../public');
+test('ficha compacta conserva tipo, código, estado y mapa sin coordenadas ni dirección técnica', async () => {
+  const sample = { ...row(), contenedor_codigo: 'C-PRUEBA', contenedor_direccion: 'Ubicación importada IdM — X: 5000, Y: 6000', latitud: -34.9, longitud: -56.16 };
+  const h = await ready([sample]); const card = h.elements.get('ownIncidentList').children[0];
+  assert.equal(card.children[0].textContent, sample.tipo_problema);
+  assert.match(text(card), /INC-1|I1/); assert.match(text(card), /C-PRUEBA/);
+  assert.doesNotMatch(text(card), /Ubicación importada|X:|Y:|-34\.9|-56\.16/);
+  assert.match(card.querySelectorAll('a')[0].href, /mlat=-34\.9&mlon=-56\.16/);
+  assert.deepEqual(card.querySelectorAll('button').map(b => b.textContent), ['Ver detalle', 'Aceptar', 'Rechazar']);
+});
 class Element {
   constructor(tag = '') { this.tag = tag; this.children = []; this.textContent = ''; this.listeners = {}; this.value = ''; }
   append(...nodes) { this.children.push(...nodes); }
@@ -71,7 +80,7 @@ test('sin recorrido carga F4 de forma independiente y conserva consultas existen
   assert.match(h.requests[0].url,/view=incidencias_propias/); assert.equal(h.requests[1].url,'/backend/api/recoleccion.php');
   h.reply(1,{success:false,code:'sin_recorrido',data:{pertenencia:{nombre:'Propia',turno:'Matutino'},recorrido:null}},409);
   h.reply(0,body()); await tick();
-  assert.match(text(h.elements.get('collectionItems')), /Sin recorrido asignado/);
+  assert.match(text(h.elements.get('collectionItems')), /Sin recorrido regular activo/);
   assert.match(text(h.elements.get('ownIncidentList')), /INC-1/);
 });
 test('403 retira acciones; 409 y 404 consultan sin repetir POST', async () => {

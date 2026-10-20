@@ -56,6 +56,25 @@ function boot(integrated = false, withLeaflet = true) {
 }
 function opened() { const h = boot(); h.mount(); h.click('Ver ruta sugerida'); return h; }
 function selected() { const h = opened(); h.maps[0].handlers.click({ latlng: { lat: -34.9, lng: -56.16 } }); return h; }
+test('409 conocido explica el motivo sin mostrar mensajes internos; desconocido conserva fallback', async () => {
+  for (const [code, expected] of [['residuo_incompatible', /residuo.*no es compatible/],
+    ['contenedor_no_disponible', /contenedor ya no está disponible/],
+    ['asignacion_no_vigente', /asignación de vehículo vigente/],
+    ['vehiculo_no_apoyo', /función APOYO/], ['contexto_cambiado', /durante la consulta/],
+    ['toString', /La asignación o el contexto cambiaron/]]) {
+    const h = selected(); h.click('Consultar ruta sugerida');
+    h.requests[0].resolve({ status: 409, ok: false, json: async () => ({ code, message: 'SQLSTATE contraseña CI nombre privado' }) });
+    await tick(); assert.match(text(h.parent), expected);
+    assert.doesNotMatch(text(h.parent), /SQLSTATE|contraseña|CI nombre privado/);
+    assert.equal(h.maps[0].removed, true); assert.equal(h.geometry.length, 0);
+  }
+});
+test('JSON de rechazo tardío no modifica otra incidencia', async () => {
+  const h = selected(); h.click('Consultar ruta sugerida'); let resolve;
+  h.requests[0].resolve({ status: 409, ok: false, json: () => new Promise(r => { resolve = r; }) });
+  await tick(); h.mount(row(2)); resolve({ code: 'residuo_incompatible' }); await tick();
+  assert.doesNotMatch(text(h.parent), /residuo del contenedor no es compatible/);
+});
 test('acción solo en detalle aceptado con APOYO, V19 y coordenadas válidas', () => {
   const h = boot(); h.mount(); assert.ok(h.parent.querySelectorAll('button').some(b => b.textContent === 'Ver ruta sugerida'));
   for (const change of [c => c.puede_operar_incidencias = false, c => c.funcion_operativa = 'REGULAR', c => c.estado_v19 = 'ambiguo', c => c.vehiculo.activo = 0, c => c.vehiculo.estado = 'En Mantenimiento']) {
@@ -118,7 +137,7 @@ test('errores HTTP eliminan rutas previas y bloquean contexto revocado u obsolet
     if ([403, 404, 409].includes(status)) { assert.equal(h.maps[0].removed, true); assert.equal(h.click('Consultar ruta sugerida').disabled, true); }
     else assert.equal(h.maps[0].removed, undefined);
     if (status === 422) assert.match(text(h.parent), /No hay una ruta disponible/);
-    if (status === 503) assert.match(text(h.parent), /OSRM.*indisponible/);
+    if (status === 503) assert.match(text(h.parent), /validar el contexto operativo o consultar el servicio vial/);
   }
 });
 test('401 limpia mapa y datos, notifica sesión expirada y dirige a login', async () => {
@@ -167,5 +186,5 @@ test('integración con detalle real conserva acciones y limpia al cerrar o cambi
   h.click('Ver ruta sugerida'); h.click('Usar centro del mapa como origen'); h.click('Consultar ruta sugerida');
   h.click('Cerrar detalle'); h.reply(2); await tick(); assert.equal(h.maps[0].removed, true); assert.equal(h.parent.hidden, true);
   assert.equal(h.geometry.length, 0); assert.ok(h.requests.every(r => !r.options.body && (!r.options.method || r.options.method === 'GET')));
-  assert.match(html, /ruta-incidencia\.js\?v=2/); assert.match(html, /recoleccion-incidencias\.js\?v=2/);
+  assert.match(html, /ruta-incidencia\.js\?v=2/); assert.match(html, /recoleccion-incidencias\.js\?v=3/);
 });

@@ -163,6 +163,6 @@ test('recorridos, F4 y reportar problemas siguen independientes, incluso APOYO s
   assert.equal(h.requests[1].url, '/backend/api/recoleccion.php'); assert.match(h.requests[2].url, /view=incidencias_propias/);
   h.reply(0, body()); h.reply(1, { success: false, code: 'sin_recorrido', data: { pertenencia: { nombre: 'Propia', turno: 'Matutino' }, recorrido: null } }, 409);
   h.reply(2, { success: true, data: [], meta: { page: 1, has_more: false }, contexto_operativo: {} }); await tick();
-  assert.match(text(h.elements.get('collectionItems')), /Sin recorrido asignado/); assert.match(text(h.elements.get('ownRequestList')), /REF-14/);
+  assert.match(text(h.elements.get('collectionItems')), /Sin recorrido regular activo/); assert.match(text(h.elements.get('ownRequestList')), /REF-14/);
   h.elements.get('collectionReportButton').listeners.click(); assert.equal(h.reports, 1);
 });

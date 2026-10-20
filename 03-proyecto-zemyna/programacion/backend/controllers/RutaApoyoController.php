@@ -32,7 +32,18 @@ final class RutaApoyoController
             return ['success' => true, 'data' => $service->suggest((int) $actor, (int) $query['id_incidencia'], $origin),
                 'message' => 'Sugerencia vial consultiva.', 'errors' => [], 'statusCode' => 200];
         } catch (RutaVialException $e) { return $this->error($e->getCode(), $e->getMessage(), $e->reason); }
-        catch (DomainException $e) { return $this->error($e->getCode(), $e->getMessage()); }
+        catch (DomainException $e) {
+            // Códigos de presentación para rechazos conocidos; no cambian validaciones ni HTTP.
+            $reasons = [
+                'Contenedor no disponible.' => 'contenedor_no_disponible',
+                'Residuo incompatible con el vehículo.' => 'residuo_incompatible',
+                'V19 no vigente o ambigua.' => 'asignacion_no_vigente',
+                'La sugerencia requiere un vehículo APOYO.' => 'vehiculo_no_apoyo',
+                'El contexto cambió durante la consulta. Volvé a consultar.' => 'contexto_cambiado',
+            ];
+            $code = $e->getCode() === 409 ? ($reasons[$e->getMessage()] ?? 'consulta_rechazada') : 'consulta_rechazada';
+            return $this->error($e->getCode(), $e->getMessage(), $code);
+        }
         catch (Throwable $e) { return $this->error(503, 'No se pudo validar o consultar la sugerencia vial.'); }
     }
 }

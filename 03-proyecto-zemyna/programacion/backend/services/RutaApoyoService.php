@@ -51,8 +51,9 @@ final class RutaApoyoService
             $container = null;
             if ($incident['id_contenedor'] !== null) {
                 $container = $this->rows('SELECT id_contenedor,latitud,longitud,activo,id_tipo_residuo FROM contenedor WHERE id_contenedor=?', [$incident['id_contenedor']])[0] ?? null;
-                if (!$container || !(int) $container['activo'] || (int) $container['id_tipo_residuo'] !== (int) $vehicle['id_tipo_residuo']) {
-                    $this->fail(409, 'Contenedor no disponible o residuo incompatible con el vehículo.');
+                if (!$container || !(int) $container['activo']) $this->fail(409, 'Contenedor no disponible.');
+                if ((int) $container['id_tipo_residuo'] !== (int) $vehicle['id_tipo_residuo']) {
+                    $this->fail(409, 'Residuo incompatible con el vehículo.');
                 }
             }
             $source = 'problema'; $lat = $incident['latitud']; $lon = $incident['longitud'];

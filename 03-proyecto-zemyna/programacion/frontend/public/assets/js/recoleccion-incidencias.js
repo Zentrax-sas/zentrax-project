@@ -32,14 +32,15 @@
   }
   function showContext(c) {
     const v = c?.vehiculo;
-    el('ownIncidentContext').textContent = `${c?.cuadrilla?.nombre || 'Cuadrilla no disponible'} · ${c?.cuadrilla?.turno || 'Turno no disponible'} · ${v ? `Vehículo V19: ${v.matricula} (${v.estado})` : c?.estado_v19 === 'ambiguo' ? 'Asignación V19 ambigua' : 'Sin vehículo V19 disponible'} · ${c?.funcion_operativa || 'Función no determinada'}`;
+    el('ownIncidentContext').textContent = `${c?.cuadrilla?.nombre || 'Cuadrilla no disponible'} · ${c?.cuadrilla?.turno || 'Turno no disponible'} · ${v ? `Vehículo: ${v.matricula} (${v.estado})` : c?.estado_v19 === 'ambiguo' ? 'Asignación de vehículo ambigua' : 'Sin vehículo disponible'} · ${c?.funcion_operativa || 'Función no determinada'}`;
   }
   function location(row, parent) {
     if (row.contenedor_codigo) parent.append(node('p', `Contenedor: ${row.contenedor_codigo}`));
-    if (row.contenedor_direccion) parent.append(node('p', row.contenedor_direccion));
+    const address = typeof row.contenedor_direccion === 'string' ? row.contenedor_direccion.trim() : '';
+    if (address && !/ubicaci[oó]n importada|\b[XY]:\s*[-\d]|\b(?:latitud|longitud)\s*[:=]/i.test(address)) parent.append(node('p', address));
     const lat = Number(row.latitud), lon = Number(row.longitud);
     if (row.latitud != null && row.longitud != null && String(row.latitud).trim() && String(row.longitud).trim() && Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-      parent.append(node('p', `Ubicación: ${lat}, ${lon}`));
+      if (!address || /ubicaci[oó]n importada|\b[XY]:\s*[-\d]|\b(?:latitud|longitud)\s*[:=]/i.test(address)) parent.append(node('p', 'Ubicación disponible en mapa'));
       const a = node('a', 'Ver ubicación en mapa'); a.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=18/${lat}/${lon}`;
       a.target = '_blank'; a.rel = 'noopener noreferrer'; parent.append(a);
     }
@@ -49,7 +50,8 @@
     b.addEventListener('click', handler); parent.append(b); return b;
   }
   function summary(row, parent) {
-    parent.append(node('h3', row.tracking_number), node('p', `Estado: ${row.estado} · Atención: ${row.atencion?.estado || 'Sin intento operativo'}`), node('p', `Prioridad: ${row.prioridad} · Tipo: ${row.tipo_problema}`));
+    parent.className = 'collection-incident';
+    parent.append(node('h3', row.tipo_problema), node('p', `Código: ${row.tracking_number}`), node('p', `Estado: ${row.estado} · Atención: ${row.atencion?.estado || 'Sin intento operativo'}`), node('p', `Prioridad: ${row.prioridad}`));
     location(row, parent);
   }
   function actions(row, parent) {

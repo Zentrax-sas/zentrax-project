@@ -59,7 +59,12 @@
       const response = await fetch(buildApiUrl(`/backend/api/ruta_apoyo.php?${query}`, { cacheBust: false }),
         { method: 'GET', cache: 'no-store', credentials: 'same-origin', signal: request.signal });
       if (current !== view || token !== version) return;
-      if (!response.ok) throw Object.assign(new Error(), { status: response.status });
+      if (!response.ok) {
+        let rejection;
+        try { rejection = await response.json(); } catch (_) { /* Mantener mensaje genérico. */ }
+        if (current !== view || token !== version) return;
+        throw Object.assign(new Error(), { status: response.status, code: rejection?.code });
+      }
       const body = await response.json();
       if (current !== view || token !== version) return;
       if (body.success !== true || !validData(body.data, origin)) throw new Error('respuesta');
@@ -78,12 +83,19 @@
     } catch (error) {
       if (current !== view || token !== version || error.name === 'AbortError') return;
       removeRoute();
-      view.status.textContent = ({ 400: 'El origen o la consulta no son válidos. Volvé a seleccionar el punto.',
+      const conflicts = new Map([
+        ['residuo_incompatible', 'El residuo del contenedor no es compatible con el vehículo asignado. Contactá a la administración para revisar la asignación.'],
+        ['contenedor_no_disponible', 'El contenedor ya no está disponible para esta consulta. Actualizá el detalle o contactá a la administración.'],
+        ['asignacion_no_vigente', 'No hay una asignación de vehículo vigente e inequívoca para tu cuadrilla. Contactá a la administración.'],
+        ['vehiculo_no_apoyo', 'La ruta sugerida requiere un vehículo asignado con función APOYO.'],
+        ['contexto_cambiado', 'La asignación o el contexto cambiaron durante la consulta. Actualizá el detalle antes de consultar.'],
+      ]);
+      view.status.textContent = (error.status === 409 ? conflicts.get(error.code) : null) || ({ 400: 'El origen o la consulta no son válidos. Volvé a seleccionar el punto.',
         401: 'Tu sesión venció. Iniciá sesión nuevamente.', 403: 'No tenés permisos vigentes para consultar esta ruta.',
         404: 'La incidencia ya no está disponible para tu cuadrilla. Actualizá el detalle.',
         409: 'La asignación o el contexto cambiaron. Actualizá el detalle antes de consultar.',
         422: 'No hay una ruta disponible o la ubicación requiere revisión por su ajuste a la vía.',
-        502: 'El servicio vial devolvió una respuesta inválida.', 503: 'El servicio OSRM está temporalmente indisponible o sin configurar.',
+        502: 'El servicio vial devolvió una respuesta inválida.', 503: 'No se pudo validar el contexto operativo o consultar el servicio vial. Volvé a intentar más tarde.',
         504: 'El servicio OSRM agotó el tiempo de consulta.' })[error.status] || 'No se recibió una respuesta vial válida. Volvé a intentar.';
       if ([401, 403, 404, 409].includes(error.status)) {
         view.blocked = true; map?.remove(); map = originMarker = null;
