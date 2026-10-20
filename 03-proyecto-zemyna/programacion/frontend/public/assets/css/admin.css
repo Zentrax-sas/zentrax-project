@@ -306,7 +306,7 @@ h1 { margin: 5px 0 0; font-size: clamp(22px, 3vw, 29px); line-height: 1.1; lette
 .route-list { display: grid; gap: 17px; }
 .route-info { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; margin-bottom: 8px; }
 .route-name { font-size: 11px; font-weight: 700; }
-.route-meta { margin-top: 4px; color: var(--muted); font-size: 9px; }
+.route-meta { margin-top: 4px; color: var(--muted); font-size: 12px; }
 .route-percent { color: var(--green); font-size: 11px; font-weight: 800; }
 .progress { height: 6px; overflow: hidden; border-radius: 20px; background: #292234; }
 .progress-fill { width: var(--value); height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--violet), var(--green)); box-shadow: 0 0 12px rgba(143,227,136,.25); transition: width .8s ease; }
@@ -315,8 +315,8 @@ h1 { margin: 5px 0 0; font-size: clamp(22px, 3vw, 29px); line-height: 1.1; lette
 .fleet-item { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 11px; border: 1px solid rgba(255,255,255,.055); border-radius: 12px; background: rgba(255,255,255,.018); }
 .truck-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: rgba(143,227,136,.09); color: var(--green); }
 .fleet-name { font-size: 10px; font-weight: 700; }
-.fleet-zone { margin-top: 4px; color: var(--muted); font-size: 8px; }
-.state { padding: 4px 7px; border-radius: 12px; background: rgba(143,227,136,.09); color: var(--green); font-size: 8px; font-weight: 700; }
+.fleet-zone { margin-top: 4px; color: var(--muted); font-size: 12px; }
+.state { padding: 4px 7px; border-radius: 12px; background: rgba(143,227,136,.09); color: var(--green); font-size: 12px; font-weight: 700; }
 .state.pause { background: rgba(255,200,87,.09); color: var(--amber); }
 
 .incidents { margin-top: 15px; }
@@ -361,7 +361,7 @@ h1 { margin: 5px 0 0; font-size: clamp(22px, 3vw, 29px); line-height: 1.1; lette
 .search-box::before { content: "⌕"; position: absolute; left: 13px; top: 8px; color: var(--violet-light); }
 .search-box input:focus, .filter-select:focus { border-color: rgba(199,125,255,.45); box-shadow: 0 0 0 3px rgba(157,78,221,.08); }
 .filter-select { width: 155px; padding: 0 10px; }
-.result-count { margin: 0 0 10px; color: var(--muted); font-size: 9px; }
+.result-count { margin: 0 0 10px; color: var(--muted); font-size: 12px; }
 .page-size-label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; }
 .page-size-label .filter-select { width: 76px; }
 .pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 16px; color: var(--muted); font-size: 10px; }
@@ -370,27 +370,27 @@ h1 { margin: 5px 0 0; font-size: clamp(22px, 3vw, 29px); line-height: 1.1; lette
 .data-panel { padding: 19px; }
 .asset-cell { display: flex; align-items: center; gap: 10px; }
 .asset-icon { width: 31px; height: 31px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 9px; background: rgba(157,78,221,.11); color: var(--violet-light); font-weight: 800; }
-.asset-code { color: var(--text); font-size: 10px; font-weight: 700; }
-.asset-detail { margin-top: 3px; color: var(--muted); font-size: 8px; }
+.asset-code { color: var(--text); font-size: 14px; font-weight: 700; }
+.asset-detail { margin-top: 3px; color: var(--muted); font-size: 12px; }
 .capacity { width: 80px; }
-.capacity-label { display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--muted); font-size: 8px; }
+.capacity-label { display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--muted); font-size: 12px; }
 .capacity-bar { height: 4px; border-radius: 8px; background: #2a2334; overflow: hidden; }
 .capacity-bar span { display: block; height: 100%; width: var(--capacity); border-radius: inherit; background: var(--green); }
 .capacity-bar span.medium { background: var(--amber); }
 .capacity-bar span.high { background: var(--red); }
-.table-action { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: rgba(157,78,221,.07); color: var(--violet-light); font-size: 8px; font-weight: 700; cursor: pointer; }
+.table-action { min-height: 44px; max-width: 100%; white-space: normal; line-height: 1.4; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: rgba(157,78,221,.07); color: var(--violet-light); font-size: 14px; font-weight: 700; cursor: pointer; }
 .table-action:hover { border-color: rgba(199,125,255,.4); }
 .empty-state { display: none; padding: 35px; color: var(--muted); text-align: center; font-size: 11px; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 670px; }
-th { padding: 0 11px 10px; color: #777083; font-size: 8px; font-weight: 700; letter-spacing: .08em; text-align: left; text-transform: uppercase; }
-td { padding: 12px 11px; border-top: 1px solid rgba(255,255,255,.055); color: #c6c0ce; font-size: 9px; }
-td strong { color: var(--text); font-size: 10px; }
+th { padding: 0 11px 10px; color: #777083; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-align: left; text-transform: uppercase; }
+td { padding: 12px 11px; border-top: 1px solid rgba(255,255,255,.055); color: #c6c0ce; font-size: 14px; }
+td strong { color: var(--text); font-size: 14px; }
 .incident-type { display: flex; align-items: center; gap: 9px; }
 .incident-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--amber); box-shadow: 0 0 9px rgba(255,200,87,.28); }
 .incident-dot.red { background: var(--red); box-shadow: 0 0 9px rgba(255,101,132,.3); }
 .incident-dot.green { background: var(--green); }
-.priority { padding: 4px 8px; border-radius: 10px; font-size: 8px; font-weight: 700; }
+.priority { padding: 4px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; }
 .priority.high { background: rgba(255,101,132,.1); color: #ff8ca3; }
 .priority.medium { background: rgba(255,200,87,.1); color: var(--amber); }
 .priority.low { background: rgba(143,227,136,.09); color: var(--green); }

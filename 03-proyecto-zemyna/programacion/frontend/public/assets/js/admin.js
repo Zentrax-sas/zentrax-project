@@ -95,6 +95,17 @@ menuButton.addEventListener('click', () => {
   menuButton.setAttribute('aria-expanded', String(opened));
 });
 
+window.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || event.defaultPrevented || !app.classList.contains('menu-open')) return;
+  if (window.matchMedia?.('(max-width: 760px)').matches === false) return;
+  // Escape de diálogos, controles editables y formularios pertenece a esos componentes.
+  if (document.querySelector('dialog[open], [aria-modal="true"]')
+      || event.target?.closest?.('dialog, form, input, textarea, select, [contenteditable="true"]')) return;
+  app.classList.remove('menu-open');
+  menuButton.setAttribute('aria-expanded', 'false');
+  menuButton.focus();
+});
+
 const titles = { reportes: 'Reportes operativos', solicitudes: 'Solicitudes especiales', cuadrillas: 'Cuadrillas', 'reportar-problema': 'Reportar problema', 'informe-incidencias': 'Informe de incidencias', incidencias: 'Incidencias', resumen: 'Resumen operativo', contenedores: 'Contenedores', camiones: 'Camiones', centros: 'Centros', maquinaria: 'Maquinaria', usuarios: 'Usuarios y roles' };
 function openView(viewName) {
   if (!titles[viewName]) return;
