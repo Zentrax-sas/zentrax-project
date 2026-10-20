@@ -1,9 +1,8 @@
 <?php
+require_once __DIR__ . '/../config/http.php';
 
 function generarCaptcha(): string {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
+    zemynaStartSession();
 
     $a = random_int(1, 10);
     $b = random_int(1, 10);
@@ -13,9 +12,7 @@ function generarCaptcha(): string {
 }
 
 function validarCaptcha($respuestaUsuario): bool {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
+    zemynaStartSession();
 
     $expected = $_SESSION['captcha_resultado'] ?? null;
     unset($_SESSION['captcha_resultado']);

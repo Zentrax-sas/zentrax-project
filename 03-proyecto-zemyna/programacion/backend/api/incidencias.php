@@ -17,7 +17,9 @@ switch ($method) {
         ];
 
         if (array_key_exists('tracking_number', $_GET)) {
-            $response = $controller->getPublicByTracking($filters['tracking_number']);
+            $response = ($_GET['detalle'] ?? null) === '1'
+                ? $controller->getPublicDetailByTracking($filters['tracking_number'])
+                : $controller->getPublicByTracking($filters['tracking_number']);
         } else {
             requirePermission('incidencia.consultar', ['OPERACIONES', 'INSPECCION', 'PUNTOS_Y_DESTINOS']);
             $response = $controller->getAll($filters);
@@ -40,6 +42,8 @@ switch ($method) {
         }
 
         $response = $controller->create($data ?? []);
+        require_once __DIR__ . '/../helpers/ClaveEdicion.php';
+        $response = agregarClaveEdicion($response, $db);
         http_response_code($response['statusCode'] ?? ($response['success'] ? 201 : 400));
         echo json_encode($response);
         break;

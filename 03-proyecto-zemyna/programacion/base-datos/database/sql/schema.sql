@@ -22,7 +22,7 @@ DROP TEMPORARY TABLE zemyna_install_guard;
 
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS
-    sesion, mantenimiento, solicitud, maquinaria, vertedero, acopio, foto,
+    tramite_edicion, sesion, mantenimiento, solicitud, maquinaria, vertedero, acopio, foto,
     denuncia, incidencia, participa, recorrido, usa, cuadrilla, vehiculo,
     geocodificacion_cache, contenedor, usuario_rol, rol_permiso, permiso,
     sector, rol, usuario, ruta, tipo_residuo, centro, vecino;
@@ -402,11 +402,15 @@ CREATE TABLE incidencia (
     tracking_number VARCHAR(20) NOT NULL,
     descripcion TEXT NOT NULL,
     fecha_reporte DATETIME NOT NULL,
+    fecha_cancelacion DATETIME(6) NULL,
+    updated_at DATETIME(6) NULL,
+    revision INT UNSIGNED NOT NULL DEFAULT 0,
 
     estado ENUM(
         'Pendiente',
         'En Proceso',
-        'Resuelta'
+        'Resuelta',
+        'Cancelada'
     ) NOT NULL,
 
     prioridad ENUM(
@@ -561,6 +565,9 @@ CREATE TABLE solicitud (
     id_solicitud INT NOT NULL AUTO_INCREMENT,
     tracking_number VARCHAR(20) NOT NULL,
     fecha DATETIME NOT NULL,
+    fecha_cancelacion DATETIME(6) NULL,
+    updated_at DATETIME(6) NULL,
+    revision INT UNSIGNED NOT NULL DEFAULT 0,
     descripcion TEXT NOT NULL,
     direccion VARCHAR(150) NOT NULL,
 
@@ -572,13 +579,15 @@ CREATE TABLE solicitud (
     ) NOT NULL,
 
     id_tipo_residuo INT NOT NULL,
-    email VARCHAR(100) NOT NULL,
-    telefono VARCHAR(20) NOT NULL,
+    email VARCHAR(100) NULL,
+    telefono VARCHAR(20) NULL,
 
     tipo_solicitud ENUM(
         'Gran volumen',
         'Reciclables'
     ) NOT NULL,
+    tipo_residuo_solicitado VARCHAR(60) NULL,
+    foto_url VARCHAR(255) NULL,
 
     PRIMARY KEY (id_solicitud),
     UNIQUE KEY uk_solicitud_tracking_number (tracking_number),
@@ -704,6 +713,11 @@ ALTER TABLE vehiculo CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 ALTER TABLE cuadrilla CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE usa CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE recorrido CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE TABLE tramite_edicion (
+    tracking_number VARCHAR(32) PRIMARY KEY,
+    token_hash CHAR(64) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 ALTER TABLE participa CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE incidencia CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE denuncia CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

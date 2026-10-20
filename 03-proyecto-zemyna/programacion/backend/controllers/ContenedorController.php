@@ -122,6 +122,58 @@ class ContenedorController {
             "message" => "Contenedores obtenidos correctamente.", "errors" => [], "statusCode" => 200];
     }
 
+    public function streetSuggestions(string $q, string $calle = ''): array {
+        $q = trim($q); $calle = trim($calle);
+        if (mb_strlen($q, 'UTF-8') < 2 || mb_strlen($q, 'UTF-8') > 80
+            || ($calle !== '' && (mb_strlen($calle, 'UTF-8') < 2 || mb_strlen($calle, 'UTF-8') > 80))) {
+            return ['success' => false, 'data' => [], 'message' => 'Ingresá entre 2 y 80 caracteres.', 'statusCode' => 400];
+        }
+        try {
+            return ['success' => true, 'data' => $this->contenedor->streetSuggestions($q, $calle), 'statusCode' => 200];
+        } catch (PDOException $exception) {
+            return ['success' => false, 'data' => [], 'message' => 'No se pudieron consultar las calles.', 'statusCode' => 500];
+        }
+    }
+
+    public function searchByStreets(string $calle, string $esquina = ''): array {
+        $calle = trim($calle); $esquina = trim($esquina);
+        if (mb_strlen($calle, 'UTF-8') < 2 || mb_strlen($calle, 'UTF-8') > 80
+            || ($esquina !== '' && mb_strlen($esquina, 'UTF-8') > 80)) {
+            return ['success' => false, 'data' => [], 'message' => 'Calle debe tener entre 2 y 80 caracteres y esquina hasta 80.', 'statusCode' => 400];
+        }
+        try {
+            $stmt = $this->contenedor->searchByStreets($calle, $esquina);
+            if (!$stmt) throw new PDOException('Sin conexión');
+            return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'statusCode' => 200];
+        } catch (PDOException $exception) {
+            return ['success' => false, 'data' => [], 'message' => 'No se pudieron buscar los contenedores.', 'statusCode' => 500];
+        }
+    }
+
+
+    public function searchPublic(string $q): array {
+        $q = trim($q);
+        $length = mb_strlen($q, 'UTF-8');
+        if ($length < 2 || $length > 80) {
+            return ['success' => false, 'data' => [],
+                'message' => 'Ingresá entre 2 y 80 caracteres para buscar.', 'statusCode' => 400];
+        }
+
+        try {
+            $stmt = $this->contenedor->searchPublic($q, 20);
+            if (!$stmt) throw new PDOException('No hay conexión disponible.');
+            $fields = array_flip(['id_contenedor', 'codigo', 'direccion', 'latitud', 'longitud', 'estado']);
+            $rows = array_map(
+                static fn(array $row): array => array_intersect_key($row, $fields),
+                array_slice($stmt->fetchAll(PDO::FETCH_ASSOC), 0, 20)
+            );
+            return ['success' => true, 'data' => $rows, 'statusCode' => 200];
+        } catch (PDOException $exception) {
+            return ['success' => false, 'data' => [],
+                'message' => 'No se pudieron buscar los contenedores.', 'statusCode' => 500];
+        }
+    }
+
     public function getMap(array $filters): array {
         $errors = [];
         $coordinates = [];

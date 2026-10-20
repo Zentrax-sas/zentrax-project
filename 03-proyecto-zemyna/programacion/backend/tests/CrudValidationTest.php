@@ -15,6 +15,9 @@ class CrudValidationTest extends TestCase
         $incidenciaProperty->setAccessible(true);
         $incidenciaProperty->setValue($this->incidenciaController, new class {
             public $id_incidencia = 55;
+            public $descripcion, $fecha_reporte, $estado, $prioridad, $tipo_problema, $tracking_number;
+            public $id_contenedor, $id_ruta, $id_cuadrilla, $id_usuario;
+            public $telefono = null, $consentimiento_whatsapp = false;
             public function create() { return true; }
             public function update() { return true; }
         });
