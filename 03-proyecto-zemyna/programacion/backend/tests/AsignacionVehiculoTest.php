@@ -28,6 +28,23 @@ class AsignacionVehiculoTest extends TestCase
             CREATE TABLE atencion_contenedor(id_atencion_contenedor INTEGER PRIMARY KEY,id_recorrido INTEGER,id_contenedor INTEGER,id_usuario INTEGER,fecha_atencion TEXT);
             CREATE TABLE contenedor(id_contenedor INTEGER PRIMARY KEY,id_ruta INTEGER,codigo TEXT,direccion TEXT,latitud NUMERIC,longitud NUMERIC,activo INTEGER);");
         createAsignacionVehiculoFixture($this->db);
+        // Proyección F6 consultada por los guards de V19 y de vehículos.
+        // Vacía: estos tests no crean solicitudes ni simulan su atención.
+        $this->db->exec("CREATE TABLE solicitud (
+            id_solicitud INTEGER PRIMARY KEY,
+            estado TEXT NOT NULL CHECK(estado IN ('Pendiente','Programada','En atención','Finalizada','Cancelada')),
+            id_cuadrilla INTEGER REFERENCES cuadrilla(id_cuadrilla),
+            id_tipo_residuo INTEGER REFERENCES tipo_residuo(id_tipo_residuo));
+            CREATE TABLE atencion_solicitud (
+            id_atencion_solicitud INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_solicitud INTEGER NOT NULL REFERENCES solicitud(id_solicitud),
+            id_asignacion_vehiculo INTEGER NOT NULL REFERENCES asignacion_vehiculo_operativa(id_asignacion_vehiculo),
+            id_cuadrilla INTEGER NOT NULL REFERENCES cuadrilla(id_cuadrilla),
+            estado TEXT NOT NULL CHECK(estado IN ('Asignada','Aceptada','En atención','Finalizada','Rechazada','Interrumpida')),
+            fecha_cierre TEXT,
+            CHECK((fecha_cierre IS NULL AND estado IN ('Asignada','Aceptada','En atención')) OR
+                  (fecha_cierre IS NOT NULL AND estado IN ('Finalizada','Rechazada','Interrumpida'))));
+            CREATE UNIQUE INDEX uq_as_open ON atencion_solicitud(id_solicitud) WHERE fecha_cierre IS NULL;");
     }
     protected function seed(): void {
         $this->db->exec("INSERT INTO centro(id_centro,nombre,direccion) VALUES(1,'Test','Test');
