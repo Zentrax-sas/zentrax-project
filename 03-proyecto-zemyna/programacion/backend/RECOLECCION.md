@@ -1,6 +1,6 @@
 # Recolección operativa — v17
 
-Base: `226f85f9aac5a4c01dd40e7c1fb051896ce160f5`. Conserva la consulta administrativa inicial.
+Base histórica V17: `226f85f9aac5a4c01dd40e7c1fb051896ce160f5`. Este documento incorpora los contratos actuales de permisos y las reglas C1/C2/C3; conserva la consulta administrativa inicial.
 
 ## Modelo y reglas
 
@@ -14,6 +14,14 @@ Base: `226f85f9aac5a4c01dd40e7c1fb051896ce160f5`. Conserva la consulta administr
 - Las mutaciones bloquean filas en transacción (usuario, cuadrilla, recorrido). Traslados y cierres verifican la versión mediante el ID de pertenencia esperado. Errores y conflictos revierten la transacción.
 - El CRUD general de recorridos no puede reescribir ni borrar un recorrido con autoría o atención operativa registrada.
 
+### Integridad y continuidad C1/C2/C3
+
+- C1 protege `usa` y `participa` mediante transacciones, comprobaciones decisivas y bloqueos compartidos. Una autorización referenciada no puede cambiar de pareja ni eliminarse; una participación histórica no se modifica ni elimina desde el CRUD heredado. Se permite gestionar relaciones libres y pendientes sin actividad bajo sus validaciones.
+- C2 exige vehículo REGULAR y utilización V19 abierta, vigente e inequívoca para la misma cuadrilla/vehículo al asignar y nuevamente al iniciar. La creación de un recorrido Pendiente sin asignación sigue permitida. No se comparan los residuos de todos los contenedores: las rutas mixtas están admitidas. APOYO no se usa para recorridos REGULARES.
+- C3 impide retirar, trasladar o desactivar al último integrante operativamente habilitado mientras exista un recorrido REGULAR En Proceso. Con relevo habilitado se conserva la operación válida. También impide cerrar o sustituir la utilización V19 de la pareja de ese recorrido mientras siga En Proceso; mantiene las protecciones F6.
+- Finalizar conserva la confirmación y permite pendientes, registra autor y fecha, no cierra V19 y no reescribe `participa`. No existe registro de «No atendido» con motivos en este alcance.
+- Las pruebas actuales verifican estas reglas con SQLite/dobles. La concurrencia real de C1/C2/C3 en MariaDB permanece pendiente; no se presenta como certificada por los tests en memoria.
+
 ## Permisos
 
 | Operación | Permisos y sector | Destinatario |
@@ -21,11 +29,11 @@ Base: `226f85f9aac5a4c01dd40e7c1fb051896ce160f5`. Conserva la consulta administr
 | Lectura propia | recorrido.consultar, OPERACIONES/LOGISTICA + pertenencia | Integrante autorizado |
 | Iniciar, atender, finalizar | recorrido.operar o recorrido.modificar, OPERACIONES + pertenencia y elegibilidad vigente | Integrante operativo |
 | Consulta administrativa existente y progreso | recorrido.consultar + cuadrilla.consultar + cuadrilla.modificar, sectores existentes | Gestión de cuadrillas |
-| Consultar integrantes/historial/elegibles | recorrido.consultar + cuadrilla.consultar + usuario.consultar (TI/OPERACIONES/LOGISTICA) | Administración autorizada |
+| Consultar integrantes/historial/elegibles | Lectura de recolección + cuadrilla.consultar y cuadrilla.modificar en OPERACIONES | Gestión operativa limitada, sin listado general de usuarios |
 | Asignar recorrido y consultar opciones | recorrido.consultar + recorrido.modificar + cuadrilla.consultar + cuadrilla.modificar; escritura en OPERACIONES | Administración autorizada |
-| Asignar, trasladar, cerrar pertenencia | cuadrilla.modificar en OPERACIONES + usuario.consultar | Administración autorizada |
+| Asignar, trasladar, cerrar pertenencia | cuadrilla.consultar y cuadrilla.modificar en OPERACIONES | Administración operativa autorizada |
 
-`recorrido.operar` es nuevo: se concede reproduciblemente a OPERARIO y roles administrativos canónicos, pero este endpoint exige OPERACIONES y pertenencia real. No se concede `recorrido.modificar` a operarios, pues habilitaría el CRUD general sin alcance de cuadrilla. Se conserva la excepción ADMINISTRADOR_TI de los helpers; aun así, para integrar una cuadrilla y operar se exigen permisos operativos efectivos en OPERACIONES. Roles y permisos se revalidan desde la base en cada petición, no solo al iniciar sesión.
+`recorrido.operar` fue incorporado en V17: sus concesiones históricas no reemplazan el sector ni la pertenencia real. No se concede `recorrido.modificar` adicional a operarios. No existe bypass universal TI: todos los roles requieren permisos explícitos y sectores vigentes. ADMINISTRATIVO_OPERATIVO utiliza las herramientas municipales autorizadas; ADMINISTRADOR_TI conserva administración técnica con permisos explícitos. La consulta general de usuarios requiere su autorización técnica; la gestión limitada de integrantes no la concede. Roles y permisos se revalidan desde la base en cada petición, no solo al iniciar sesión.
 
 ## API
 
@@ -35,7 +43,7 @@ GET propio (sin view): pertenencia y recorrido actual/próximo. `id_recorrido` p
 
 GET `view=administracion`: conserva catálogo, participaciones, estado, ruta y paginación (25).
 `id_cuadrilla` + `id_recorrido` devuelve progreso y autores, bajo permisos administrativos.
-GET `view=integrantes&id_cuadrilla=N`: integrantes actuales, historial, usuarios elegibles y nombres/motivos de exclusión (sin correo, teléfono ni credenciales).
+GET `view=integrantes&id_cuadrilla=N`: integrantes actuales, historial operativo y candidatos elegibles con identificadores, nombres/apellidos y pertenencia mínima. No entrega correo, teléfono ni credenciales; `no_elegibles` se conserva como lista vacía, sin identidades/motivos de personas excluidas.
 GET `view=asignables&id_cuadrilla=N&page=1`: recorridos pendientes sin participación ni actividad previa, paginados de a 25; vehículos relacionados disponibles y conflicto operativo de la cuadrilla.
 
 POST JSON:
@@ -56,14 +64,15 @@ No carga catálogo administrativo, elegibles ni historial. Ofrece acciones segú
 confirmación de inicio/cierre y resultados del servidor. Reportar problema reutiliza `crew-report.js`
 y su endpoint protegido dentro de la pantalla operativa, sin enviar identidad. La zona horaria se indica una sola vez cuando hay fechas visibles. Sin recorrido se muestra una tarjeta con la cuadrilla, turno, explicación y acciones Actualizar información y Reportar problema. El enlace Volver al panel siempre apunta a admin.html.
 
+Mi recolección 2.0 conserva lista y mapa Leaflet del recorrido autorizado. La selección es compartida; «Ver en mapa» centra el marcador integrado, sin enlace externo en las tarjetas de contenedores. Lista y ficha del mapa reutilizan el mismo flujo de atención. Los filtros, carga progresiva y progreso no constituyen una secuencia optimizada de conducción. Sin recorrido REGULAR, APOYO puede atender incidencias y solicitudes asignadas según permisos; `sin_recorrido` no exige crearle un recorrido ficticio.
+
 `frontend/public/admin.html#cuadrillas` integra la gestión en el panel y su navegación existente.
 El menú se habilita mediante GET `view=permisos`; cada consulta/mutación mantiene sus controles de backend.
 La consulta propia no incluye capacidades administrativas. La gestión contiene listado paginado,
 Resumen, Integrantes y Recorridos. El historial está separado y contraído inicialmente.
 Los resúmenes y autores legibles son proyecciones de las mismas relaciones, sin estados nuevos.
 
-Para incorporar a una persona: gestionar su cuenta activa y permisos en Usuarios, luego abrir
-Cuadrillas → Ver detalle → Integrantes → Agregar operario. El selector contiene solo elegibles; una sección discreta explica los usuarios excluidos. La regla requiere cuenta Activa, asignaciones vigentes en OPERACIONES, recorrido.consultar y recorrido.operar o recorrido.modificar. No depende del nombre del rol. Usuarios obtiene los permisos del catálogo real, sugiere Operaciones sin reemplazar un sector elegido y advierte sobre combinaciones no operativas válidas para otras funciones. Las reglas existentes validan rol y sector contra sus catálogos; no existe una matriz de combinaciones prohibidas.
+Para incorporar a una persona: un responsable técnico autorizado gestiona previamente su cuenta y autorizaciones en Usuarios; luego el responsable operativo abre Cuadrillas → Ver detalle → Integrantes → Agregar operario. El selector contiene solo elegibles y explica de forma neutral la falta de candidatos, sin identificar personas excluidas. La regla requiere cuenta Activa, asignaciones vigentes en OPERACIONES, recorrido.consultar y recorrido.operar o recorrido.modificar. No depende del nombre del rol. El acceso a Usuarios solo se ofrece con el permiso técnico correspondiente. Usuarios sugiere Operaciones según los permisos del rol sin reemplazar un sector elegido; no hay una matriz nueva de combinaciones prohibidas.
 Asignación y traslado tienen textos distintos; el traslado identifica origen y destino. Si la persona
 ya pertenece al destino, se deshabilita confirmar. Finalizar pertenencia explica que conserva el historial.
 El diálogo nativo gestiona foco y Escape; durante la escritura se bloquean cierre y envío repetido.

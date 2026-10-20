@@ -3,8 +3,10 @@
 ## Alcance y despliegue
 
 `vehiculo.funcion_operativa` admite `REGULAR`, `APOYO` o NULL (clasificación pendiente).
-No reemplaza tipo de residuo, disponibilidad ni compatibilidad. Una función habitual
-no prohíbe otros trabajos. La migración no clasifica vehículos ni crea utilizaciones.
+No reemplaza tipo de residuo, disponibilidad ni compatibilidad. Los contratos de
+cada trabajo determinan la función admitida: C2 exige REGULAR para recorridos
+regulares y F6 exige APOYO para sus asignaciones. No se deduce una habilitación
+general para otros trabajos. La migración no clasifica vehículos ni crea utilizaciones.
 
 `migration_v19_asignacion_vehiculo.sql` es reejecutable sobre V18: agrega columna,
 CHECK, tabla y permisos; repetirla no borra clasificación ni historial. El DDL hace
@@ -77,7 +79,9 @@ externos se muestran como texto, no como HTML.
 
 Abrir/cambiar rechaza recorridos Pendiente/En Proceso incompatibles o ambiguos. Asignar
 e iniciar un recorrido, validar opciones F3 y reactivar mediante CRUD también comprueban
-la utilización abierta. Finalizar un recorrido nunca cierra la utilización.
+la utilización abierta. En el cierre C2, asignación e inicio REGULAR exigen que exista esa utilización, no solo ausencia de contradicción, y rechazan vehículos APOYO o sin clasificación. Se permite crear Pendientes sin asignación y atender rutas mixtas sin comparar residuos de todos sus contenedores. Finalizar un recorrido nunca cierra la utilización.
+
+C3 rechaza cierre y sustitución de V19 mientras un recorrido REGULAR En Proceso dependa de la pareja cuadrilla/vehículo. Al finalizar, el cierre vuelve a ser posible bajo las demás reglas y protecciones F6. También se protege la permanencia de al menos un integrante habilitado durante la ejecución. No se modifica el historial para corregir inconsistencias.
 
 F3 utiliza ahora la asignación V19 abierta como fuente del vehículo actual y exige
 el mismo ID consultado al confirmar. REGULAR requiere recorrido coherente; APOYO
@@ -87,8 +91,9 @@ F4.1/F4.2 conserva ownership de cuadrilla, permisos y estados; no se
 agrega vehículo a atencion_incidencia. El dashboard mantiene sus métricas actuales por
 recorrido y estado; una utilización abierta no es una nueva métrica de trabajo ocupado.
 
-Fuera: GPS/V20, apps móviles, Dijkstra/grafo, N:M de residuos, nuevas compatibilidades,
-F6 y corrección del recorrido histórico de Beta. Vehículo 3 inactivo sigue rechazado.
+El alcance original V19 no incluía GPS, Dijkstra ni F6. Esa enumeración es histórica, no el inventario actual: F5 y F6 existen y conservan sus contratos propios. No se incorpora GPS ni optimización de visitas en C1/C2/C3. Los recursos históricos dados de baja no se reparan ni habilitan automáticamente.
+
+Para instalación limpia, el catálogo V19 está incorporado a `init.sql` con las mismas concesiones de la migración (RESPONSABLE_SECTORIAL y ADMINISTRATIVO_OPERATIVO). Los vehículos no se clasifican automáticamente. Ver [procedimiento Docker](../../README-Docker.md). Las cifras de validación inicial posteriores pertenecen a aquella etapa; el cierre actual aprobó 24 tests SQLite V19 y 91 aserciones tras completar el fixture F6. No se volvió a ejecutar MariaDB V19 ni el harness concurrente en este cierre.
 
 ## Validación reproducible
 

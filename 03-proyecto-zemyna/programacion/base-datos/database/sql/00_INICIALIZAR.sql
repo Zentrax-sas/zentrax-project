@@ -9,9 +9,13 @@
 --   mysql --abort-source-on-error -u USUARIO -p \
 --     --database=gestion_residuosfinal < 00_INICIALIZAR.sql
 --
--- Este flujo nuevo contiene el estado final de las migraciones v2-v14. Las
--- migraciones se conservan solamente para actualizar instalaciones antiguas y
--- NO deben ejecutarse despues de schema.sql.
+-- La referencia original v2-v14 describe el alcance historico de este maestro.
+-- Actualmente SOURCE lee los archivos vigentes: schema.sql incorpora estructuras
+-- hasta V21 e init.sql incluye el catalogo V19. No es un actualizador incremental.
+-- Las migraciones historicas se revisan para instalaciones antiguas; no encadenarlas
+-- automaticamente tras el esquema final ni ejecutar este maestro sobre datos existentes.
+-- Para Docker, el procedimiento oficial es programacion/compose.yaml y README-Docker.md:
+-- monta directamente schema.sql e init.sql en un volumen de datos nuevo.
 -- ================================================================
 
 SELECT CONCAT('Instalacion minima en base seleccionada: ', DATABASE()) AS destino;

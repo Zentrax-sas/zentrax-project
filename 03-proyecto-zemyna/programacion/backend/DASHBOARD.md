@@ -1,10 +1,10 @@
 # Resumen operativo
 
-Implementado sobre `06fe21ed7b8e78df1caecc0f4422d0d1e66f4760`. Reemplaza únicamente los indicadores y recorridos ficticios del resumen. Conserva `admin.html#resumen`, la navegación y los módulos existentes. No hay migraciones nuevas; utiliza la estructura operativa v17 ya existente.
+Origen histórico: `06fe21ed7b8e78df1caecc0f4422d0d1e66f4760`. El comportamiento documentado aquí corresponde al código actual del cierre de Programación. Conserva `admin.html#resumen`, la navegación y los módulos existentes. El dashboard no requiere una migración propia; utiliza las tablas operativas existentes.
 
 ## Acceso y sectores
 
-`GET api/dashboard.php` requiere cuenta activa y sesión. Revalida roles y permisos vigentes desde MariaDB en cada solicitud. Exige conjuntamente `incidencia.consultar`, `recorrido.consultar`, `cuadrilla.consultar`, `vehiculo.consultar` y `contenedor.consultar` en OPERACIONES. Conserva la excepción ADMINISTRADOR_TI de los helpers; además comprueba `contenedor.consultar` sin excepción sectorial, como la API administrativa de contenedores. No necesita permisos de escritura para leer el resumen.
+`GET api/dashboard.php` requiere cuenta activa y sesión. Revalida roles y permisos vigentes desde la BD en cada solicitud. Exige conjuntamente `incidencia.consultar`, `recorrido.consultar`, `cuadrilla.consultar`, `vehiculo.consultar` y `contenedor.consultar` en OPERACIONES. No existe bypass por rol: ADMINISTRADOR_TI solo puede acceder si tiene todas esas autorizaciones explícitas vigentes en ese sector, igual que cualquier otro rol. También se comprueba el permiso efectivo de contenedores. No necesita permisos de escritura para leer el resumen.
 
 La política es acceso completo o 403; no hay respuestas parciales por permisos. El enlace a Cuadrillas solo se ofrece con `cuadrilla.modificar`, porque la vista administrativa de ese módulo también lo exige. El menú del resumen se habilita tras validar la sesión y consultar `view=permisos`; modificar el hash no evita la autorización del backend.
 
@@ -66,13 +66,15 @@ La disponibilidad de recorrido por cuadrilla no significa que esté libre de con
 Sin filtro temporal; no persiste avisos. Situaciones con cantidad mayor a cero:
 
 - Crítico: incidencias activas Alta.
-- Advertencia: contenedores con al menos tres incidencias activas. Umbral explícito de revisión, no una regla de bloqueo. La consulta previa mostró un contenedor con tres y otros con uno.
+- Advertencia: contenedores con al menos tres incidencias activas. Umbral explícito de revisión, no una regla de bloqueo; no presupone que hoy exista un caso en la BD.
 - Informativo: cuadrillas sin ejecución operativa relacionada.
 - Crítico: recorridos Pendiente/En Proceso sin ningún vehículo activo y fuera de mantenimiento relacionado.
 - Advertencia: vehículos distintos dados de baja o En Mantenimiento relacionados con ejecuciones operativas. En Servicio no se considera inválido para su propia operación.
 - Crítico: recorridos operativos relacionados con más de una cuadrilla distinta; se deduplican vehículos/participaciones de una misma cuadrilla.
 
 No sumar estas cantidades entre sí: pueden describir la misma situación desde distintos aspectos. Cada una tiene su nivel textual y enlace autorizado. Sin situaciones se muestra el mensaje solicitado.
+
+Estas alertas derivadas de datos reales satisfacen el apartado de alertas de la entrega. No son notificaciones persistentes, correo ni push. La campana administrativa que indica «Notificaciones no disponibles» es una acción distinta y no debe presentarse como implementada. Una cuadrilla APOYO sin recorrido puede entrar en el indicador informativo porque este conserva su criterio por relaciones de recorrido; eso no prohíbe atender trabajos APOYO ni exige crearle un recorrido.
 
 ## Rendimiento y presentación
 
@@ -85,5 +87,7 @@ Sin librería de gráficos ni nuevas CDN. Dos visualizaciones HTML/CSS con etiqu
 ## Verificación
 
 DashboardTest usa una base SQLite aislada para clasificación, límites, datos vacíos, históricos, privacidad, permisos vigentes y sectores; producción usa TIMESTAMPDIFF de MariaDB para la duración. DashboardHttpIntegrationTest usa Apache/MariaDB con el entorno opcional ZEMYNA_UTF8_HTTP_BASE y las credenciales de pruebas existentes, nunca embebidas aquí. Crea registros identificados DB..., compara todos los agregados con SQL directo, resuelve una incidencia temporal por HTTP y ejecuta tres EXPLAIN. Elimina los datos por IDs exactos en finally y compara huellas de todas las filas de las tablas involucradas antes/después. No usa el recorrido real de Diego para mutaciones.
+
+El párrafo anterior describe el test de integración y la validación histórica, no una ejecución autorizada en este cierre. Ese test realiza escrituras: no ejecutarlo contra la BD habitual para reproducir una demostración de solo lectura. La auditoría final volvió a ejecutar pruebas aisladas; no repitió esa integración ni certificó un despliegue Docker. La disponibilidad del dashboard en otro entorno debe validarse allí.
 
 La suite JavaScript existente incorpora el dashboard y mantiene las pruebas de mapas, incidencias, informe, Usuarios, Cuadrillas y Mi recolección. Las pruebas DOM no certifican apariencia: la revisión visual en escritorio y móvil queda pendiente si no hay navegador disponible.

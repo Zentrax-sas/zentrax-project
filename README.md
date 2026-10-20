@@ -19,8 +19,8 @@ El proyecto se encuentra en desarrollo y las funciones se van incorporando y pro
 
 ## Tecnologías utilizadas
 
-- PHP 8
-- MySQL 8
+- PHP 8.1 o posterior (validación local con PHP 8.1.25)
+- MariaDB; imagen prevista para Docker: MariaDB 10.11
 - HTML, CSS y JavaScript
 - PDO para la conexión con la base de datos
 - Leaflet para los mapas
@@ -60,8 +60,8 @@ El código principal de Zemyna se encuentra en:
 
 ### Requisitos
 
-- Apache o un servidor compatible con PHP 8.
-- MySQL 8.
+- Apache o un servidor compatible con PHP 8.1 o posterior.
+- MariaDB con el esquema vigente del proyecto. No se acredita aquí una instalación en MySQL 8.
 - Extensión PDO MySQL habilitada.
 - XAMPP, Laragon o un entorno equivalente.
 
@@ -97,12 +97,12 @@ El código principal de Zemyna se encuentra en:
      --database=gestion_residuosfinal < seed_contenedores_idm.sql
    ```
 
-   Una segunda ejecución del seed se detiene ante las colisiones; para reinstalar,
-   se debe volver a ejecutar primero la instalación mínima, aceptando que elimina
-   los datos de la base seleccionada.
+   Una segunda ejecución del seed se detiene ante las colisiones. No repetir la
+   instalación mínima sobre datos existentes para eludirlas; revisar el destino
+   y preparar una base descartable nueva si se autoriza una reinstalación.
 
 5. Copiar el archivo `.env.example` con el nombre `.env`.
-6. Completar en `.env` el nombre de la base, el usuario y la contraseña de MySQL.
+6. Completar en `.env` el nombre de la base, el usuario y la contraseña de MariaDB.
 7. Abrir en el navegador:
 
    ```text
@@ -113,12 +113,18 @@ Las migraciones de la carpeta SQL se utilizan solamente para actualizar
 instalaciones anteriores. Para una instalación desde cero se debe usar
 `00_INICIALIZAR.sql`; no se deben agregar migraciones al final de ese flujo.
 
+Para Docker, el procedimiento oficial es [README-Docker.md](03-proyecto-zemyna/programacion/README-Docker.md)
+y `03-proyecto-zemyna/programacion/compose.yaml`, **no** el Compose de la raíz.
+La instalación limpia `zemyna_demo_fix_20261019` fue validada por el usuario en
+Ubuntu/WSL2: frontend/API, MariaDB, phpMyAdmin, login, mapa y protección HTTP de
+archivos internos. Se utilizaron 18080/18081, distintos de los puertos por defecto.
+El posterior ajuste del healthcheck a 4m sigue pendiente de validación por ejecución.
+
 ## APIs
 
 Las APIs están dentro de `backend/api/`. Entre los recursos disponibles se encuentran:
 
 - usuarios;
-- vecinos;
 - contenedores;
 - vehículos;
 - rutas;
@@ -128,13 +134,26 @@ Las APIs están dentro de `backend/api/`. Entre los recursos disponibles se encu
 - solicitudes de retiro;
 - tipos de residuo.
 
-Las peticiones y respuestas utilizan JSON. La lista de endpoints y métodos admitidos se encuentra en el README de la carpeta `backend`.
+Las peticiones y respuestas utilizan JSON. `vecinos.php` y `denuncias.php` son API
+heredadas retiradas: sus operaciones GET/POST/PUT/DELETE devuelven 410. El registro
+público vigente usa incidencias y su seguimiento por tracking.
+
+Contratos: [recolección](03-proyecto-zemyna/programacion/backend/RECOLECCION.md),
+[dashboard](03-proyecto-zemyna/programacion/backend/DASHBOARD.md) y
+[documentación por módulo](03-proyecto-zemyna/programacion/backend/docs).
 
 ## Estado actual
 
-En esta etapa ya están integrados el login con la base de datos, la estructura MVC, los principales CRUD, la normalización inicial de roles y el seguimiento público de incidencias.
+El cierre de Programación incluye login y permisos efectivos sin bypass universal,
+CRUD, recolección operativa y mapa, registro/tracking de incidencias, solicitudes
+especiales, informes, dashboard con alertas y reglas C1/C2/C3. No implica que todos
+los cambios locales ya estén publicados ni que se haya validado concurrencia real.
 
-Todavía estamos trabajando en ampliar los permisos por tipo de usuario, completar las pruebas, mejorar el seguimiento de solicitudes y terminar de integrar algunos flujos operativos.
+Ver [guía de demostración](03-proyecto-zemyna/programacion/GUIA-DEMO-PROGRAMACION.md)
+e [inventario de cierre](03-proyecto-zemyna/programacion/INVENTARIO-CIERRE-PROGRAMACION.md).
+Quedan pendientes la concurrencia MariaDB C1/C2/C3 y la ejecución del ajuste del
+healthcheck. El harness experimental no integra la publicación final; consultar
+el historial Git para identificar la versión publicada. No se agrega funcionalidad nueva.
 
 ## Equipo
 
