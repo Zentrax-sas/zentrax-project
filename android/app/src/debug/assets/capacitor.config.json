@@ -1,0 +1,8 @@
+{
+  "appId": "io.ionic.starter",
+  "appName": "zemyna-mobile",
+  "webDir": "www",
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}
