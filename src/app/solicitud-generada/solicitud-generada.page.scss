@@ -1,0 +1,23 @@
+:host { display:block; background:#0b0f0d; }
+.resultado-screen { width:min(100%,430px); height:100dvh; margin:auto; overflow-y:auto; background:linear-gradient(180deg,#151b17,#0b0f0d 56%); color:#f4f7f5; padding:calc(env(safe-area-inset-top) + 22px) max(5%,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 20px) max(5%,env(safe-area-inset-left)); }
+.resultado-content { min-height:100%; display:flex; flex-direction:column; gap:18px; }
+.estado-principal { text-align:center; padding:8px 2px; }
+.check-principal { width:66px; height:66px; margin:0 auto 12px; display:grid; place-items:center; border:1px solid rgba(168,230,0,.32); border-radius:20px; background:rgba(168,230,0,.10); }
+.check-principal ion-icon { color:#a8e600; font-size:38px; }
+.estado-principal>span,.tracking-label { color:#a8e600; font-size:10px; font-weight:900; }
+.estado-principal h1 { margin:7px 0; color:#fff; font-size:26px; font-weight:900; }
+.estado-principal p { max-width:310px; margin:0 auto; color:#d8dedb; font-size:13px; line-height:1.45; }
+.tracking-card { display:flex; flex-direction:column; align-items:center; gap:10px; padding:19px 12px; background:linear-gradient(145deg,#1d2520,#111714); border:1px solid rgba(168,230,0,.38); border-radius:16px; }
+.tracking-card strong { max-width:100%; color:#fff; font-size:25px; font-weight:900; overflow-wrap:anywhere; }
+.estado-retiro { display:flex; align-items:center; gap:8px; color:#e3e9e5; font-size:13px; font-weight:700; }
+.estado-dot { width:8px; height:8px; border-radius:50%; background:#a8e600; }
+.datos-card { display:flex; flex-direction:column; gap:0; padding:4px 15px; border:1px solid #303a34; border-radius:14px; background:#141a16; }
+.dato-row { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding:13px 0; border-bottom:1px solid #28312c; font-size:12px; }
+.dato-row:last-child { border-bottom:0; }
+.dato-row span { flex:0 0 38%; color:#aab4ae; }
+.dato-row strong { min-width:0; color:#f4f7f5; text-align:right; overflow-wrap:anywhere; }
+.copiar-button { min-height:48px; display:flex; justify-content:center; align-items:center; gap:9px; border:1px solid #465044; border-radius:12px; background:#171d19; color:#f4f7f5; font:inherit; font-size:14px; font-weight:800; }
+.copiar-button ion-icon { color:#a8e600; font-size:18px; }
+.mensaje { margin:0; color:#d8dedb; text-align:center; font-size:12px; }
+.inicio-button { margin-top:auto; min-height:54px; --background:#a8e600; --background-activated:#89b200; --color:#0b0f0d; --border-radius:13px; font-size:15px; font-weight:900; }
+@media (max-height:700px) { .resultado-content { gap:12px; } .estado-principal { padding:0; } .check-principal { width:54px; height:54px; margin-bottom:7px; } .estado-principal h1 { font-size:23px; } .tracking-card { padding:13px 10px; } .dato-row { padding:10px 0; } }

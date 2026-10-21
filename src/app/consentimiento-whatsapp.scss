@@ -1,0 +1,11 @@
+.whatsapp-consentimiento {
+  display: flex; align-items: center; gap: 10px; min-height: 44px;
+  margin-top: 4px; color: #f4f7f5; font-size: 12px; font-weight: 600; line-height: 1.35;
+  cursor: pointer;
+  input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: #a8e600; }
+  input:focus-visible { outline: 2px solid #a8e600; outline-offset: 3px; }
+  input:disabled { cursor: default; }
+}
+:host(app-solicitud-retiro) .field-row .whatsapp-consentimiento { font-size: 12px; font-weight: 600; }
+:host(app-solicitud-retiro) .retiro-content { overflow-y: auto; }
+:host(app-solicitud-retiro) .formulario-retiro { flex: 1 0 auto; }

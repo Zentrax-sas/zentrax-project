@@ -1,0 +1,125 @@
+<ion-content [scrollY]="false">
+  <main class="resultado-screen">
+
+    <div class="resultado-content">
+
+      <section class="estado-principal">
+        <div class="check-principal">
+          <ion-icon name="checkmark-circle-outline" aria-hidden="true"></ion-icon>
+        </div>
+
+        <span>REPORTE REGISTRADO</span>
+        <h1>Incidencia generada</h1>
+
+        <p>
+          Guardá tu número de seguimiento para consultar el estado del reporte.
+        </p>
+      </section>
+
+      <section class="tracking-card">
+        <span class="tracking-label">NÚMERO DE SEGUIMIENTO</span>
+
+        <strong>{{ numeroSeguimiento }}</strong>
+
+        <div class="estado-incidencia">
+          <span class="estado-dot"></span>
+          {{ incidencia.estado || 'No disponible' }}
+        </div>
+      </section>
+
+      <section class="datos-card">
+
+        <div class="dato-row">
+          <span>ID Contenedor</span>
+          <strong>
+            {{ incidencia.codigo_contenedor || incidencia.id_contenedor || 'Sin dato' }}
+          </strong>
+        </div>
+
+        <div class="dato-row">
+          <span>Ubicación</span>
+          <strong>{{ incidencia.direccion || 'Sin dato' }}</strong>
+        </div>
+
+        <div class="dato-row">
+          <span>Motivo</span>
+          <strong>{{ incidencia.motivo || 'Sin dato' }}</strong>
+        </div>
+
+        <div class="dato-row">
+          <span>Fecha</span>
+          <strong>{{ fechaFormateada }}</strong>
+        </div>
+
+      </section>
+
+      <section class="acciones">
+        <app-editar-tramite [tracking]="numeroSeguimiento" (actualizado)="aplicarEdicion($event)" />
+        <button type="button" class="accion-card" [disabled]="abriendoWhatsapp" (click)="guardarEnWhatsapp()">
+          <div class="accion-icono"><ion-icon name="logo-whatsapp" aria-hidden="true"></ion-icon></div>
+          <div><strong>Guardar en WhatsApp</strong></div>
+        </button>
+
+        <button type="button" class="accion-card" (click)="copiarNumero()">
+          <div class="accion-icono">
+            <ion-icon name="copy-outline" aria-hidden="true"></ion-icon>
+          </div>
+
+          <div>
+            <strong>{{ copiado ? 'Número copiado' : 'Copiar número' }}</strong>
+            <span>Guardalo para consultar después</span>
+          </div>
+        </button>
+
+        <button type="button" class="accion-card" (click)="descargarComprobante()">
+          <div class="accion-icono">
+            <ion-icon name="download-outline" aria-hidden="true"></ion-icon>
+          </div>
+
+          <div>
+            <strong>Descargar comprobante</strong>
+            <span>Guardá los datos de la incidencia</span>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          class="accion-card"
+          [class.activa]="seguimientoActivo"
+          (click)="activarSeguimiento()">
+
+          <div class="accion-icono">
+            <ion-icon name="notifications-outline" aria-hidden="true"></ion-icon>
+          </div>
+
+          <div>
+            <strong>
+              {{ seguimientoActivo ? 'Guardado en este dispositivo' : 'Guardar en este dispositivo' }}
+            </strong>
+
+            <span>Guardá el seguimiento en este dispositivo</span>
+          </div>
+        </button>
+
+      </section>
+
+      @if (mensaje) {
+        <p class="mensaje" aria-live="polite">
+          {{ mensaje }}
+        </p>
+      }
+
+      <ion-button
+        expand="block"
+        class="inicio-button"
+        (click)="volverInicio()">
+
+        <ion-icon slot="start" name="home-outline" aria-hidden="true"></ion-icon>
+        Volver al inicio
+
+      </ion-button>
+
+    </div>
+
+  </main>
+</ion-content>

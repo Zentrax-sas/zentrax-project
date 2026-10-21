@@ -1,0 +1,187 @@
+<ion-content [scrollY]="false">
+  <main class="retiro-screen" (click)="cerrarSugerencias()">
+
+    <header class="header-retiro">
+      <ion-back-button
+        class="back-button"
+        defaultHref="/home"
+        text=""
+        aria-label="Volver">
+      </ion-back-button>
+
+      <h1>Solicitud de retiro</h1>
+    </header>
+
+    <div class="retiro-content">
+
+      <section class="intro-retiro">
+        <span>SERVICIO DE RETIRO</span>
+        <h2>¿Qué necesitás retirar?</h2>
+        <p>Completá los datos para solicitar la recolección.</p>
+      </section>
+
+      <section class="formulario-retiro">
+
+        <div class="field-row">
+          <label id="label-tipo">Tipo de residuo</label>
+
+          <ion-select
+            aria-labelledby="label-tipo"
+            placeholder="Seleccioná una opción"
+            interface="action-sheet"
+            [interfaceOptions]="opcionesTipo"
+            [value]="tipoResiduo"
+            [disabled]="tiposCargando || !!errorTipos"
+            (ionChange)="actualizarTipo($event.detail.value)">
+
+            @for (tipo of tiposResiduo; track tipo.id_tipo_residuo) {
+              <ion-select-option [value]="tipo.id_tipo_residuo">
+                {{ tipo.nombre }}
+              </ion-select-option>
+            }
+
+          </ion-select>
+        </div>
+
+        <div class="field-row domicilio-campo" [hidden]="ubicacionConfirmada">
+          <label id="label-direccion">Calle</label>
+
+          <div class="input-icon" (click)="$event.stopPropagation()"
+            (keydown)="navegarSugerencias($event)" (keydown.escape)="cerrarSugerencias()">
+            <ion-icon name="location-outline" aria-hidden="true"></ion-icon>
+
+            <ion-input
+              aria-labelledby="label-direccion"
+              placeholder="Escribí una calle"
+              [value]="calle"
+              (ionFocus)="sugerirCalles()"
+              (ionInput)="actualizarCalle($event.detail.value)">
+            </ion-input>
+            @if (sugerenciasAbiertas) {
+              <div class="sugerencias" aria-live="polite" [style.max-height.px]="sugerenciasMaxHeight">
+                @if (sugerenciasCargando) { <p>Buscando sugerencias…</p> }
+                @if (sugerenciasError) { <p>{{ sugerenciasError }}</p> }
+                @if (sugerenciasRealizadas && sugerencias.length === 0) { <p>Sin coincidencias</p> }
+                @if (sugerencias.length) {
+                  <ul>
+                    @for (nombre of sugerencias; track nombre) {
+                      <li><button type="button" (click)="seleccionarCalle(nombre)">{{ nombre }}</button></li>
+                    }
+                  </ul>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="field-row domicilio-campo" [hidden]="ubicacionConfirmada">
+          <label id="label-numero-referencia">Número de puerta o esquina / referencia</label>
+          <ion-input aria-labelledby="label-numero-referencia" maxlength="150" [value]="numeroReferencia" [disabled]="!calleElegida"
+            placeholder="Ej.: 1234 o esquina Soca" (ionInput)="actualizarReferencia($event.detail.value)"/>
+          <ion-button class="buscar-domicilio" expand="block" [disabled]="!calleElegida || !numeroReferencia.trim() || ubicacionCargando" (click)="buscarUbicacion()">{{ ubicacionCargando ? 'Buscando ubicación…' : 'Buscar ubicación' }}</ion-button>
+        </div>
+        @if (ubicacionFallida) { <ion-button expand="block" fill="outline" (click)="ubicarManualmente()">Ubicar manualmente en el mapa</ion-button> }
+        @if (ubicacion; as punto) {
+          <section class="confirmacion-domicilio">
+            <h3>{{ ubicacionConfirmada ? 'Ubicación confirmada' : 'Confirmá el lugar del retiro' }}</h3>
+            <p>{{ punto.direccion }}</p>
+            @if (punto.aproximada) { <p>La ubicación es aproximada. Revisá el punto y corregilo si es necesario.</p> }
+            @if (!ubicacionConfirmada) {
+              <app-mapa-domicilio (fallo)="falloMapa()" [latitud]="punto.latitud" [longitud]="punto.longitud" [editable]="corrigiendoUbicacion" (cambiar)="moverUbicacion($event)"/>
+              <ion-button expand="block" (click)="confirmarUbicacion()">Confirmar ubicación</ion-button>
+            }
+            <p class="coordenadas-domicilio">{{ punto.latitud.toFixed(7) }}, {{ punto.longitud.toFixed(7) }}</p>
+            <ion-button expand="block" fill="outline" (click)="corregirUbicacion()">Corregir ubicación</ion-button>
+          </section>
+        }
+
+        <div class="foto-area">
+          <span class="field-label">Foto</span>
+
+          <label class="foto-button" (click)="abrirSelectorFoto($event)">
+            <ion-icon name="camera-outline" aria-hidden="true"></ion-icon>
+
+            <span>{{ fotoNombre || 'Adjuntar foto' }}</span>
+
+            <strong aria-hidden="true">+</strong>
+
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              [hidden]="selectorFotoNativo"
+              (change)="seleccionarFoto($event)">
+          </label>
+
+          <p class="campo-ayuda">
+            Opcional. Ayuda a identificar mejor el residuo.
+          </p>
+          @if (errorFoto) {
+            <p class="mensaje-formulario error" role="alert">{{ errorFoto }}</p>
+          }
+        </div>
+
+        <div class="field-row">
+          <label id="label-celular">Celular</label>
+
+          <ion-input
+            type="tel"
+            inputmode="tel"
+            aria-labelledby="label-celular"
+            placeholder="099 123 456"
+            maxlength="12"
+            [value]="celular"
+            (ionInput)="actualizarCampo('celular', $event.detail.value)">
+          </ion-input>
+
+          <p class="campo-ayuda">
+            Opcional.
+          </p>
+          <label class="whatsapp-consentimiento">
+            <input type="checkbox" [checked]="consentimientoWhatsApp" [disabled]="!celular.trim() || !celularValido"
+              (change)="consentimientoWhatsApp = $any($event.target).checked">
+            <span>Quiero recibir actualizaciones por WhatsApp</span>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label id="label-descripcion">Descripción / observaciones</label>
+
+          <ion-textarea
+            aria-labelledby="label-descripcion"
+            placeholder="Ej.: heladera vieja. Retirar en Av. Italia y Propios, portón gris..."
+            [autoGrow]="false"
+            [rows]="2"
+            maxlength="220"
+            [value]="descripcion"
+            (ionInput)="actualizarCampo('descripcion', $event.detail.value)">
+          </ion-textarea>
+
+          <p class="campo-ayuda">
+            Podés indicar esquina, referencia o cualquier dato útil para el retiro.
+          </p>
+        </div>
+
+        @if (errorTipos) { <ion-button expand="block" fill="outline" [disabled]="tiposCargando" (click)="cargarTipos()">Reintentar</ion-button> }
+        @if (mensaje || errorTipos) {
+          <p class="mensaje-formulario" role="alert" [class.error]="!formularioValido">
+            {{ errorTipos || mensaje }}
+          </p>
+        }
+
+        <ion-button
+          expand="block"
+          class="generar-solicitud"
+          [disabled]="!formularioValido"
+          (click)="continuar()">
+
+          <ion-icon slot="start" name="send-outline" aria-hidden="true"></ion-icon>
+          Generar solicitud
+        </ion-button>
+
+      </section>
+
+    </div>
+    <footer class="cancelar-domicilio"><ion-button expand="block" fill="outline" (click)="cancelarUbicacion()">Cancelar y volver</ion-button></footer>
+
+  </main>
+</ion-content>

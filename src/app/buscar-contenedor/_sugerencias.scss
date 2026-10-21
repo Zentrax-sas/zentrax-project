@@ -1,0 +1,6 @@
+.sugerencias { background: #151c19; border: 1px solid #36403b; border-radius: 10px; }
+.sugerencias ul { list-style: none; padding: 0; margin: 0; }
+.sugerencias button { display: block; width: 100%; min-height: 44px; padding: 10px 12px; background: transparent; color: #fff; text-align: left; font: inherit; cursor: pointer; }
+.sugerencias button:focus-visible { outline: 2px solid #a8e600; outline-offset: -2px; }
+.sugerencias p { margin: 10px 12px; }
+:host(app-solicitud-retiro) .input-icon .sugerencias { position:absolute; top:100%; left:0; right:0; z-index:3; max-height:176px; overflow-y:auto; overflow-wrap:anywhere; }

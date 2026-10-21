@@ -1,0 +1,51 @@
+:host { display:block; background:#0b0f0d; }
+ion-icon { color:#a8e600; }
+
+.resultado-screen { padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); width:min(100%,430px); height:100dvh; margin:auto; position:relative; isolation:isolate; display:flex; flex-direction:column; overflow:hidden; background:#0b0f0d; color:#f4f7f5; }
+.resultado-screen::before { content:''; position:absolute; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(180deg,rgba(11,15,13,.68),rgba(11,15,13,.84) 52%,rgba(11,15,13,.96)),url('/assets/zemyna-urban-hero.png') center/cover no-repeat; }
+
+.resultado-content { flex:1; min-height:0; display:flex; flex-direction:column; gap:16px; padding:7% 5% 5%; overflow-y:auto; }
+
+.estado-principal { text-align:center; }
+.check-principal { width:66px; height:66px; margin:0 auto 11px; display:grid; place-items:center; border-radius:20px; background:rgba(168,230,0,.11); border:1px solid rgba(168,230,0,.32); }
+.check-principal ion-icon { font-size:39px; }
+.estado-principal>span { color:#a8e600; font-size:9px; font-weight:900; letter-spacing:.09em; }
+.estado-principal h1 { margin:7px 0 6px; color:#fff; font-size:clamp(1.6rem,6.8vw,2rem); font-weight:900; line-height:1.05; }
+.estado-principal p { max-width:320px; margin:auto; color:#d7ded9; font-size:11.5px; font-weight:600; line-height:1.4; }
+
+.tracking-card { display:flex; flex-direction:column; align-items:center; gap:7px; padding:16px; background:linear-gradient(145deg,rgba(29,37,32,.98),rgba(17,23,20,.98)); border:1px solid rgba(168,230,0,.38); border-radius:17px; box-shadow:0 9px 24px rgba(0,0,0,.26); }
+.tracking-label { color:#a8e600; font-size:8.5px; font-weight:900; letter-spacing:.08em; }
+.tracking-card strong { color:#fff; font-size:clamp(1.55rem,7vw,2rem); font-weight:900; letter-spacing:.04em; text-align:center; }
+.estado-incidencia { display:flex; align-items:center; gap:6px; color:#e0e6e2; font-size:10.5px; font-weight:800; }
+.estado-dot { width:7px; height:7px; border-radius:50%; background:#a8e600; box-shadow:0 0 8px rgba(168,230,0,.5); }
+
+.datos-card { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:13px; background:rgba(18,25,21,.92); border:1px solid #35403a; border-radius:15px; }
+.dato-row { min-width:0; display:flex; flex-direction:column; gap:3px; }
+.dato-row span { color:#9fa9a4; font-size:9px; font-weight:700; }
+.dato-row strong { color:#fff; font-size:11px; font-weight:800; line-height:1.3; overflow:hidden; text-overflow:ellipsis; }
+
+.acciones { display:grid; gap:9px; }
+.accion-card { width:100%; min-height:58px; display:flex; align-items:center; gap:11px; padding:9px 12px; text-align:left; background:rgba(18,25,21,.95); border:1px solid #36403b; border-radius:13px; cursor:pointer; }
+.accion-card.activa { border-color:rgba(168,230,0,.55); background:rgba(29,40,24,.95); }
+.accion-icono { width:38px; height:38px; flex:none; display:grid; place-items:center; border-radius:11px; background:rgba(168,230,0,.09); border:1px solid rgba(168,230,0,.22); }
+.accion-icono ion-icon { font-size:20px; }
+.accion-card>div:last-child { min-width:0; display:flex; flex-direction:column; gap:2px; }
+.accion-card strong { color:#fff; font-size:11.5px; font-weight:900; }
+.accion-card span { color:#aeb7b2; font-size:9.5px; font-weight:600; line-height:1.25; }
+
+.mensaje { margin:0; color:#a8e600; font-size:10.5px; font-weight:700; text-align:center; }
+
+.inicio-button { margin-top:auto; min-height:58px; --background:#93bf00; --background-hover:#a8e600; --background-activated:#87ad00; --color:#0b0f0d; --border-radius:16px; font-size:14.5px; font-weight:900; box-shadow:0 10px 24px rgba(0,0,0,.3); }
+.inicio-button ion-icon { color:inherit; }
+
+@media (max-height:700px) {
+  .resultado-content { gap:11px; padding-top:4%; padding-bottom:4%; }
+  .check-principal { width:52px; height:52px; margin-bottom:7px; }
+  .check-principal ion-icon { font-size:31px; }
+  .estado-principal h1 { font-size:1.45rem; }
+  .tracking-card { padding:12px; }
+  .tracking-card strong { font-size:1.45rem; }
+  .datos-card { padding:10px; gap:8px; }
+  .accion-card { min-height:50px; }
+  .inicio-button { min-height:50px; }
+}

@@ -1,0 +1,43 @@
+<ion-content>
+  <main class="consulta-screen">
+    <header>
+      <a routerLink="/home" aria-label="Volver al inicio">←</a>
+      <h1>Consultar estado</h1>
+    </header>
+    <section class="contenido" aria-label="Consulta de seguimiento">
+      <p class="marca">ZEMYNA · SEGUIMIENTO</p>
+      <p class="intro">Ingresá el código que recibiste al registrar tu incidencia o solicitud.</p>
+      <form (ngSubmit)="consultar()" novalidate>
+        <label for="tracking">Código de seguimiento</label>
+        <input id="tracking" name="tracking" [(ngModel)]="codigo" (ngModelChange)="limpiarResultado()"
+          [disabled]="cargando() || cancelando()" [attr.aria-invalid]="error() ? 'true' : null"
+          aria-describedby="ayuda" placeholder="Ej.: INC-2026-ABCDE" maxlength="32"
+          autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="search" />
+        <small id="ayuda">Incidencias (INC) y solicitudes (RET o REF).</small>
+        <button type="submit" [disabled]="cargando() || cancelando()">{{ cargando() ? 'Consultando…' : 'Consultar estado' }}</button>
+      </form>
+      @if (cargando()) { <p role="status">Consultando tu incidencia o solicitud…</p> }
+      @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+      @if (aviso()) { <p role="status">{{ aviso() }}</p> }
+      @if (resultado(); as dato) {
+        <section class="resultado" aria-label="Resultado de la consulta" aria-live="polite">
+          <h2>{{ dato.tracking_number }}</h2>
+          <dl>
+            <div><dt>Tipo de registro</dt><dd>{{ dato.tipo_tramite }}</dd></div>
+            <div><dt>Estado</dt><dd class="estado">{{ dato.estado }}</dd></div>
+            <div><dt>Fecha de registro</dt><dd>{{ dato.fecha }}</dd></div>
+            <div><dt>Dirección</dt><dd>{{ dato.direccion || 'Sin dirección registrada' }}</dd></div>
+            @if (dato.tipo_residuo || dato.tipo_problema) { <div><dt>{{ dato.tipo_residuo ? 'Tipo de residuo' : 'Motivo' }}</dt><dd>{{ dato.tipo_residuo || dato.tipo_problema }}</dd></div> }
+            @if (dato.descripcion) { <div><dt>Descripción</dt><dd class="descripcion">{{ dato.descripcion }}</dd></div> }
+          </dl>
+          @if (permiteCancelar(dato)) {
+            <button class="cancelar-registro" type="button" [disabled]="cancelando()" (click)="cancelar()">{{ cancelando() ? 'Cancelando…' : 'Cancelar ' + nombre(dato) }}</button>
+          } @else if (soportaCancelacion(dato) && !finalizada(dato)) {
+            <p role="status">{{ mensajeAsignada(dato) }}</p>
+          }
+          @if (!cancelando()) { <app-editar-tramite [tracking]="dato.tracking_number" [contextoConsulta]="true" (actualizado)="aplicarEdicion($event)" /> }
+        </section>
+      }
+    </section>
+  </main>
+</ion-content>

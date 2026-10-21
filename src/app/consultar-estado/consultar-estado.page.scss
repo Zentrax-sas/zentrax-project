@@ -1,0 +1,25 @@
+:host { display:block; background:#0b0f0d; color:#f4f7f5; }
+ion-content { --background:#0b0f0d; --color:#f4f7f5; }
+.consulta-screen { max-width:430px; margin:auto; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+header { display:flex; align-items:center; gap:12px; padding:8px 16px; border-bottom:1px solid #36403b; }
+header a { display:grid; place-items:center; width:44px; height:44px; color:#a8e600; font-size:26px; text-decoration:none; }
+h1 { font-size:20px; margin:0; }
+.contenido { padding:16px; }
+.marca { color:#a8e600; font-size:11px; font-weight:800; letter-spacing:.08em; margin:0 0 10px; }
+.intro { font-size:14px; line-height:1.4; margin:0 0 18px; }
+form { display:flex; flex-direction:column; gap:8px; }
+label { font-size:13px; font-weight:700; }
+input { width:100%; min-width:0; min-height:48px; border:1px solid #59675f; border-radius:12px; padding:10px 12px; background:#121915; color:#fff; font-size:16px; }
+small { color:#bdc8c0; font-size:11px; }
+button { min-height:48px; margin-top:6px; border:0; border-radius:12px; background:#a8e600; color:#0b0f0d; font-size:16px; font-weight:800; }
+button:disabled { opacity:.6; }
+:is(input,button,a):focus-visible { outline:2px solid #a8e600; outline-offset:3px; }
+.error { color:#ffb4b4; line-height:1.4; font-size:14px; }
+.resultado { margin-top:18px; padding:14px; border:1px solid #36403b; border-radius:14px; background:#121915; overflow-wrap:anywhere; }
+h2 { color:#a8e600; font-size:18px; margin:0 0 12px; }
+dl { margin:0; display:grid; gap:10px; }
+dt { color:#bdc8c0; font-size:11px; margin-bottom:2px; }
+dd { margin:0; font-size:14px; line-height:1.35; }
+.estado { color:#a8e600; font-weight:700; }
+.descripcion { white-space:pre-wrap; }
+.cancelar-registro { width:100%; margin-top:14px; padding:10px; }

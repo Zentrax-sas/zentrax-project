@@ -1,2 +1,37 @@
-// For information on how to create your own theme, please refer to:
-// https://ionicframework.com/docs/theming/
+:root {
+  color-scheme: dark;
+  --zemyna-bg: #0b0f0d;
+  --zemyna-surface: #1a1f1d;
+  --zemyna-surface-alt: #151a18;
+  --zemyna-border: #2c3330;
+  --zemyna-lime: #a8e600;
+  --zemyna-lime-active: #9be600;
+  --zemyna-text: #e6eaea;
+  --zemyna-muted: #aeb8b3;
+  --ion-font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --ion-color-primary: #a8e600;
+  --ion-color-primary-rgb: 168, 230, 0;
+  --ion-color-primary-contrast: #0b0f0d;
+  --ion-color-primary-contrast-rgb: 11, 15, 13;
+  --ion-color-primary-shade: #9be600;
+  --ion-color-primary-tint: #bfff1a;
+  --ion-color-secondary: #9be600;
+  --ion-color-secondary-rgb: 155, 230, 0;
+  --ion-color-secondary-contrast: #0b0f0d;
+  --ion-color-secondary-contrast-rgb: 11, 15, 13;
+  --ion-color-secondary-shade: #88ca00;
+  --ion-color-secondary-tint: #a5e91a;
+  --ion-background-color: #0b0f0d;
+  --ion-background-color-rgb: 11, 15, 13;
+  --ion-text-color: #e6eaea;
+  --ion-text-color-rgb: 230, 234, 234;
+  --ion-border-color: #2c3330;
+  --ion-item-background: #1a1f1d;
+  --ion-toolbar-background: #0b0f0d;
+  --ion-toolbar-color: #e6eaea;
+  --ion-card-background: #1a1f1d;
+  --ion-color-step-50: #151a18;
+  --ion-color-step-100: #1a1f1d;
+  --ion-color-step-150: #2c3330;
+  --ion-color-step-600: #aeb8b3;
+}

@@ -1,0 +1,44 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/home" text="" aria-label="Volver al inicio"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Novedades</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content>
+  <main>
+    <header class="intro">
+      <span class="eyebrow">INFORMACIÓN CIUDADANA</span>
+      <h1>Hoy también contás.</h1>
+      <p>Conocé las incidencias y su estado actual.</p>
+    </header>
+    <div class="example-note">
+      <p>Últimas 20 incidencias reportadas en contenedores activos y su estado actual.</p>
+      <p>La fecha corresponde al reporte, no al último cambio de estado.</p>
+    </div>
+    <button type="button" (click)="cargar()" [disabled]="cargando()">{{ error() ? 'Reintentar' : 'Actualizar novedades' }}</button>
+    <section class="news-list" aria-label="Novedades ciudadanas" [attr.aria-busy]="cargando()">
+      @if (cargando()) {
+        <p class="mensaje" role="status">Cargando novedades…</p>
+      } @else if (error()) {
+        <p class="mensaje error" role="alert">{{ error() }}</p>
+      } @else if (novedades().length === 0) {
+        <p class="mensaje" role="status">No hay novedades públicas disponibles por el momento.</p>
+      } @else {
+        @for (novedad of novedades(); track novedad.id) {
+          <article [attr.aria-labelledby]="'news-' + novedad.id">
+            <div class="icon"><ion-icon name="megaphone-outline" aria-hidden="true"></ion-icon></div>
+            <div>
+            <span class="tipo">{{ novedad.tipo }}</span>
+            <h2 [id]="'news-' + novedad.id">{{ novedad.titulo }}</h2>
+            <time [attr.datetime]="novedad.fecha.replace(' ', 'T')">{{ fechaVisible(novedad.fecha) }}</time>
+            @if (novedad.direccion) { <p class="direccion">{{ novedad.direccion }}</p> }
+            <p class="estado">Estado actual: <strong>{{ novedad.estado }}</strong></p>
+            </div>
+          </article>
+        }
+      }
+    </section>
+  </main>
+</ion-content>
