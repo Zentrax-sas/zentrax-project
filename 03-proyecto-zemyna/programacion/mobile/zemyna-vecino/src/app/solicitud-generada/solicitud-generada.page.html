@@ -1,0 +1,51 @@
+<ion-content [scrollY]="false">
+  <main class="resultado-screen">
+    <div class="resultado-content">
+      <section class="estado-principal">
+        <div class="check-principal"><ion-icon name="checkmark-circle-outline" aria-hidden="true"></ion-icon></div>
+        <span>SOLICITUD REGISTRADA</span>
+        <h1>Retiro solicitado</h1>
+        <p>Guardá tu código de seguimiento para consultar la solicitud.</p>
+      </section>
+
+      <section class="tracking-card">
+        <span class="tracking-label">CÓDIGO DE SEGUIMIENTO</span>
+        <strong>{{ solicitud?.tracking_number }}</strong>
+        <div class="estado-retiro"><span class="estado-dot"></span>{{ solicitud?.estado }}</div>
+      </section>
+
+      <section class="datos-card">
+        <div class="dato-row"><span>Tipo de retiro</span><strong>{{ solicitud?.tipo_residuo }}</strong></div>
+        <div class="dato-row"><span>Dirección</span><strong>{{ solicitud?.direccion }}</strong></div>
+        <div class="dato-row"><span>Fecha</span><strong>{{ fechaFormateada }}</strong></div>
+        @if (solicitud?.celular) {
+          <div class="dato-row"><span>Celular</span><strong>{{ solicitud.celular }}</strong></div>
+        }
+      </section>
+
+      @if (solicitud) { <app-editar-tramite [tracking]="solicitud.tracking_number" (actualizado)="aplicarEdicion($event)" /> }
+      <button type="button" class="copiar-button" [disabled]="abriendoWhatsapp" (click)="guardarEnWhatsapp()">
+        <ion-icon name="logo-whatsapp" aria-hidden="true"></ion-icon>Guardar en WhatsApp
+      </button>
+      <button type="button" class="copiar-button" (click)="copiarCodigo()">
+        <ion-icon name="copy-outline" aria-hidden="true"></ion-icon>
+        {{ copiado ? 'Número copiado' : 'Copiar número' }}
+      </button>
+      <button type="button" class="copiar-button" [disabled]="generandoComprobante" (click)="descargarComprobante()">
+        <ion-icon name="download-outline" aria-hidden="true"></ion-icon>Descargar comprobante
+      </button>
+      <button type="button" class="copiar-button" [class.activa]="seguimientoActivo" (click)="guardarSeguimiento()">
+        <ion-icon name="bookmark-outline" aria-hidden="true"></ion-icon>{{ seguimientoActivo ? 'Guardado en este dispositivo' : 'Guardar seguimiento' }}
+      </button>
+      <button type="button" class="copiar-button" (click)="consultarSeguimiento()">
+        <ion-icon name="search-outline" aria-hidden="true"></ion-icon>Consultar seguimiento
+      </button>
+      @if (mensaje) { <p class="mensaje" aria-live="polite">{{ mensaje }}</p> }
+
+      <ion-button expand="block" class="inicio-button" (click)="volverInicio()">
+        <ion-icon slot="start" name="home-outline" aria-hidden="true"></ion-icon>
+        Volver al inicio
+      </ion-button>
+    </div>
+  </main>
+</ion-content>

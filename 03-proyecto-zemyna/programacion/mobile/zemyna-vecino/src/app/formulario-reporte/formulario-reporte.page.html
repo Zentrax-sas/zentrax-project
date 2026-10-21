@@ -1,0 +1,124 @@
+<ion-content [scrollY]="false">
+  <main class="fr-screen">
+
+    <header class="fr-header">
+      <ion-back-button class="fr-back" defaultHref="/reporte-incidencia" text="" aria-label="Volver"></ion-back-button>
+      <h1>Reporte de incidencia</h1>
+    </header>
+
+    <div class="fr-content">
+
+      <section class="fr-localizado">
+        <div class="fr-estado">
+          <ion-icon name="checkmark-circle-outline" aria-hidden="true"></ion-icon>
+          <span>CONTENEDOR LOCALIZADO</span>
+        </div>
+
+        <div class="fr-datos">
+          <div class="fr-id">
+            <strong>{{ contenedorCodigo || ('CT-' + contenedorId) }}</strong>
+
+            @if (contenedorId) {
+              <span>ID Contenedor {{ contenedorId }}</span>
+            }
+          </div>
+
+          <p>
+            <ion-icon name="location-outline" aria-hidden="true"></ion-icon>
+            {{ direccion || 'Ubicación no disponible' }}
+          </p>
+        </div>
+      </section>
+
+      <section class="fr-intro">
+        <h2>Completá los siguientes datos</h2>
+        <p>Ingresá la información necesaria para generar la incidencia.</p>
+      </section>
+
+      <section class="fr-campos">
+
+        <div class="fr-field">
+          <label id="label-problema">Motivo de la incidencia</label>
+
+          <ion-select
+            aria-labelledby="label-problema"
+            placeholder="Seleccioná una opción"
+            interface="action-sheet"
+            [interfaceOptions]="{ cssClass: 'incidencia-motivos' }"
+            [value]="problema"
+            (ionChange)="actualizarProblema($event.detail.value)">
+
+            @for (motivo of motivos; track motivo.value) {
+              <ion-select-option [value]="motivo.value">
+                {{ motivo.label }}
+              </ion-select-option>
+            }
+
+          </ion-select>
+        </div>
+
+        <div class="fr-fotoarea">
+          <span class="fr-label">Foto</span>
+
+          <label class="fr-foto" (click)="abrirSelectorFoto($event)">
+            <ion-icon name="camera-outline" aria-hidden="true"></ion-icon>
+
+            <span>{{ fotoNombre || 'Adjuntar foto' }}</span>
+
+            <strong aria-hidden="true">+</strong>
+
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              [hidden]="selectorFotoNativo"
+              (change)="seleccionarFoto($event)">
+          </label>
+
+          <p class="fr-ayuda">Opcional.</p>
+        </div>
+
+        <div class="fr-celular">
+          <span class="fr-label" id="label-celular">Celular</span>
+
+          <ion-input
+            type="tel"
+            inputmode="tel"
+            aria-labelledby="label-celular"
+            placeholder="099 123 456"
+            [value]="celular"
+            (ionInput)="actualizarCelular($event.detail.value)"
+            maxlength="12">
+          </ion-input>
+
+          <p class="fr-ayuda">
+            Opcional.
+          </p>
+          <label class="whatsapp-consentimiento">
+            <input type="checkbox" [checked]="consentimientoWhatsApp" [disabled]="!celular.trim() || !celularValido"
+              (change)="consentimientoWhatsApp = $any($event.target).checked">
+            <span>Quiero recibir actualizaciones por WhatsApp</span>
+          </label>
+        </div>
+
+        @if (mensaje) {
+          <p class="fr-mensaje" [class.error]="!formularioValido">
+            {{ mensaje }}
+          </p>
+        }
+
+        <ion-button
+          expand="block"
+          class="fr-enviar"
+          [disabled]="!formularioValido"
+          (click)="enviarReporte()">
+
+          <ion-icon slot="start" name="send-outline" aria-hidden="true"></ion-icon>
+          Generar reporte
+        </ion-button>
+
+      </section>
+
+    </div>
+
+  </main>
+</ion-content>

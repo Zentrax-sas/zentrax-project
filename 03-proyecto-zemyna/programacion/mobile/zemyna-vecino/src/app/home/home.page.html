@@ -1,0 +1,110 @@
+<ion-content [scrollY]="false">
+  <main class="home-screen">
+    <section class="hero-section" aria-labelledby="home-subtitle">
+      <img class="hero-background" src="assets/zemyna-urban-hero.png" alt="" />
+      <div class="hero-overlay" aria-hidden="true"></div>
+      <a class="news-card" routerLink="/novedades" aria-labelledby="news-title">
+        <span class="label">NOVEDADES</span>
+        <h2 id="news-title">Hoy también contás.</h2>
+        <p>Conocé las incidencias y su estado actual.</p>
+        <span class="news-link">Ver novedades <span aria-hidden="true">→</span></span>
+      </a>
+      <div class="brand-block">
+          <img src="assets/logo_sin_fondo2.png" alt="Zemyna" class="brand-logo" />
+        <p id="home-subtitle" class="brand-subtitle">Sistema de Gestión de Residuos Urbanos</p>
+      </div>
+    </section>
+
+<section class="actions-section" aria-label="Acciones principales">
+<div class="acciones-grid">
+
+  <button class="accion-card retiro" type="button" routerLink="/solicitud-retiro">
+
+    <div class="accion-top">
+      <div class="accion-icono">
+        <ion-icon name="trash-outline"></ion-icon>
+      </div>
+
+      <ion-icon
+        class="accion-flecha"
+        name="chevron-forward-outline">
+      </ion-icon>
+    </div>
+
+    <div class="accion-contenido">
+      <h3>Solicitud de retiro</h3>
+      <p>Solicitá un nuevo servicio</p>
+    </div>
+
+  </button>
+
+
+  <button
+    class="accion-card incidencia"
+    type="button"
+    routerLink="/reporte-incidencia">
+
+    <div class="accion-top">
+      <div class="accion-icono">
+        <ion-icon name="warning-outline"></ion-icon>
+      </div>
+
+      <ion-icon
+        class="accion-flecha"
+        name="chevron-forward-outline">
+      </ion-icon>
+    </div>
+
+    <div class="accion-contenido">
+      <h3>Reporte de incidencia</h3>
+      <p>Informá una incidencia</p>
+    </div>
+
+  </button>
+
+
+  <button class="accion-card qr" type="button" routerLink="/buscar-contenedor" [queryParams]="{ metodo: 'qr' }">
+
+    <div class="accion-top">
+      <div class="accion-icono">
+        <ion-icon name="qr-code-outline"></ion-icon>
+      </div>
+
+      <ion-icon
+        class="accion-flecha"
+        name="chevron-forward-outline">
+      </ion-icon>
+    </div>
+
+    <div class="accion-contenido">
+      <h3>Escanear QR</h3>
+      <p>Escaneá un contenedor</p>
+    </div>
+
+  </button>
+
+
+  <button class="accion-card estado" type="button" routerLink="/consultar-estado">
+
+    <div class="accion-top">
+      <div class="accion-icono">
+        <ion-icon name="document-text-outline"></ion-icon>
+      </div>
+
+      <ion-icon
+        class="accion-flecha"
+        name="chevron-forward-outline">
+      </ion-icon>
+    </div>
+
+    <div class="accion-contenido">
+      <h3>Consultar estado</h3>
+      <p>Revisá tus reportes</p>
+    </div>
+
+  </button>
+
+</div>
+</section>
+  </main>
+</ion-content>

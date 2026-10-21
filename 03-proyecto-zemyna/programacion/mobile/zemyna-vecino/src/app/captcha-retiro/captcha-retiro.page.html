@@ -1,0 +1,40 @@
+<ion-content [scrollY]="false">
+  <main class="captcha-screen">
+    <header class="header-retiro">
+      <ion-back-button class="back-button" defaultHref="/solicitud-retiro" [disabled]="enviando" text="" aria-label="Volver"></ion-back-button>
+      <h1>Solicitud de retiro</h1>
+    </header>
+
+    <div class="captcha-content">
+      <section class="captcha-intro">
+        <div class="seguridad-icono"><ion-icon name="shield-checkmark-outline" aria-hidden="true"></ion-icon></div>
+        <span>VALIDACIÓN DE SEGURIDAD</span>
+        <h2>Confirmá que sos una persona</h2>
+        <p>Resolvé esta operación para enviar la solicitud de retiro.</p>
+      </section>
+
+      <section class="captcha-card">
+        <div class="operacion" aria-live="polite">{{ cargandoCaptcha ? 'Cargando operación…' : pregunta }}</div>
+        <div class="respuesta-area">
+          <label id="label-respuesta-retiro">Resultado</label>
+          <ion-input type="number" inputmode="numeric" aria-labelledby="label-respuesta-retiro" placeholder="Ingresá el resultado" [value]="respuesta" [disabled]="cargandoCaptcha || enviando" (ionInput)="actualizarRespuesta($event.detail.value)" (keyup.enter)="confirmar()"></ion-input>
+        </div>
+        @if (error) { <p class="captcha-error" role="alert">{{ error }}</p> }
+        <button class="nuevo-captcha" type="button" [disabled]="cargandoCaptcha || enviando" (click)="cargarCaptcha()">
+          <ion-icon name="refresh-outline" aria-hidden="true"></ion-icon>
+          Generar otra operación
+        </button>
+      </section>
+
+      <div class="captcha-ayuda">
+        <ion-icon name="checkmark-circle-outline" aria-hidden="true"></ion-icon>
+        <p>Esta validación ayuda a evitar solicitudes automáticas o enviadas por error.</p>
+      </div>
+
+      <ion-button expand="block" class="confirmar-button" [disabled]="cargandoCaptcha || enviando || !pregunta" (click)="confirmar()">
+        <ion-icon slot="start" name="shield-checkmark-outline" aria-hidden="true"></ion-icon>
+        {{ enviando ? 'Enviando…' : 'Confirmar solicitud' }}
+      </ion-button>
+    </div>
+  </main>
+</ion-content>

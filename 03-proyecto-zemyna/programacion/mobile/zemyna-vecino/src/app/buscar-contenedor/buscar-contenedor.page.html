@@ -1,0 +1,151 @@
+<ion-content [scrollY]="metodo !== 'calle'">
+  <main [class.qr-screen]="metodo === 'qr'" [class.mapa-screen]="metodo === 'mapa'" [class.calle-screen]="metodo === 'calle'">
+    <header>
+      @if (metodo === 'qr') {
+        <ion-back-button defaultHref="/home" text="" aria-label="Volver" />
+      } @else {
+        <button class="volver-metodos" type="button" (click)="cancelar()" aria-label="Cancelar y volver a los métodos">←</button>
+      }
+      <h1>{{ metodo === 'qr' ? 'Escanear QR' : 'Reporte de incidencia' }}</h1>
+    </header>
+    <section [hidden]="metodo === 'gps' && seleccionado !== null">
+      @if (metodo === 'qr') {
+        <p class="qr-intro">Escaneá el QR del contenedor o ingresá su código para identificarlo.</p>
+      } @else { <h2>{{ titulos[metodo] }}</h2> }
+      @if (metodo === 'calle') { <p>Ingresá una calle y, si la conocés, la esquina o el número. Tocá un contenedor en el mapa para revisar sus datos.</p> }
+      @if (metodo === 'calle' || metodo === 'qr') {
+        <div class="campos" #campos (keydown)="navegarSugerencias($event)">
+          <ion-input [label]="metodo === 'qr' ? 'Ingresar o pegar código del QR' : 'Calle'" labelPlacement="stacked"
+            [placeholder]="metodo === 'qr' ? 'Ej.: CTN-001' : 'Ej.: 18 de Julio'" [value]="calle"
+            [maxlength]="metodo === 'qr' ? 2048 : 80" (ionInput)="actualizar('calle', $event.detail.value)" (keyup.enter)="buscar()" (keydown.escape)="cerrarSugerencias()" (ionFocus)="sugerir('calle')" />
+          @if (campoSugerencias === 'calle') {
+            <div class="sugerencias" aria-live="polite">
+              @if (sugerenciasCargando) { <p>Buscando sugerencias…</p> }
+              @if (sugerenciasError) { <p>{{ sugerenciasError }}</p> }
+              @if (sugerenciasRealizadas && sugerencias.length === 0) { <p>Sin coincidencias</p> }
+              @if (sugerencias.length) {
+                <ul aria-label="Sugerencias de calle">
+                  @for (nombre of sugerencias; track nombre) {
+                    <li><button type="button" (click)="seleccionarSugerencia('calle', nombre)" (keydown.escape)="cerrarSugerencias()">{{ nombre }}</button></li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+          @if (metodo === 'calle') {
+            <ion-input label="Esquina o número (opcional)" labelPlacement="stacked" placeholder="Ej.: Soca" [value]="esquina"
+              [maxlength]="80" (ionInput)="actualizar('esquina', $event.detail.value)" (keyup.enter)="buscar()" (keydown.escape)="cerrarSugerencias()" (ionFocus)="sugerir('esquina')" />
+          @if (campoSugerencias === 'esquina') {
+            <div class="sugerencias" aria-live="polite">
+              @if (sugerenciasCargando) { <p>Buscando sugerencias…</p> }
+              @if (sugerenciasError) { <p>{{ sugerenciasError }}</p> }
+              @if (sugerenciasRealizadas && sugerencias.length === 0) { <p>Sin coincidencias</p> }
+              @if (sugerencias.length) {
+                <ul aria-label="Sugerencias de esquina">
+                  @for (nombre of sugerencias; track nombre) {
+                    <li><button type="button" (click)="seleccionarSugerencia('esquina', nombre)" (keydown.escape)="cerrarSugerencias()">{{ nombre }}</button></li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+          }
+        </div>
+        @if (metodo === 'qr') {
+          <video #video [hidden]="!escaneando" autoplay muted playsinline aria-label="Vista de la cámara"></video>
+          @if (escaneando) {
+            <p role="status">Apuntá al QR del contenedor.</p>
+            <ion-button expand="block" (click)="detenerCamara()">Cancelar lectura</ion-button>
+          } @else {
+            <ion-button expand="block" (click)="escanear()" [disabled]="cargando">Abrir cámara</ion-button>
+          }
+        }
+        <ion-button expand="block" (click)="buscar()" [disabled]="cargando">{{ metodo === 'qr' ? 'Identificar contenedor' : 'Buscar contenedores' }}</ion-button>
+      }
+      @if (metodo === 'gps') {
+        <p>Permití acceder a tu ubicación para ver contenedores en la zona. Elegí el que querés reportar y revisá su dirección.</p>
+        <ion-button expand="block" (click)="localizar()" [disabled]="cargando">Usar mi ubicación</ion-button>
+      }
+      @if (metodo === 'mapa') {
+        <p>Mové el mapa y acercalo con +. Tocá un marcador o elegí un contenedor en el desplegable.</p>
+        <app-mapa-contenedores (fallo)="falloMapa()" [contenedores]="resultados" [ubicacionCargando]="cargando" [seleccionadoId]="seleccionado?.id_contenedor ?? null"
+          (solicitarUbicacion)="localizarEnMapa()" (zona)="buscarZona($event)" (seleccionar)="seleccionarContenedor($event)" />
+        <div class="selector-mapa">
+          <label for="contenedor-mapa">ID Contenedor</label>
+          <select id="contenedor-mapa" [value]="seleccionado?.id_contenedor ?? ''" [disabled]="cargando"
+            (change)="seleccionarDesdeMapa($any($event.target).value)">
+            <option value="">Elegí un contenedor</option>
+            @for (c of resultados; track c.id_contenedor) {
+              <option [value]="c.id_contenedor">{{ c.codigo }} · {{ c.direccion || 'Sin dirección registrada' }}</option>
+            }
+          </select>
+          <ion-button class="seleccionar-mapa" expand="block" [disabled]="!seleccionMapaValida" (click)="continuar()">Seleccionar contenedor</ion-button>
+        </div>
+      }
+      <div aria-live="polite">
+        @if (cargando) { <p>Cargando contenedores…</p> }
+        @if (error) { <p role="alert">{{ error }}</p> }
+        @if (aviso) { <p>{{ aviso }}</p> }
+        @if (realizada && !cargando && !error && resultados.length === 0) { <p>No se encontraron contenedores. Probá otra búsqueda o zona.</p> }
+      </div>
+      @if (metodo === 'calle' && realizada && resultados.length > 0) {
+        <app-mapa-contenedores (fallo)="falloMapa()" [contenedores]="resultados" [ajustarResultados]="true" [permitirUbicacion]="false"
+          [seleccionadoId]="seleccionado?.id_contenedor ?? null" (seleccionar)="seleccionarContenedor($event)" />
+        @if (seleccionado; as contenedor) {
+          <article class="calle-detalle" aria-label="Contenedor seleccionado" aria-live="polite">
+            <dl>
+              <div><dt>Código IDM</dt><dd>{{ contenedor.codigo }}</dd></div>
+              <div><dt>Dirección</dt><dd>{{ contenedor.direccion || 'Sin dirección registrada' }}</dd></div>
+              @if (contenedor.esquina) { <div><dt>Esquina</dt><dd>{{ contenedor.esquina }}</dd></div> }
+              @if (contenedor.referencia) { <div><dt>Referencia</dt><dd>{{ contenedor.referencia }}</dd></div> }
+              @if (contenedor.estado) { <div><dt>Estado</dt><dd>{{ contenedor.estado }}</dd></div> }
+            </dl>
+          </article>
+        }
+      }
+      @if (metodo === 'qr') {
+        @for (contenedor of resultados; track contenedor.id_contenedor) {
+          <article class="qr-resultado" aria-label="Contenedor identificado" aria-live="polite">
+            <h2>{{ contenedor.codigo }}</h2>
+            <dl>
+              <div><dt>ID Contenedor</dt><dd>{{ contenedor.id_contenedor }}</dd></div>
+              <div><dt>Dirección</dt><dd>{{ contenedor.direccion || 'Sin dirección registrada' }}</dd></div>
+              <div><dt>Estado</dt><dd>{{ contenedor.estado || 'Sin estado informado' }}</dd></div>
+              @if (ubicacion(contenedor); as coordenadas) { <div><dt>Ubicación (latitud, longitud)</dt><dd>{{ coordenadas }}</dd></div> }
+            </dl>
+            <ion-button expand="block" (click)="elegir(contenedor)">Reportar incidencia en este contenedor</ion-button>
+          </article>
+        }
+      } @else {
+        @if (metodo === 'gps') {
+          <app-resultados-contenedores [contenedores]="resultados" [distancias]="metodo === 'gps' ? distanciasGps : null" (seleccionar)="seleccionarContenedor($event)" />
+        }
+        @if (metodo !== 'calle') {
+          <ion-button expand="block" fill="outline" (click)="cancelar()">Cancelar / cambiar método</ion-button>
+        }
+      }
+    </section>
+    @if (metodo === 'gps' && seleccionado; as contenedor) {
+      <section class="confirmacion" aria-labelledby="confirmar-titulo" aria-live="polite">
+        <h2 id="confirmar-titulo">¿Es este el contenedor?</h2>
+        <p>Revisá los datos antes de completar el reporte.</p>
+        <dl>
+          <dt>Código / ID Contenedor</dt><dd>{{ contenedor.codigo }} · {{ contenedor.id_contenedor }}</dd>
+          <dt>Dirección</dt><dd>{{ contenedor.direccion || 'Sin dirección registrada' }}</dd>
+          <dt>Estado</dt><dd>{{ contenedor.estado || 'Sin estado informado' }}</dd>
+        </dl>
+        <ion-button expand="block" (click)="continuar()">Continuar al formulario</ion-button>
+        <ion-button expand="block" fill="outline" (click)="cambiarContenedor()">Cambiar de contenedor</ion-button>
+        <ion-button expand="block" fill="clear" (click)="cancelar()">Cancelar / cambiar método</ion-button>
+      </section>
+    }
+    @if (metodo === 'calle') {
+      <footer class="calle-acciones">
+        @if (seleccionado) {
+          <ion-button class="seleccionar-calle" expand="block" [disabled]="!seleccionMapaValida" (click)="continuar()">Seleccionar contenedor</ion-button>
+        }
+        <ion-button expand="block" fill="outline" (click)="cancelar()">Cancelar y volver</ion-button>
+      </footer>
+    }
+  </main>
+</ion-content>

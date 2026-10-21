@@ -1,0 +1,230 @@
+ion-content { --background: #0b0f0d; --overflow: hidden; }
+.home-screen {
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
+
+  display: grid;
+  grid-template-rows: 56% 44%;
+
+  overflow: hidden;
+
+  background: #0B0F0D;
+
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: max(10px, env(safe-area-inset-left));
+  padding-right: max(10px, env(safe-area-inset-right));
+
+  box-sizing: border-box;
+}
+
+.hero-section {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 0 0 18px 18px;
+}
+
+.hero-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(8, 12, 10, 0.15) 0%,
+      rgba(8, 12, 10, 0.28) 36%,
+      rgba(8, 12, 10, 0.62) 72%,
+      rgba(8, 12, 10, 0.94) 100%
+    );
+  z-index: 1;
+}
+
+.news-card {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+
+  width: 170px;
+
+  padding: 10px 12px;
+
+  background: rgba(23, 28, 26, 0.78);
+  border: 1px solid rgba(168, 230, 0, 0.14);
+  border-radius: 15px;
+  backdrop-filter: blur(8px);
+}
+
+.news-card .label {
+  font-size: 9px;
+  font-weight: 800;
+  color: #A8E600;
+}
+
+.news-card h2 {
+  margin: 4px 0 6px;
+  font-size: 16px;
+  line-height: 1.05;
+  font-weight: 800;
+  color: #F4F7F5;
+}
+
+.news-card p {
+  margin: 0 0 8px;
+  font-size: 10px;
+  line-height: 1.25;
+  color: #C0C9C4;
+}
+
+.news-card .news-link {
+  font-size: 10px;
+  font-weight: 700;
+  color: #A8E600;
+}
+
+.brand-block {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 2;
+
+  width: min(90%, 360px);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.brand-logo {
+  width: 260px;
+  max-width: 78%;
+  height: auto;
+}
+
+.brand-subtitle {
+  margin: 0;
+  color: #A8E600;
+  font-size: 15px;
+  line-height: 1.1;
+  font-weight: 800;
+  text-align: center;
+}
+
+.actions-section {
+  width: 100%;
+  min-height: 0;
+
+  padding-top: 8px;
+  padding-bottom: 8px;
+
+  display: flex;
+  align-items: center;
+}
+
+.acciones-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 auto;
+}
+
+.accion-card {
+  position: relative;
+  height: 116px;
+  min-height: 116px;
+
+  padding: 13px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  background:
+    linear-gradient(
+      145deg,
+      #1C231F 0%,
+      #151A18 100%
+    );
+
+  border: 1px solid #36403B;
+  border-radius: 16px;
+
+  box-shadow: 0 6px 18px rgba(0,0,0,.20);
+
+  color: #F4F7F5;
+  text-align: left;
+}
+
+.accion-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 14px;
+  width: 42px;
+  height: 3px;
+  background: #A8E600;
+  border-radius: 0 0 4px 4px;
+}
+
+.accion-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.accion-icono {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #263416;
+  border: 1px solid rgba(168,230,0,.30);
+  border-radius: 11px;
+}
+
+.accion-icono ion-icon {
+  font-size: 23px;
+  color: #A8E600;
+}
+
+.accion-flecha {
+  margin-top: 7px;
+  font-size: 16px;
+  color: #AEB8B3;
+}
+
+.accion-contenido h3 {
+  margin: 0 0 5px;
+  color: #F4F7F5;
+  font-size: 16px;
+  line-height: 1.08;
+  font-weight: 800;
+}
+
+.accion-contenido p {
+  margin: 0;
+  color: #B8C1BC;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.news-card { display: block; text-decoration: none; }
+.accion-card { cursor: pointer; }
+.news-card:focus-visible, .accion-card:focus-visible { outline: 2px solid #a8e600; outline-offset: -3px; }
+@media (max-height: 720px) { .home-screen { grid-template-rows: 54% 46%; } }
+@media (min-width: 768px) { .home-screen { width: 430px; margin: 0 auto; } }

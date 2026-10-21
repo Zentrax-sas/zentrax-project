@@ -1,0 +1,106 @@
+<ion-content [scrollY]="false">
+  <main class="captcha-screen">
+
+    <header class="header-reporte">
+      <ion-back-button
+        class="back-button"
+        defaultHref="/formulario-reporte"
+        [disabled]="validando"
+        text=""
+        aria-label="Volver">
+      </ion-back-button>
+
+      <h1>Reporte de incidencia</h1>
+    </header>
+
+    <div class="captcha-content">
+
+      <section class="captcha-intro">
+        <div class="seguridad-icono">
+          <ion-icon
+            name="shield-checkmark-outline"
+            aria-hidden="true">
+          </ion-icon>
+        </div>
+
+        <span>VALIDACIÓN DE SEGURIDAD</span>
+        <h2>Confirmá que sos una persona</h2>
+        <p>Resolvé esta operación para continuar con el reporte.</p>
+      </section>
+
+      <section class="captcha-card">
+
+        <div class="operacion">
+          <span>{{ numeroA }}</span>
+          <strong>+</strong>
+          <span>{{ numeroB }}</span>
+          <strong>=</strong>
+          <span class="signo">?</span>
+        </div>
+
+        <div class="respuesta-area">
+          <label id="label-respuesta">Resultado</label>
+
+          <ion-input
+            type="number"
+            inputmode="numeric"
+            aria-labelledby="label-respuesta"
+            placeholder="Ingresá el resultado"
+            [value]="respuesta"
+            (ionInput)="actualizarRespuesta($event.detail.value)"
+            (keyup.enter)="confirmar()">
+          </ion-input>
+        </div>
+
+        @if (error) {
+          <p class="captcha-error" role="alert">
+            {{ error }}
+          </p>
+        }
+
+        <button
+          class="nuevo-captcha"
+          type="button"
+          [disabled]="validando"
+          (click)="generarCaptcha()">
+
+          <ion-icon
+            name="refresh-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+          Generar otra operación
+        </button>
+
+      </section>
+
+      <div class="captcha-ayuda">
+        <ion-icon
+          name="checkmark-circle-outline"
+          aria-hidden="true">
+        </ion-icon>
+
+        <p>
+          Esta validación ayuda a evitar reportes automáticos o enviados por error.
+        </p>
+      </div>
+
+      <ion-button
+        expand="block"
+        class="confirmar-button"
+        [disabled]="validando"
+        (click)="confirmar()">
+
+        <ion-icon
+          slot="start"
+          name="shield-checkmark-outline"
+          aria-hidden="true">
+        </ion-icon>
+
+        {{ validando ? 'Validando…' : 'Confirmar y continuar' }}
+      </ion-button>
+
+    </div>
+
+  </main>
+</ion-content>

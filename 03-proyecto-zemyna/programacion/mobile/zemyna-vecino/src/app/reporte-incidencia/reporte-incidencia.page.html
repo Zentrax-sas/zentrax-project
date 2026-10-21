@@ -1,0 +1,67 @@
+<ion-content [scrollY]="false">
+  <main class="reporte-screen">
+    <header class="header-reporte">
+      <ion-back-button class="back-button" defaultHref="/home" text="" aria-label="Volver al inicio"></ion-back-button>
+      <h1>Reporte de incidencia</h1>
+    </header>
+    <div class="reporte-content">
+    <section class="identificacion" aria-labelledby="identificacion-titulo" [class.metodo-elegido]="metodoSeleccionado !== null">
+      <div class="encabezado-reporte">
+        <h2 id="identificacion-titulo">Identificá el contenedor</h2>
+        <p>Elegí una opción para localizarlo.</p>
+      </div>
+      <div class="metodos-grid">
+        <button class="metodo-card" type="button" (click)="seleccionarMetodo('qr')" [class.seleccionado]="metodoSeleccionado === 'qr'" [attr.aria-pressed]="metodoSeleccionado === 'qr'">
+          <div class="metodo-top">
+            <div class="metodo-icono"><ion-icon name="qr-code-outline" aria-hidden="true"></ion-icon></div>
+            <ion-icon class="metodo-flecha" name="chevron-forward-outline" aria-hidden="true"></ion-icon>
+          </div>
+          <div class="metodo-contenido">
+            <h3>Escanear QR</h3>
+            <p>Leer código del contenedor</p>
+          </div>
+        </button>
+        <button class="metodo-card" type="button" (click)="seleccionarMetodo('gps')" [class.seleccionado]="metodoSeleccionado === 'gps'" [attr.aria-pressed]="metodoSeleccionado === 'gps'">
+          <div class="metodo-top">
+            <div class="metodo-icono"><ion-icon name="location-outline" aria-hidden="true"></ion-icon></div>
+            <ion-icon class="metodo-flecha" name="chevron-forward-outline" aria-hidden="true"></ion-icon>
+          </div>
+          <div class="metodo-contenido">
+            <h3>Mi ubicación</h3>
+            <p>Detectar contenedor cercano</p>
+          </div>
+        </button>
+        <button class="metodo-card" type="button" (click)="seleccionarMetodo('calle')" [class.seleccionado]="metodoSeleccionado === 'calle'" [attr.aria-pressed]="metodoSeleccionado === 'calle'">
+          <div class="metodo-top">
+            <div class="metodo-icono"><ion-icon name="navigate-outline" aria-hidden="true"></ion-icon></div>
+            <ion-icon class="metodo-flecha" name="chevron-forward-outline" aria-hidden="true"></ion-icon>
+          </div>
+          <div class="metodo-contenido">
+            <h3>Calle / esquina</h3>
+            <p>Buscar por dirección</p>
+          </div>
+        </button>
+        <button class="metodo-card" type="button" (click)="seleccionarMetodo('mapa')" [class.seleccionado]="metodoSeleccionado === 'mapa'" [attr.aria-pressed]="metodoSeleccionado === 'mapa'">
+          <div class="metodo-top">
+            <div class="metodo-icono"><ion-icon name="map-outline" aria-hidden="true"></ion-icon></div>
+            <ion-icon class="metodo-flecha" name="chevron-forward-outline" aria-hidden="true"></ion-icon>
+          </div>
+          <div class="metodo-contenido">
+            <h3>Mapa</h3>
+            <p>Seleccionar en el mapa</p>
+          </div>
+        </button>
+      </div>
+    </section>
+
+      <aside class="reporte-tip">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="tip-icono" width="38" height="38" color="#a8e600" aria-hidden="true" focusable="false"><path d="M304 384v-24c0-29 31.54-56.43 52-76 28.84-27.57 44-64.61 44-108 0-80-63.73-144-144-144a143.6 143.6 0 0 0-144 144c0 41.84 15.81 81.39 44 108 20.35 19.21 52 46.7 52 76v24M224 480h64M208 432h96M256 384V256" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32px"/><path d="M294 240s-21.51 16-38 16-38-16-38-16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32px"/></svg>
+        <div class="tip-texto">
+          <span>RECOMENDADO</span>
+          <p>Para identificarlo más rápido, escaneá el QR o activá tu ubicación.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+</ion-content>
+
