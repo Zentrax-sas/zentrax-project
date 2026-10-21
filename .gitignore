@@ -68,3 +68,61 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Zemyna: exclusiones para incorporar cada app al repositorio principal
+node_modules/
+.angular/
+.npm-cache/
+.cache/
+www/
+dist/
+out-tsc/
+coverage/
+tmp/
+.tmp/
+temp/
+*.tmp
+*.log
+tests/evidence/chrome-profile*/
+
+# Material interno de trabajo y carpetas de otras apps (no publicar)
+/cambios-copilot.txt
+/ZEMYNA_COPILOT_RULES.md
+/ZEMYNA_UI_RULES.md
+/zemyna-chofer/
+/entregables/
+tests/evidence/
+*.local.*
+
+# Credenciales y configuración privada (conservar plantillas sin secretos)
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+.npmrc
+.aws/
+.secrets/
+secrets/
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+keystore.properties
+key.properties
+google-services.json
+GoogleService-Info.plist
+
+# Compilaciones y configuración local de Android
+.gradle/
+android/**/build/
+android/local.properties
+*.apk
+*.aab
+*.aar
+*.dex
+*.class
+.DS_Store
+Thumbs.db
