@@ -2,6 +2,7 @@ if (window.location.protocol === 'file:') {
     window.location.replace(`${APP_BASE_URL}/index.html`);
 }
 
+const translateUi = (key, variables) => window.ZemynaI18n?.t(key, variables) ?? key;
 const citizenMap = ZemynaMap.create({ onContainerSelect: seleccionarContenedor });
 const map = citizenMap.map;
 
@@ -118,14 +119,14 @@ function descargarComprobante() {
     if (!ultimoReporte?.trackingNumber) return;
 
     const contenido = [
-        'ZEMYNA - COMPROBANTE DE INCIDENCIA',
+        translateUi('messages.receiptTitle'),
         '',
-        `Número de seguimiento: ${ultimoReporte.trackingNumber}`,
-        `Contenedor: ${ultimoReporte.idContenedor || 'No informado'}`,
-        `Ubicación: ${ultimoReporte.direccion || 'No informada'}`,
-        `Problema: ${ultimoReporte.tipoProblema || 'No informado'}`,
+        translateUi('messages.receiptTracking', { tracking: ultimoReporte.trackingNumber }),
+        translateUi('messages.receiptContainer', { container: ultimoReporte.idContenedor || translateUi('common.notReported') }),
+        translateUi('messages.receiptLocation', { location: ultimoReporte.direccion || translateUi('common.notReportedFem') }),
+        translateUi('messages.receiptProblem', { problem: ultimoReporte.tipoProblema || translateUi('common.notReported') }),
         '',
-        'Conservá este número para consultar el estado de tu incidencia.'
+        translateUi('messages.keepTracking')
     ].join('\n');
     const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
